@@ -1,0 +1,565 @@
+# Trades replayed through the validator.
+#
+# ---------------------------------------------------------------------------
+# HOW TEAM SALARIES WORK IN THIS FILE  (read before adding a fixture)
+# ---------------------------------------------------------------------------
+# A trade's legality depends on each team's total salary, which decides its
+# apron tier. Exact team payrolls on a given date are hard to source and easy
+# to get wrong, and a wrong payroll produces a confidently wrong verdict.
+#
+# So a fixture states the *tier* a team was in, not a payroll. The harness
+# synthesises a representative salary inside that band. This keeps the test
+# honest about what it is actually asserting: "a team in this tier, making this
+# trade, gets this verdict" — which is exactly the rule under test. A fixture
+# may override with an explicit `salary:` when the real payroll is known.
+#
+# Tiers: under_cap | over_cap | first_apron | second_apron
+#
+# ---------------------------------------------------------------------------
+# TWO KINDS OF FIXTURE
+# ---------------------------------------------------------------------------
+# real            An actual trade. Can only ever show the validator is not too
+#                 strict. `verified: true` requires salaries checked against a
+#                 primary source — none are yet.
+# counterfactual  A constructed scenario, usually one that must be rejected.
+#                 Shows the validator is not too permissive. These are
+#                 `verified: true` because their legality follows from the rule
+#                 itself, not from salary data that could be misremembered.
+#
+# Only a `verified: true` fixture may check a row in the README coverage
+# matrix. That is deliberate: checking a row must require real work.
+#
+# ---------------------------------------------------------------------------
+# FIELDS
+# ---------------------------------------------------------------------------
+#   expected_verdict        approved | rejected | undetermined
+#   expected_errors         rule ids that must appear as ERROR findings
+#   expected_undetermined   rule ids that must appear as UNDETERMINED findings
+#   simplified              a multi-team deal reduced to its principal teams
+#   covers                  README matrix row id this fixture is evidence for
+
+trades:
+  # =========================================================================
+  # Real trades. Salaries recalled, not sourced — none may check a matrix row.
+  # =========================================================================
+
+  - id: anunoby-barrett-quickley-2023
+    label: OG Anunoby to NYK; RJ Barrett and Immanuel Quickley to TOR
+    kind: real
+    season: "2023-24"
+    date: "2023-12-30"
+    verified: false
+    expected_verdict: approved
+    teams:
+      NYK: {tier: over_cap, roster: 14}
+      TOR: {tier: over_cap, roster: 15}
+    players:
+      - {name: OG Anunoby, salary: 18642857, from: TOR, to: NYK}
+      - {name: Precious Achiuwa, salary: 4379527, from: TOR, to: NYK}
+      - {name: Malachi Flynn, salary: 3873025, from: TOR, to: NYK}
+      - {name: RJ Barrett, salary: 23883929, from: NYK, to: TOR}
+      - {name: Immanuel Quickley, salary: 4171548, from: NYK, to: TOR}
+
+  - id: doncic-davis-2025
+    label: Luka Doncic to LAL; Anthony Davis to DAL
+    kind: real
+    season: "2024-25"
+    date: "2025-02-01"
+    verified: false
+    simplified: true  # real deal was three-team with UTA
+    expected_verdict: approved
+    teams:
+      LAL: {tier: over_cap, roster: 15}
+      DAL: {tier: over_cap, roster: 15}
+    players:
+      - {name: Luka Doncic, salary: 43031940, from: DAL, to: LAL}
+      - {name: Markieff Morris, salary: 2087519, from: DAL, to: LAL}
+      - {name: Anthony Davis, salary: 43219440, from: LAL, to: DAL}
+      - {name: Max Christie, salary: 7160271, from: LAL, to: DAL}
+
+  - id: butler-warriors-2025
+    label: Jimmy Butler to GSW
+    kind: real
+    season: "2024-25"
+    date: "2025-02-05"
+    verified: false
+    simplified: true  # real deal was five-team
+    expected_verdict: approved
+    teams:
+      GSW: {tier: over_cap, roster: 15}
+      MIA: {tier: over_cap, roster: 13}
+    players:
+      - {name: Jimmy Butler, salary: 48798677, from: MIA, to: GSW}
+      - {name: Andrew Wiggins, salary: 26271554, from: GSW, to: MIA}
+      - {name: Dennis Schroder, salary: 13000000, from: GSW, to: MIA}
+      - {name: Kyle Anderson, salary: 9220000, from: GSW, to: MIA}
+
+  - id: towns-knicks-2024
+    label: Karl-Anthony Towns to NYK; Julius Randle and Donte DiVincenzo to MIN
+    kind: real
+    season: "2024-25"
+    date: "2024-10-02"
+    verified: false
+    simplified: true  # real deal was three-team with CHA
+    expected_verdict: approved
+    teams:
+      NYK: {tier: over_cap, roster: 15}
+      MIN: {tier: second_apron, roster: 14}
+    players:
+      - {name: Karl-Anthony Towns, salary: 49205800, from: MIN, to: NYK}
+      - {name: Julius Randle, salary: 28939680, from: NYK, to: MIN}
+      - {name: Donte DiVincenzo, salary: 11445000, from: NYK, to: MIN}
+
+  # =========================================================================
+  # Counterfactual negatives. Each is one dollar past a limit, so it fails for
+  # exactly the reason named and nothing else.
+  # =========================================================================
+
+  - id: cf-small-bracket-exceeded
+    label: Below apron, small bracket — $5M out, one dollar past 200% + $250K
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: small-bracket
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Small Contract, salary: 5000000, from: BOS, to: WAS}
+      - {name: Return, salary: 10250001, from: WAS, to: BOS}
+
+  - id: cf-middle-bracket-exceeded
+    label: Below apron, middle bracket — $20M out, one dollar past outgoing + expanded TPE
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: middle-bracket
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Mid Contract, salary: 20000000, from: BOS, to: WAS}
+      - {name: Return, salary: 28527001, from: WAS, to: BOS}
+
+  - id: cf-large-bracket-exceeded
+    label: Below apron, large bracket — $40M out, one dollar past 125% + $250K
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: large-bracket
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Max Contract, salary: 40000000, from: BOS, to: WAS}
+      - {name: Return, salary: 50250001, from: WAS, to: BOS}
+
+  # This fixture IS the contested-boundary decision, encoded. Under the
+  # adopted $7.25M reading the limit is $14,900,000 and this is rejected.
+  # Under the $7.5M reading the limit would be $15,050,000 and it would pass.
+  # If this fixture ever starts failing, re-read CONTESTED in constants.py.
+  - id: cf-contested-band-boundary
+    label: Contested band — $7.4M out, one dollar past the middle bracket
+    kind: counterfactual
+    season: "2023-24"
+    date: "2024-01-15"
+    verified: true
+    covers: contested-band
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Contested Contract, salary: 7400000, from: BOS, to: WAS}
+      - {name: Return, salary: 14900001, from: WAS, to: BOS}
+
+  - id: cf-first-apron-exceeded
+    label: First-apron team takes back one dollar over 100%
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: first-apron-matching
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      GSW: {tier: first_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: GSW, to: WAS}
+      - {name: Return, salary: 20000001, from: WAS, to: GSW}
+
+  - id: cf-second-apron-exceeded
+    label: Second-apron team takes back 105% of outgoing salary
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: second-apron-matching
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: second_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing Deal, salary: 20000000, from: BOS, to: WAS}
+      - {name: Incoming Deal, salary: 21000000, from: WAS, to: BOS}
+
+  - id: cf-second-apron-aggregation
+    label: Second-apron team combines two salaries to land one bigger player
+    kind: counterfactual
+    season: "2024-25"
+    date: "2025-02-06"
+    verified: true
+    covers: second-apron-aggregation
+    expected_verdict: rejected
+    expected_errors: [AGGREGATION_SECOND_APRON]
+    teams:
+      PHX: {tier: second_apron, roster: 15}
+      CHA: {tier: under_cap, roster: 13}
+    players:
+      - {name: Contract A, salary: 18000000, from: PHX, to: CHA}
+      - {name: Contract B, salary: 16000000, from: PHX, to: CHA}
+      - {name: Target Star, salary: 33000000, from: CHA, to: PHX}
+
+  - id: cf-second-apron-cash
+    label: Second-apron team sends cash, far under the annual limit
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: second-apron-cash
+    expected_verdict: rejected
+    expected_errors: [CASH_SECOND_APRON]
+    teams:
+      BOS: {tier: second_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: BOS, to: WAS}
+      - {name: Return, salary: 20000000, from: WAS, to: BOS}
+    cash:
+      - {from: BOS, to: WAS, amount: 250000}
+
+  # The transitional season. The identical trade is legal in 2023-24 (110%)
+  # and illegal from 2024-25 (100%); the paired fixture below proves it.
+  - id: cf-transitional-110-exceeded
+    label: 2023-24 apron team takes back one dollar over 110%
+    kind: counterfactual
+    season: "2023-24"
+    date: "2024-01-15"
+    verified: true
+    covers: transitional-110
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: second_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: BOS, to: WAS}
+      - {name: Return, salary: 22000001, from: WAS, to: BOS}
+
+  - id: syn-transitional-110-at-limit
+    label: 2023-24 apron team takes back exactly 110% - legal that season only
+    kind: synthetic
+    season: "2023-24"
+    date: "2024-01-15"
+    verified: true
+    covers: transitional-110
+    edge_justification: >
+      110% x 20,000,000 = 22,000,000, the apron limit in 2023-24 and that
+      season only. The identical trade is rejected from 2024-25 onward, which
+      test_apron_matching_was_looser_in_2023_24 asserts directly. Paired with
+      cf-transitional-110-exceeded at 22,000,001.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: second_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: BOS, to: WAS}
+      - {name: Return, salary: 22000000, from: WAS, to: BOS}
+
+  - id: cf-aggregation-window
+    label: Below apron, aggregating a player acquired by trade 30 days ago
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-20"
+    verified: true
+    covers: aggregation-below-apron
+    expected_verdict: rejected
+    expected_errors: [AGGREGATION_WINDOW]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: over_cap, roster: 13}
+    players:
+      - {name: Just Acquired, salary: 10000000, from: BOS, to: WAS, acquired_days_ago: 30}
+      - {name: Piece B, salary: 12000000, from: BOS, to: WAS}
+      - {name: Star, salary: 21000000, from: WAS, to: BOS}
+
+  - id: cf-stale-trade-exception
+    label: Apron team reaches for a trade exception generated last league year
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: tpe-absorption
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      GSW:
+        tier: first_apron
+        roster: 14
+        trade_exceptions:
+          - {amount: 6000000, created_season: "2024-25"}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Absorbed, salary: 6000000, from: WAS, to: GSW}
+
+  - id: cf-tpe-current-year-allowed
+    label: Same absorption using a current-year exception — legal
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: tpe-absorption
+    expected_verdict: approved
+    teams:
+      GSW:
+        tier: first_apron
+        roster: 14
+        trade_exceptions:
+          - {amount: 6000000, created_season: "2025-26"}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Absorbed, salary: 6000000, from: WAS, to: GSW}
+
+  - id: cf-sign-and-trade-into-apron
+    label: First-apron team acquires a sign-and-trade player
+    kind: counterfactual
+    season: "2025-26"
+    date: "2025-07-10"
+    verified: true
+    covers: sign-and-trade
+    expected_verdict: rejected
+    expected_errors: [SIGN_AND_TRADE_APRON]
+    teams:
+      GSW: {tier: first_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: GSW, to: WAS}
+      - {name: New Guy, salary: 20000000, from: WAS, to: GSW, sign_and_trade: true}
+
+  - id: cf-base-year-compensation
+    label: Over-cap team trades a player it re-signed with a 122% raise
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: base-year-compensation
+    expected_verdict: undetermined
+    expected_undetermined: [BASE_YEAR_COMPENSATION]
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: over_cap, roster: 15}
+    players:
+      - name: Re-signed Vet
+        salary: 20000000
+        from: BOS
+        to: WAS
+        re_sign_status: re_signed_bird
+        previous_salary: 9000000
+      - {name: Return, salary: 20000000, from: WAS, to: BOS}
+
+  - id: cf-base-year-compensation-resolved
+    label: Same player, but the raise was under 20% — resolvable
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: base-year-compensation
+    expected_verdict: approved
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: over_cap, roster: 15}
+    players:
+      - name: Re-signed Vet
+        salary: 20000000
+        from: BOS
+        to: WAS
+        re_sign_status: re_signed_bird
+        previous_salary: 18000000
+      - {name: Return, salary: 20000000, from: WAS, to: BOS}
+
+  # =========================================================================
+  # FORMULA positives. Synthetic by design: a formula row asks whether the
+  # calculation is right at a specific edge, and a synthetic fixture controls
+  # the inputs exactly. Each sits *at* the limit and is paired with a
+  # counterfactual one dollar past it, so the two together pin the edge.
+  # =========================================================================
+
+  - id: syn-small-bracket-at-limit
+    label: Below apron, small bracket - $5M out takes back exactly 200% + $250K
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: small-bracket
+    edge_justification: >
+      200% x 5,000,000 + 250,000 = 10,250,000, the median of the three bracket
+      formulas at this outgoing amount. Paired with cf-small-bracket-exceeded
+      at 10,250,001.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Small Contract, salary: 5000000, from: BOS, to: WAS}
+      - {name: Return, salary: 10250000, from: WAS, to: BOS}
+
+  - id: syn-middle-bracket-at-limit
+    label: Below apron, middle bracket - $20M out takes back outgoing + expanded TPE
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: middle-bracket
+    edge_justification: >
+      20,000,000 + 8,527,000 = 28,527,000. The middle bracket is the median
+      here because 200%+250K (40,250,000) sits above it and 125%+250K
+      (25,250,000) below. Paired with cf-middle-bracket-exceeded.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Mid Contract, salary: 20000000, from: BOS, to: WAS}
+      - {name: Return, salary: 28527000, from: WAS, to: BOS}
+
+  - id: syn-large-bracket-at-limit
+    label: Below apron, large bracket - $40M out takes back exactly 125% + $250K
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: large-bracket
+    edge_justification: >
+      125% x 40,000,000 + 250,000 = 50,250,000. Above the upper crossover
+      (34,108,000 in 2025-26) the 125% formula is the median. Paired with
+      cf-large-bracket-exceeded.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Max Contract, salary: 40000000, from: BOS, to: WAS}
+      - {name: Return, salary: 50250000, from: WAS, to: BOS}
+
+  - id: syn-contested-band-at-limit
+    label: Contested band - $7.4M out takes back exactly the middle-bracket limit
+    kind: synthetic
+    season: "2023-24"
+    date: "2024-01-15"
+    verified: true
+    covers: contested-band
+    edge_justification: >
+      7,400,000 + 7,500,000 = 14,900,000 under the adopted $7,250,000 bracket
+      edge. This fixture alone does not discriminate between the two readings:
+      the rejected $7.5M reading would allow 15,050,000, which also covers
+      14,900,000. Its paired negative, cf-contested-band-boundary at
+      14,900,001, is what discriminates - it must be REJECTED, and would be
+      legal under the other reading. The pair pins the edge exactly.
+
+      This row is FORMULA rather than REALITY because no real trade can serve
+      it. Across 2023-24, 2024-25 and 2025-26 no team sent out a total between
+      $7,250,000 and $7,500,000; the nearest was $7,087,519 (UTA, 2025-02-01),
+      $162,481 short. See candidate_report.md.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: over_cap, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Contested Contract, salary: 7400000, from: BOS, to: WAS}
+      - {name: Return, salary: 14900000, from: WAS, to: BOS}
+
+  - id: syn-first-apron-at-limit
+    label: First-apron team takes back exactly 100% of outgoing
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: first-apron-matching
+    edge_justification: >
+      Apron teams get a flat percentage and no cushion: 100% x 20,000,000 =
+      20,000,000 in 2025-26. Paired with cf-first-apron-exceeded at 20,000,001.
+    expected_verdict: approved
+    teams:
+      GSW: {tier: first_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing, salary: 20000000, from: GSW, to: WAS}
+      - {name: Return, salary: 20000000, from: WAS, to: GSW}
+
+  - id: syn-second-apron-at-limit
+    label: Second-apron team takes back exactly 100% of outgoing
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: second-apron-matching
+    edge_justification: >
+      The same flat 100% as the first apron, verified separately because the
+      tier is resolved independently and a second-apron team also loses
+      aggregation and cash. Paired with cf-second-apron-exceeded at 105%.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: second_apron, roster: 15}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Outgoing Deal, salary: 20000000, from: BOS, to: WAS}
+      - {name: Incoming Deal, salary: 20000000, from: WAS, to: BOS}
+
+  - id: syn-minimum-exception-at-limit
+    label: Second-apron team absorbs a 10-year veteran at exactly the minimum
+    kind: synthetic
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: minimum-salary-exception
+    edge_justification: >
+      The 2025-26 minimum for 10+ years of service is $3,634,153. A player at
+      that figure does not count as incoming salary, so a second-apron team
+      sending nothing out - matching limit $0 - may still acquire him. Paired
+      with cf-minimum-exception-one-dollar-over at 3,634,154, which does count
+      and is therefore rejected. Apron status is deliberately not a barrier:
+      the 2023 CBA bars apron teams from the mid-level and bi-annual
+      exceptions, not the minimum.
+    expected_verdict: approved
+    teams:
+      BOS: {tier: second_apron, roster: 14}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Minimum Veteran, salary: 3634153, from: WAS, to: BOS, years_of_service: 10}
+
+  - id: cf-minimum-exception-one-dollar-over
+    label: One dollar above the veteran minimum, so it must be matched
+    kind: counterfactual
+    season: "2025-26"
+    date: "2026-01-15"
+    verified: true
+    covers: minimum-salary-exception
+    expected_verdict: rejected
+    expected_errors: [SALARY_MATCH]
+    teams:
+      BOS: {tier: second_apron, roster: 14}
+      WAS: {tier: under_cap, roster: 15}
+    players:
+      - {name: Just Over Minimum, salary: 3634154, from: WAS, to: BOS, years_of_service: 10}
