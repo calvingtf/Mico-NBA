@@ -15,11 +15,15 @@ from mironba.llm.providers.base import (
     RawCompletion,
     SamplingParams,
 )
+from mironba.llm.providers.anthropic import AnthropicProvider
+from mironba.llm.providers.claude_sdk import ClaudeSdkProvider
 from mironba.llm.providers.ollama import OllamaProvider
 from mironba.llm.providers.openai_compat import OpenAICompatibleProvider
 
 #: Registry keyed by the ``server:`` field in configs/models.yaml.
 PROVIDERS: dict[str, type[Provider]] = {
+    "anthropic": AnthropicProvider,
+    "claude_sdk": ClaudeSdkProvider,
     "ollama": OllamaProvider,
     "openai": OpenAICompatibleProvider,
     "vllm": OpenAICompatibleProvider,
@@ -43,6 +47,8 @@ def provider_for(server: str) -> Provider:
 
 __all__ = [
     "PROVIDERS",
+    "AnthropicProvider",
+    "ClaudeSdkProvider",
     "OllamaProvider",
     "OpenAICompatibleProvider",
     "Provider",

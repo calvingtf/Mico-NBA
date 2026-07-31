@@ -60,3 +60,10 @@ bench-*.pid
 branch-*.json
 league-*.json
 delta-error.json
+
+# API keys. Project-local rather than a system environment variable on
+# purpose: exporting ANTHROPIC_API_KEY globally makes interactive Claude Code
+# flip from the subscription to pay-as-you-go billing without saying so.
+# Read only by llm/providers/anthropic.py, never committed.
+.secrets/
+.secrets.env

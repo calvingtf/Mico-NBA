@@ -82,6 +82,57 @@ profiles:
     top_p: 0.95
     seed: 20260730
 
+  # --- Subscription transport: PRESENTATION AGENTS ONLY --------------------
+  # No temperature, no seed, no top_p, no max_tokens - the Agent SDK exposes
+  # none of them. A run under this profile cannot be reproduced, so eval/ and
+  # sim/ are barred from selecting it in code, not just by convention. See
+  # llm/providers/claude_sdk.py and tests/test_sdk_transport.py.
+  sdk_opus:
+    server: claude_sdk
+    base_url: ""                 # unused; the CLI holds the credential
+    model: claude-opus-5
+    thinking: false
+    # temperature / top_p / seed / max_tokens deliberately absent: recording a
+    # value we cannot set would put a fiction in the manifest.
+
+  # --- Hosted, for the M10 model comparison -------------------------------
+  # Three points, not two: a capability curve says whether scaffolding
+  # substitutes for capability, where a single frontier data point only says
+  # whether one model happens to clear the bar.
+  #
+  # temperature and seed match the local arms exactly. Anthropic does not
+  # accept a seed, so runs are not bit-reproducible there; the manifest records
+  # seed_honoured: false rather than implying determinism we do not have.
+  api_opus:
+    server: anthropic
+    base_url: https://api.anthropic.com
+    model: claude-opus-5
+    thinking: false
+    temperature: 0.8
+    seed: 20260730
+    max_tokens: 2048
+    request_timeout_s: 300
+
+  api_sonnet:
+    server: anthropic
+    base_url: https://api.anthropic.com
+    model: claude-sonnet-5
+    thinking: false
+    temperature: 0.8
+    seed: 20260730
+    max_tokens: 2048
+    request_timeout_s: 300
+
+  api_haiku:
+    server: anthropic
+    base_url: https://api.anthropic.com
+    model: claude-haiku-4-5-20251001
+    thinking: false
+    temperature: 0.8
+    seed: 20260730
+    max_tokens: 2048
+    request_timeout_s: 300
+
 roles:
   # Moved off local_fast at M1.6. Not for reasoning quality — for residency.
   # 35b-a3b ran at gpu_fraction 0.0 on this box, so its latency figures

@@ -192,8 +192,14 @@ def post_json(
         ) from exc
 
 
-def get_json(url: str, *, timeout: float = 10.0) -> dict[str, Any]:
-    request = urllib.request.Request(url, method="GET")
+def get_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    """GET and parse JSON. ``headers`` because some APIs authenticate reads."""
+    request = urllib.request.Request(url, method="GET", headers=headers or {})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8", "replace"))

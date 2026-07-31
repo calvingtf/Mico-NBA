@@ -14,6 +14,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# Presentation agents only - see mironba/llm/providers/claude_sdk.py. Optional
+# because the measured arms deliberately do not use it.
+sdk = ["claude-agent-sdk>=0.2"]
 
 [tool.setuptools.packages.find]
 include = ["mironba*"]
@@ -30,4 +33,8 @@ markers = [
     # present — but it is the test that checks the README's claim against the
     # data the README quotes, so it runs by default rather than being opt-in.
     "slow: refits a model against real snapshot data",
+    # Spends real subscription quota or API credit. Opt-in with -m sdk / -m api
+    # so a routine test run never bills anything or eats a five-hour window.
+    "sdk: calls the Claude Agent SDK over the local subscription",
+    "api: calls a hosted model over HTTP with an API key",
 ]

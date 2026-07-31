@@ -212,9 +212,34 @@ def resolve_profile(config: dict[str, Any], name: str) -> ProfileConfig:
         )
     merged = {**dict(config.get("defaults", {}) or {}), **dict(profiles[resolved])}
     known = ProfileConfig.__dataclass_fields__
-    return ProfileConfig(
+    profile = ProfileConfig(
         name=resolved, **{k: v for k, v in merged.items() if k in known}
     )
+    _refuse_unreproducible_transport(profile)
+    return profile
+
+
+def _refuse_unreproducible_transport(profile: ProfileConfig) -> None:
+    """Bar measurement code from a transport that cannot set a seed.
+
+    Enforced here rather than at the call sites because this is the one
+    function every path goes through. A convention documented in a provider
+    module gets broken by whoever did not read it, and the failure would be
+    silent: a run that looks like every other run and cannot be reproduced.
+
+    The caller is identified by walking the stack, which is blunt but honest -
+    it catches indirect routes (eval imports a sim helper that builds a client)
+    that an explicit argument would not.
+    """
+    if profile.server != "claude_sdk":
+        return
+    import inspect
+
+    from mironba.llm.providers.claude_sdk import assert_not_measurement_profile
+
+    for frame in inspect.stack()[1:]:
+        module = frame.frame.f_globals.get("__name__", "")
+        assert_not_measurement_profile(module, profile.name)
 
 
 def probe_model(cfg: ProfileConfig) -> ModelInfo:
