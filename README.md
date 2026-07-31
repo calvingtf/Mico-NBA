@@ -57,16 +57,27 @@ rather than discouraged.
 **Then it wanted players it could not afford — 0 of 7 intents satisfiable.** The
 fix was to compute feasibility before asking. Across three scenarios, two arms:
 
-| | blind | feasible |
-| --- | --- | --- |
-| Named an unreachable target | 65.5% | **0.0%** |
-| Intent satisfiable, first attempt | 31.0% | **58.6%** |
-| LLM calls spent | 102 | **99** |
+| | blind | feasible | unlock |
+| --- | --- | --- | --- |
+| Named an unreachable target | 65.5% | **0.0%** | **0.0%** |
+| Intent satisfiable, first attempt | 31.0% | 58.6% | **100%** |
+| Intent satisfiable, final | 58.6% | 75.9% | **100%** |
+| LLM calls spent | 102 | 99 | **75** |
 
-**Naming which of your own contracts unlock a target closed the rest of the
-gap** — 12/12 first-attempt satisfiable on the apron scenario, against 1/12.
-The model then declined all twelve packages, which is a defensible read of a
-thin market rather than a failure.
+**Naming which of the team's own contracts unlock each target closed the gap
+completely** — 23 of 23 intents satisfiable on the first attempt, at a quarter
+fewer calls than the baseline, because no revision round was ever needed.
+
+Stand-pat rates are 19.4%, 19.4% and 20.7% across the three arms, so the
+improvement is not a selection effect from the model simply attempting less.
+
+The model then **declined 16 of the 23 legal package sets it was shown**. On an
+apron team whose only legal moves are cheap-for-cheap swaps that is a
+defensible read of a thin market rather than a failure — but it means solving
+feasibility did not produce trades, it produced informed refusals.
+
+*Caveat: the unlock arm ran 29 trials to the others' 36. The last cell aborted
+part-way when the throughput canary fired at 67% below baseline — see below.*
 
 **The value model does not demonstrably beat its baseline, and says so.** Pooled
 MAE 7.49 wins against 7.99 for "last season regressed to .500" — but paired over
@@ -102,6 +113,11 @@ evidence for it is a statement dated after the freeze.
   package to prove nothing outside `eval/` names it. A second test asserts no
   simulator module hardcodes a post-freeze figure — written after the scorer was
   caught doing exactly that.
+- **The canary stops a degraded run rather than reporting it.** It fired for
+  the first time mid-benchmark, at 11.72 tok/s against a 36.02 baseline, and
+  aborted the remaining trials. That is the same memory-pressure failure that
+  silently corrupted an earlier milestone's latency column while
+  `gpu_fraction: 1.0` said everything was fine.
 - **The audit found a leak in our own ingest.** The transaction log runs three
   days past the freeze, and the offending row is a Golden State signing — the
   team whose behaviour was being predicted.

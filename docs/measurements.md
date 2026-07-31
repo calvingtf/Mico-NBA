@@ -80,10 +80,30 @@ milestone — and almost none of that was the intervention. It was the model
 switch and a prune bug fix. Reusing the old number as a baseline would have
 credited the new prompt with a swing it did not produce.
 
-**Third arm.** Naming *which* of the team's own contracts unlock each target
-took the apron scenario to **12/12** first-attempt satisfiable, from 1/12. The
-model then declined all twelve legal packages — which for a contender offered
-only cheap-for-cheap swaps is a defensible read rather than a failure.
+**Third arm, complete.** Naming *which* of the team's own contracts unlock each
+target closed the gap outright:
+
+| across all three scenarios | blind | feasible | unlock |
+| --- | --- | --- | --- |
+| Named an unreachable target | 65.5% | 0.0% | **0.0%** |
+| Satisfiable, first attempt | 31.0% | 58.6% | **100%** (23/23) |
+| Satisfiable, final | 58.6% | 75.9% | **100%** |
+| LLM calls spent | 102 | 99 | **75** |
+| Step 3: selections / declines | 13 / 4 | 13 / 9 | **7 / 16** |
+
+Fewer calls, because no revision round was ever needed. Stand-pat rates are
+19.4%, 19.4% and 20.7% across the arms, so this is not the model attempting
+less and being scored on an easier subset.
+
+**And it did not produce trades.** The model declined 16 of the 23 legal
+package sets it was handed. Every intent became satisfiable and step 3 ran
+every time; the answer was mostly no. For an apron team whose legal moves are
+all cheap-for-cheap swaps that is a defensible read of a thin market — but the
+honest summary is that solving feasibility bought informed refusals rather than
+activity.
+
+The unlock arm ran 29 trials to the others' 36, because the throughput canary
+aborted the last cell. See below.
 
 ---
 
@@ -298,3 +318,29 @@ is one the measured 10.5-win error supports.
   (7.4s against 122s on an identical prompt). It was held constant, not varied.
 - **The counterfactual branch.** Unfalsifiable by construction. It is run and
   reported, never scored.
+
+---
+
+## 12. The canary fires
+
+**Measured, mid-benchmark.** The throughput canary refused to continue:
+
+```
+server error: throughput canary is 67% slower than baseline:
+              11.72 tok/s against 36.02 tok/s recorded 2026-07-31T17:04:56Z
+
+ABORTING: the machine is not in a state worth measuring on.
+```
+
+Seven trials of the third unlock cell were never run.
+
+**Why that is the right outcome.** Those seven trials would have completed.
+They would have produced satisfiability figures indistinguishable from the
+others and a latency column three times too slow, and nothing in the manifest
+would have said so — `gpu_fraction` would have read 1.0 throughout, because the
+weights really were in VRAM. That is precisely the failure that corrupted an
+earlier milestone's latency numbers and went unnoticed until a scenario ran six
+times slower than the one before it.
+
+The cost is a smaller sample in one cell, stated wherever that cell is quoted.
+The alternative was a full sample that was quietly wrong.
