@@ -50,35 +50,63 @@ class ActionChoice(BaseModel):
     )
 
 
-class TradeProposal(BaseModel):
-    """Step two: the parameters of a trade, given the choice to propose one.
+class TradeIntent(BaseModel):
+    """Step two: what the GM wants, stated without a package.
 
-    Player ids only. Team ids are three-letter codes drawn from the roster the
-    agent was shown, and every id is checked against that roster during
-    assembly — a hallucinated player is a malformed proposal, not a trade with
-    a mystery asset in it.
+    This is the entire vocabulary the model gets for a trade. It names players
+    it wants, players it is willing to give up, players it refuses to give up,
+    and an ordering over the willing set. It cannot pair an outgoing player
+    with an incoming one — that pairing is a *package*, and packages are what
+    the solver produces.
+
+    The distinction is the whole of M1.5. Under the old design the model emitted
+    packages and the validator rejected them, at a measured rate of 12 out of 12.
+    Salary matching is integer constraint satisfaction; asking a language model
+    to solve it and then scolding it for failing was the wrong shape of problem
+    for the wrong tool.
     """
 
-    partner_team: str = Field(
-        min_length=2,
-        max_length=4,
-        description="Three-letter code of the team to trade with.",
-    )
-    send_player_ids: list[str] = Field(
+    target_player_ids: list[str] = Field(
         min_length=1,
-        max_length=4,
-        description="Ids of players to send away, from your own roster.",
+        max_length=3,
+        description="Ids of players you want to acquire, from the partner's roster.",
     )
-    receive_player_ids: list[str] = Field(
+    tradeable_asset_ids: list[str] = Field(
         min_length=1,
-        max_length=4,
-        description="Ids of players to acquire, from the partner's roster.",
+        max_length=12,
+        description="Ids from your own roster you are willing to give up.",
     )
-    reason: str = Field(
-        min_length=1,
-        max_length=REASON_MAX,
-        description="Why this trade serves your stated priorities.",
+    excluded_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=12,
+        description="Ids you refuse to trade under any circumstances.",
     )
+    priority: list[str] = Field(
+        default_factory=list,
+        max_length=12,
+        description="Your tradeable ids, most expendable first.",
+    )
+    reason: str = Field(min_length=1, max_length=REASON_MAX)
+
+
+class PackageSelection(BaseModel):
+    """Step three: pick one legal package, or decline them all.
+
+    An index, not a package. The options were computed by the solver and are
+    legal by construction, so the only thing left for judgement is which one —
+    and whether any of them is worth doing at all, which is a genuine
+    basketball question rather than an arithmetic one.
+    """
+
+    selection: int = Field(
+        ge=-1,
+        description="Index of the package you choose, or -1 to decline all of them.",
+    )
+    reason: str = Field(min_length=1, max_length=REASON_MAX)
+
+    @property
+    def declined(self) -> bool:
+        return self.selection < 0
 
 
 class StandPatReason(BaseModel):
@@ -92,7 +120,8 @@ class StandPatReason(BaseModel):
 #: registered — and one that is not registered is caught too.
 AGENT_SCHEMAS: tuple[type[BaseModel], ...] = (
     ActionChoice,
-    TradeProposal,
+    TradeIntent,
+    PackageSelection,
     StandPatReason,
 )
 
@@ -101,6 +130,14 @@ AGENT_SCHEMAS: tuple[type[BaseModel], ...] = (
 #: legality without touching rules/.
 FORBIDDEN_FIELD_TOKENS = (
     "salary",
+    # Package vocabulary. A schema that can pair an outgoing player with an
+    # incoming one can express an illegal trade; the solver owns that pairing.
+    "send",
+    "receive",
+    "package",
+    "offer",
+    "outgoing",
+    "incoming",
     "cap_hit",
     "payroll",
     "apron",

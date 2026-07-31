@@ -1,6 +1,6 @@
 """The GM agent, offline.
 
-A fake client returns scripted schema objects, so the two-step control flow and
+A fake client returns scripted schema objects, so the three-step control flow and
 the persona rules can be asserted without a model. What a live model actually
 does with these prompts is a separate question, measured by
 `python -m mironba.sim.bench` and reported in the README.
@@ -21,7 +21,7 @@ from mironba.agents.gm import (
     RosterEntry,
     render_context,
 )
-from mironba.llm.schemas import ActionChoice, TradeProposal
+from mironba.llm.schemas import ActionChoice, PackageSelection, TradeIntent
 from mironba.rules.cap import ApronTier
 from mironba.world.events import EventLog, EventType
 from mironba.world.manifest import Run, build_manifest, template_hash
@@ -77,25 +77,43 @@ def agent(client, log):
     return GMAgent("LAL", PERSONA, client, log, profile="gm_agent")
 
 
-class TestTwoStepSelection:
+class TestThreeStepFlow:
     def test_a_decision_is_two_calls_never_one(self, log, context):
-        """The charter's rule. A nested trade-inside-decision is the shape
-        small models fail on, and the failure is unattributable: you cannot
-        tell a bad choice from bad typing."""
+        """Action first, then an intent. Never one nested call.
+
+        A small model asked to emit a decision *containing* a structure fails
+        more often and unattributably: you cannot tell a bad choice from bad
+        typing.
+        """
         client = FakeClient(
             [
                 ActionChoice(action="propose_trade", reason="win now"),
-                TradeProposal(
-                    partner_team="GSW",
-                    send_player_ids=["p1"],
-                    receive_player_ids=["q1"],
+                TradeIntent(
+                    target_player_ids=["q1"],
+                    tradeable_asset_ids=["p1"],
                     reason="star",
                 ),
             ]
         )
         decision = agent(client, log).decide(context)
         assert decision.action == "propose_trade"
-        assert [c["schema"] for c in client.calls] == [ActionChoice, TradeProposal]
+        assert [c["schema"] for c in client.calls] == [ActionChoice, TradeIntent]
+
+    def test_the_agent_emits_an_intent_not_a_package(self, log, context):
+        """The M1.5 architecture, at the agent's own boundary."""
+        client = FakeClient(
+            [
+                ActionChoice(action="propose_trade", reason="win now"),
+                TradeIntent(
+                    target_player_ids=["q1"],
+                    tradeable_asset_ids=["p1"],
+                    reason="star",
+                ),
+            ]
+        )
+        decision = agent(client, log).decide(context)
+        assert decision.intent.target_player_ids == ["q1"]
+        assert not hasattr(decision, "proposal")
 
     def test_standing_pat_costs_one_call(self, log, context):
         """No parameters to fill, so no second call."""
@@ -103,7 +121,7 @@ class TestTwoStepSelection:
         decision = agent(client, log).decide(context)
         assert decision.action == "stand_pat"
         assert len(client.calls) == 1
-        assert decision.proposal is None
+        assert decision.intent is None
 
     def test_the_first_schema_offers_only_the_action_enum(self, log, context):
         client = FakeClient([ActionChoice(action="stand_pat", reason="x")])
@@ -178,45 +196,67 @@ class TestPersona:
             GMAgent("LAL", GMPersona(risk_tolerance=5.0), FakeClient([]), log)
 
 
-class TestRetry:
-    def test_the_rejection_reason_reaches_the_model_verbatim(self, log, context):
+class TestIntentRevision:
+    def test_the_binding_constraint_reaches_the_model_verbatim(self, log, context):
+        """The retry that is worth something.
+
+        The old one handed back a rejection of a package the model had guessed
+        at and asked it to guess again; nine of those rescued nothing. This one
+        hands back which rule bound and by how many dollars, and asks for a
+        different want.
+        """
         client = FakeClient(
-            [
-                TradeProposal(
-                    partner_team="GSW",
-                    send_player_ids=["p1"],
-                    receive_player_ids=["q1"],
-                    reason="revised",
-                )
-            ]
+            [TradeIntent(target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="r")]
         )
-        previous = TradeProposal(
-            partner_team="GSW",
-            send_player_ids=["p1"],
-            receive_player_ids=["q1"],
-            reason="first",
+        previous = TradeIntent(
+            target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="first"
         )
-        agent(client, log).revise(
-            context, previous, "- SALARY_MATCH: LAL may take back at most $1,234,567"
+        agent(client, log).revise_intent(
+            context, previous, "SALARY_MATCH: you were $1,234,567 short"
         )
         prompt = client.calls[0]["messages"][-1]["content"]
         assert "$1,234,567" in prompt
-        assert "REJECTED" in prompt
+        assert "NO legal package" in prompt
 
-    def test_the_retry_is_marked_as_a_distinct_purpose(self, log, context):
-        """So the raw log can separate first attempts from revisions."""
+    def test_the_revision_is_marked_as_a_distinct_purpose(self, log, context):
         client = FakeClient(
-            [TradeProposal(
-                partner_team="GSW", send_player_ids=["p1"],
-                receive_player_ids=["q1"], reason="r",
-            )]
+            [TradeIntent(target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="r")]
         )
-        previous = TradeProposal(
-            partner_team="GSW", send_player_ids=["p1"],
-            receive_player_ids=["q1"], reason="f",
+        previous = TradeIntent(
+            target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="f"
         )
-        agent(client, log).revise(context, previous, "reason")
-        assert client.calls[0]["purpose"] == "trade_proposal_retry"
+        agent(client, log).revise_intent(context, previous, "reason")
+        assert client.calls[0]["purpose"] == "trade_intent_retry"
+
+
+class TestPackageSelection:
+    def test_the_model_picks_an_index(self, log, context):
+        client = FakeClient([PackageSelection(selection=1, reason="best value")])
+        choice = agent(client, log).select_package(context, "  [0] a\n  [1] b", 2)
+        assert choice.selection == 1
+        assert not choice.declined
+
+    def test_declining_all_is_expressible(self, log, context):
+        client = FakeClient([PackageSelection(selection=-1, reason="none help")])
+        assert agent(client, log).select_package(context, "  [0] a", 1).declined
+
+    def test_an_out_of_range_index_is_read_as_a_decline(self, log, context):
+        """Never clamped onto a package the model did not choose.
+
+        Clamping would attribute a trade to a GM that it never picked, and the
+        event log would record a decision nobody made.
+        """
+        client = FakeClient([PackageSelection(selection=7, reason="oops")])
+        choice = agent(client, log).select_package(context, "  [0] a", 1)
+        assert choice.declined
+        assert log.of_type(EventType.SELECTION_OUT_OF_RANGE)
+
+    def test_the_options_are_shown_as_legal_not_as_candidates(self, log, context):
+        client = FakeClient([PackageSelection(selection=0, reason="fine")])
+        agent(client, log).select_package(context, "  [0] a", 1)
+        prompt = client.calls[0]["messages"][-1]["content"]
+        assert "LEGAL" in prompt
+        assert "basketball merit" in prompt
 
 
 class TestEventLogging:
@@ -224,9 +264,8 @@ class TestEventLogging:
         client = FakeClient(
             [
                 ActionChoice(action="propose_trade", reason="win now"),
-                TradeProposal(
-                    partner_team="GSW", send_player_ids=["p1"],
-                    receive_player_ids=["q1"], reason="star",
+                TradeIntent(
+                    target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="star"
                 ),
             ]
         )
@@ -234,29 +273,34 @@ class TestEventLogging:
         types = [e.type for e in log]
         assert EventType.AGENT_PROMPTED in types
         assert EventType.AGENT_ACTION_CHOSEN in types
-        assert EventType.AGENT_PROPOSED in types
+        assert EventType.AGENT_INTENT in types
 
-    def test_a_proposal_is_public_and_reasoning_is_internal(self, log, context):
-        """One log with a visibility field, per the charter's anti-goals."""
+    def test_intent_is_internal_and_selection_is_public(self, log, context):
+        """One log with a visibility field, per the charter's anti-goals.
+
+        An intent is a GM's private wish list; a selected package is what the
+        league would see.
+        """
         client = FakeClient(
             [
                 ActionChoice(action="propose_trade", reason="win now"),
-                TradeProposal(
-                    partner_team="GSW", send_player_ids=["p1"],
-                    receive_player_ids=["q1"], reason="star",
+                TradeIntent(
+                    target_player_ids=["q1"], tradeable_asset_ids=["p1"], reason="star"
                 ),
             ]
         )
-        agent(client, log).decide(context)
-        chosen = log.of_type(EventType.AGENT_ACTION_CHOSEN)[0]
-        proposed = log.of_type(EventType.AGENT_PROPOSED)[0]
-        assert chosen.visibility == "internal"
-        assert proposed.visibility == "public"
+        gm = agent(client, log)
+        gm.decide(context)
+        assert log.of_type(EventType.AGENT_INTENT)[0].visibility == "internal"
+
+        client.script = [PackageSelection(selection=0, reason="fine")]
+        gm.select_package(context, "  [0] a", 1)
+        assert log.of_type(EventType.AGENT_SELECTED)[0].visibility == "public"
 
 
 class TestPromptTemplates:
     def test_the_hash_covers_every_template(self):
-        assert len(TEMPLATES) == 5
+        assert len(TEMPLATES) == 6
         assert template_hash(*TEMPLATES) == template_hash(*TEMPLATES)
 
     def test_rewording_any_template_changes_the_hash(self):

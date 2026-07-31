@@ -1,11 +1,21 @@
 """The GM agent: one decision, in two calls.
 
-Two-step action selection, per the charter. Step one picks an action type from
-a two-value enum; step two fills in that action's parameters. Never one nested
-call — a 3B-active model asked to emit a decision *containing* a trade fails
-differently and more often than one asked to fill two small forms, and the
-first failure is harder to attribute because you cannot tell whether it chose
-badly or merely typed badly.
+Three steps now, and the middle one is not an LLM call.
+
+    1. choose an action        (LLM)
+    2. state a TradeIntent     (LLM)   - what it wants, never a package
+    3. pick from legal options (LLM)   - by index, or decline all
+
+Between 2 and 3 the deterministic solver turns the intent into legal packages.
+The model never emits a package and never sees a salary, so an illegal proposal
+is not merely discouraged - it has no representation. M1 measured the previous
+propose-then-validate design at 0 legal proposals in 12 attempts, with 9 repair
+retries rescuing none. Salary matching is integer constraint satisfaction, and
+a language model is the wrong instrument for it.
+
+Steps stay separate for the reason they always did: a small model asked to emit
+a decision *containing* a structure fails more often and unattributably - you
+cannot tell whether it chose badly or merely typed badly.
 
 What this agent may see: its own roster and cap situation, the counterparty
 named by the scenario seed, and the seed itself. Not the other 28 teams.
@@ -22,7 +32,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from mironba.agents.base import Agent, Persona
-from mironba.llm.schemas import ActionChoice, TradeProposal
+from mironba.llm.schemas import ActionChoice, PackageSelection, TradeIntent
 from mironba.rules.cap import ApronTier
 from mironba.world.events import EventType, Visibility
 
@@ -144,38 +154,56 @@ Decide what to do this tick. Either propose a trade with {partner_team}, or
 stand pat. Reply with JSON: {{"action": "propose_trade"|"stand_pat", "reason": "..."}}\
 """
 
-PROPOSAL_TEMPLATE = """\
+INTENT_TEMPLATE = """\
 {context}
 
-You decided to propose a trade. Your stated reason was: {reason}
+You decided to pursue a trade. Your stated reason was: {reason}
 
-Name the players. Use the exact player ids shown above — send ids from your own
-roster, receive ids from {partner_team}'s roster. Do not invent ids.\
+State what you WANT. Do not build a trade and do not work out salary matching -
+a rules engine will compute which combinations are legal and show you the legal
+ones next.
+
+  target_player_ids     who you want from {partner_team}
+  tradeable_asset_ids   who you would be willing to give up
+  excluded_player_ids   who you will not give up under any circumstances
+  priority              your tradeable ids, most expendable first
+
+Use the exact player ids shown above. Do not invent ids.\
 """
 
-RETRY_TEMPLATE = """\
+SELECT_TEMPLATE = """\
 {context}
 
-Your previous proposal was REJECTED by the rules engine.
+The rules engine found these LEGAL packages. Every one complies with the CBA,
+so you are choosing on basketball merit, not on legality.
 
-You proposed:
-  send:    {sent}
-  receive: {received}
+{options}
 
-Reason for rejection:
-{verdict_reason}
+Reply with the index of the package you want (0 to {last}), or -1 to decline
+all of them if none is worth doing.\
+"""
 
-Revise the trade so it complies. The rejection above is the CBA's answer, not a
-negotiating position — a proposal that ignores it will be rejected again. Use
-the exact player ids shown above.\
+REVISE_INTENT_TEMPLATE = """\
+{context}
+
+Your stated intent has NO legal package.
+
+  you wanted:       {targets}
+  willing to trade: {tradeable}
+
+{constraint}
+
+State a revised intent. Changing what you want is the lever - a cheaper target,
+more assets on the table, or one fewer exclusion.\
 """
 
 TEMPLATES = (
     SYSTEM_TEMPLATE,
     CONTEXT_TEMPLATE,
     ACTION_TEMPLATE,
-    PROPOSAL_TEMPLATE,
-    RETRY_TEMPLATE,
+    INTENT_TEMPLATE,
+    SELECT_TEMPLATE,
+    REVISE_INTENT_TEMPLATE,
 )
 
 
@@ -200,7 +228,7 @@ def render_context(context: GMContext, persona: GMPersona) -> str:
 class GMDecision:
     action: str
     reason: str
-    proposal: TradeProposal | None = None
+    intent: TradeIntent | None = None
 
 
 class GMAgent(Agent):
@@ -263,80 +291,119 @@ class GMAgent(Agent):
 
     # -- step two ---------------------------------------------------------
 
-    def propose(self, context: GMContext, reason: str) -> TradeProposal:
+    def state_intent(self, context: GMContext, reason: str) -> TradeIntent:
         rendered = render_context(context, self.persona)
         messages = self._messages(
             context,
-            PROPOSAL_TEMPLATE.format(
-                context=rendered,
-                reason=reason,
-                partner_team=context.partner_team,
+            INTENT_TEMPLATE.format(
+                context=rendered, reason=reason, partner_team=context.partner_team
             ),
         )
         self.log.emit(
             EventType.AGENT_PROMPTED,
             actor=self.agent_id,
-            step="trade_proposal",
+            step="trade_intent",
             prompt_chars=sum(len(m["content"]) for m in messages),
         )
-        proposal = self.client.complete(
-            messages,
-            schema=TradeProposal,
-            profile=self.profile,
-            purpose="trade_proposal",
+        intent = self.client.complete(
+            messages, schema=TradeIntent, profile=self.profile, purpose="trade_intent"
         )
         self.log.emit(
-            EventType.AGENT_PROPOSED,
+            EventType.AGENT_INTENT,
             actor=self.agent_id,
-            visibility=Visibility.PUBLIC,
-            partner=proposal.partner_team,
-            send=proposal.send_player_ids,
-            receive=proposal.receive_player_ids,
-            reason=proposal.reason,
+            visibility=Visibility.INTERNAL,
+            targets=intent.target_player_ids,
+            tradeable=intent.tradeable_asset_ids,
+            excluded=intent.excluded_player_ids,
+            reason=intent.reason,
         )
-        return proposal
+        return intent
 
-    def revise(
-        self,
-        context: GMContext,
-        previous: TradeProposal,
-        verdict_reason: str,
-    ) -> TradeProposal:
-        """One retry, with the rejection reason handed back verbatim."""
+    def revise_intent(
+        self, context: GMContext, previous: TradeIntent, constraint: str
+    ) -> TradeIntent:
+        """One revised intent, given the binding constraint.
+
+        Unlike the retry it replaces, this one has something to work with. The
+        old loop handed back a rejection of a package the model had guessed at
+        and asked it to guess again. This hands back the shape of the
+        constraint - which rule bound, and by how many dollars - and asks for a
+        different *want*, which is a question a language model can answer.
+        """
         rendered = render_context(context, self.persona)
         messages = self._messages(
             context,
-            RETRY_TEMPLATE.format(
+            REVISE_INTENT_TEMPLATE.format(
                 context=rendered,
-                sent=", ".join(previous.send_player_ids),
-                received=", ".join(previous.receive_player_ids),
-                verdict_reason=verdict_reason,
-                partner_team=context.partner_team,
+                targets=", ".join(previous.target_player_ids),
+                tradeable=", ".join(previous.tradeable_asset_ids),
+                constraint=constraint,
             ),
         )
         self.log.emit(
-            EventType.REJECTION_RETURNED,
+            EventType.INTENT_UNSATISFIABLE,
             actor=self.agent_id,
             visibility=Visibility.INTERNAL,
-            verdict_reason=verdict_reason,
+            constraint=constraint,
         )
-        proposal = self.client.complete(
+        intent = self.client.complete(
             messages,
-            schema=TradeProposal,
+            schema=TradeIntent,
             profile=self.profile,
-            purpose="trade_proposal_retry",
+            purpose="trade_intent_retry",
         )
         self.log.emit(
-            EventType.AGENT_PROPOSED,
+            EventType.AGENT_INTENT,
+            actor=self.agent_id,
+            visibility=Visibility.INTERNAL,
+            attempt=2,
+            targets=intent.target_player_ids,
+            tradeable=intent.tradeable_asset_ids,
+            reason=intent.reason,
+        )
+        return intent
+
+    def select_package(
+        self, context: GMContext, options: str, count: int
+    ) -> PackageSelection:
+        """Pick one legal package by index, or decline all of them."""
+        rendered = render_context(context, self.persona)
+        messages = self._messages(
+            context,
+            SELECT_TEMPLATE.format(context=rendered, options=options, last=count - 1),
+        )
+        self.log.emit(
+            EventType.AGENT_PROMPTED,
+            actor=self.agent_id,
+            step="package_selection",
+            options=count,
+        )
+        choice = self.client.complete(
+            messages,
+            schema=PackageSelection,
+            profile=self.profile,
+            purpose="package_selection",
+        )
+        # The schema bounds the index below but cannot know how many options
+        # exist, so an out-of-range pick is read as a decline rather than
+        # clamped onto a package the model did not choose.
+        if choice.selection >= count:
+            self.log.emit(
+                EventType.SELECTION_OUT_OF_RANGE,
+                actor=self.agent_id,
+                selection=choice.selection,
+                options=count,
+            )
+            choice = PackageSelection(selection=-1, reason=choice.reason)
+        self.log.emit(
+            EventType.AGENT_SELECTED,
             actor=self.agent_id,
             visibility=Visibility.PUBLIC,
-            attempt=2,
-            partner=proposal.partner_team,
-            send=proposal.send_player_ids,
-            receive=proposal.receive_player_ids,
-            reason=proposal.reason,
+            selection=choice.selection,
+            declined=choice.declined,
+            reason=choice.reason,
         )
-        return proposal
+        return choice
 
     # -- one tick ---------------------------------------------------------
 
@@ -350,7 +417,5 @@ class GMAgent(Agent):
                 reason=choice.reason,
             )
             return GMDecision(action="stand_pat", reason=choice.reason)
-        proposal = self.propose(context, choice.reason)
-        return GMDecision(
-            action="propose_trade", reason=choice.reason, proposal=proposal
-        )
+        intent = self.state_intent(context, choice.reason)
+        return GMDecision(action="propose_trade", reason=choice.reason, intent=intent)

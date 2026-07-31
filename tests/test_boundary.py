@@ -1,37 +1,39 @@
-"""The LLM -> rules boundary.
+"""The LLM -> rules boundary, under the M1.5 architecture.
 
-Two things are being defended here, and they are the reason M1 exists.
+Two invariants carry over from M1 unchanged, and they are the reason this file
+exists:
 
 **Only rules/ may approve.** Not "agents are written not to decide legality" —
-there is no path by which they could. The proposal schema has no field for it,
-assembly takes every figure from the snapshot, and the only call to
-``validate_trade`` outside ``rules/`` is in ``boundary.judge``.
+there is no path by which they could.
 
-**All three verdicts are reachable.** Approved, rejected, and undetermined get
-exercised with real cap arithmetic and no model in the loop, so the wiring is
-proven independently of whether a given model happens to propose something
-legal on a given day.
+**Salaries never come from a model.** Every figure in a Trade is looked up from
+the snapshot.
+
+M1.5 adds a third, stronger than either: **a package is unrepresentable in any
+agent-facing schema.** Under M1 the model emitted packages and the validator
+rejected them, measured at 0 legal in 12. Now the model states an intent, the
+solver builds every package that exists, and the model picks an index. There is
+no schema in which an illegal package could be written down.
 """
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from mironba.agents.gm import GMContext, GMPersona, RosterEntry
-from mironba.llm.schemas import TradeProposal
-from mironba.rules.cap import ApronTier
+from mironba.llm.schemas import AGENT_SCHEMAS, FORBIDDEN_FIELD_TOKENS
 from mironba.rules.constants import environment_for
-from mironba.rules.trade_validator import ReSignStatus, Verdict, VerdictUndetermined
-from mironba.sim.boundary import (
-    BYCResolution,
-    MalformedProposal,
-    assemble,
-    judge,
-    rejection_reason,
+from mironba.rules.solver import Asset, TradeIntent, build_trade, solve
+from mironba.rules.trade_validator import (
+    ReSignStatus,
+    TeamTradeState,
+    Verdict,
+    VerdictUndetermined,
 )
+from mironba.sim.boundary import BYCResolution, judge, rejection_reason
 
 SEASON = "2024-25"
 ENV = environment_for(SEASON)
@@ -41,166 +43,146 @@ RESOLVED = BYCResolution(mode="assume_not_re_signed", sourced=False)
 UNRESOLVED = BYCResolution(mode="unresolved")
 
 
-def context(
-    *,
-    own: list[tuple[str, str, int]],
-    theirs: list[tuple[str, str, int]],
-    team_salary: int,
-    roster_count: int = 14,
-) -> GMContext:
-    return GMContext(
-        team_id="LAL",
+def assets(*rows):
+    return {pid: Asset(pid, pid.upper(), salary) for pid, salary in rows}
+
+
+def team(team_id, salary, roster=14):
+    return TeamTradeState(team_id=team_id, team_salary=salary, roster_count=roster)
+
+
+def solve_for(own, theirs, *, own_salary=150_000_000, byc=RESOLVED, **kwargs):
+    return solve(
+        TradeIntent(tuple(theirs), tuple(own)),
+        own=own,
+        theirs=theirs,
+        own_team=team("LAL", own_salary),
+        partner_team=team("GSW", 150_000_000),
         season=SEASON,
-        scenario_seed="test",
-        own_roster=tuple(RosterEntry(*p) for p in own),
-        partner_team="GSW",
-        partner_roster=tuple(RosterEntry(*p) for p in theirs),
-        team_salary=team_salary,
-        tier=ApronTier.OVER_CAP,
-        roster_count=roster_count,
-    )
-
-
-def proposal(send: list[str], receive: list[str], partner: str = "GSW") -> TradeProposal:
-    return TradeProposal(
-        partner_team=partner,
-        send_player_ids=send,
-        receive_player_ids=receive,
-        reason="test proposal",
-    )
-
-
-PERSONA = GMPersona(label="t", risk_tolerance=0.5, win_now_horizon=2, asset_hoarding=0.2)
-
-
-def build(prop, ctx, *, byc=RESOLVED, persona=PERSONA, partner_salary=150_000_000):
-    return assemble(
-        prop,
-        ctx,
-        persona,
         trade_date=TRADE_DATE,
-        partner_salary=partner_salary,
-        partner_roster_count=14,
-        byc=byc,
+        re_sign_status=byc.status,
+        **kwargs,
     )
 
 
 class TestSalariesComeFromTheSnapshot:
     def test_the_model_never_supplies_a_figure(self):
-        """A proposal is ids. Every dollar is looked up here."""
-        ctx = context(
-            own=[("p1", "Player One", 30_000_000)],
-            theirs=[("p2", "Player Two", 31_000_000)],
-            team_salary=170_000_000,
+        own = assets(("p1", 30_000_000))
+        theirs = assets(("p2", 31_000_000))
+        trade = build_trade(
+            ("p1",),
+            ("p2",),
+            own=own,
+            theirs=theirs,
+            own_team=team("LAL", 170_000_000),
+            partner_team=team("GSW", 150_000_000),
+            season=SEASON,
+            trade_date=TRADE_DATE,
         )
-        trade = build(proposal(["p1"], ["p2"]), ctx)
         assert {p.player_id: p.salary for p in trade.players} == {
             "p1": 30_000_000,
             "p2": 31_000_000,
         }
 
-    def test_a_proposal_has_no_field_that_could_carry_a_salary(self):
-        assert not any(
-            "salary" in name and name.endswith(("salary", "salaries"))
-            for name in TradeProposal.model_fields
-        )
+    def test_no_agent_facing_schema_can_state_a_salary(self):
+        for schema in AGENT_SCHEMAS:
+            blob = json.dumps(schema.model_json_schema()).lower()
+            for token in FORBIDDEN_FIELD_TOKENS:
+                assert f'"{token}"' not in blob, (
+                    f"{schema.__name__} exposes {token!r} to the model"
+                )
 
 
-class TestMalformedProposals:
-    """Things real models do. Counted separately from rules rejections."""
+class TestPackagesAreUnrepresentable:
+    """The M1.5 invariant."""
 
-    def setup_method(self):
-        self.ctx = context(
-            own=[("p1", "One", 10_000_000), ("p2", "Two", 9_000_000)],
-            theirs=[("q1", "Three", 10_500_000)],
-            team_salary=150_000_000,
-        )
+    def test_no_agent_facing_schema_can_express_a_package(self):
+        """A package pairs outgoing players with incoming ones.
 
-    def test_an_invented_player_id_is_malformed(self):
-        with pytest.raises(MalformedProposal, match="not on LAL's roster"):
-            build(proposal(["ghost"], ["q1"]), self.ctx)
+        If a model can write that pairing down, it can write down an illegal
+        one, and we are back to the design that measured 0 legal proposals in
+        12 attempts. An intent names wants; only the solver pairs them.
+        """
+        package_tokens = ("send", "receive", "outgoing", "incoming", "package", "offer")
+        for schema in AGENT_SCHEMAS:
+            fields = {name.lower() for name in schema.model_fields}
+            for token in package_tokens:
+                assert not any(token in name for name in fields), (
+                    f"{schema.__name__} has a {token!r} field — that is a package"
+                )
 
-    def test_sending_a_player_from_the_wrong_side_says_so(self):
-        with pytest.raises(MalformedProposal, match="it is on GSW's"):
-            build(proposal(["q1"], ["q1"]), self.ctx)
+    def test_the_intent_schema_names_wants_not_pairings(self):
+        from mironba.llm.schemas import TradeIntent as IntentForm
 
-    def test_receiving_your_own_player_says_so(self):
-        with pytest.raises(MalformedProposal, match="it is on LAL's"):
-            build(proposal(["p1"], ["p1"]), self.ctx)
+        assert set(IntentForm.model_fields) == {
+            "target_player_ids",
+            "tradeable_asset_ids",
+            "excluded_player_ids",
+            "priority",
+            "reason",
+        }
 
-    def test_the_wrong_partner_is_malformed(self):
-        with pytest.raises(MalformedProposal, match="not the counterparty"):
-            build(proposal(["p1"], ["q1"], partner="BOS"), self.ctx)
+    def test_selection_is_an_index_not_a_structure(self):
+        from mironba.llm.schemas import PackageSelection
 
-    def test_a_duplicated_player_is_malformed(self):
-        with pytest.raises(MalformedProposal, match="sent twice"):
-            build(proposal(["p1", "p1"], ["q1"]), self.ctx)
+        spec = PackageSelection.model_json_schema()["properties"]["selection"]
+        assert spec["type"] == "integer"
 
-    def test_every_problem_is_reported_at_once(self):
-        """One round trip per revision. Drip-feeding errors wastes the retry."""
-        with pytest.raises(MalformedProposal) as exc:
-            build(proposal(["ghost"], ["alsoghost"], partner="BOS"), self.ctx)
-        assert len(exc.value.reasons) == 3
+    def test_a_declining_index_is_available(self):
+        """Declining must be expressible, or the model will invent a way."""
+        from mironba.llm.schemas import PackageSelection
 
-    def test_persona_asset_hoarding_is_enforced_not_merely_suggested(self):
-        """The persona parameter feeds code, not only the prompt."""
-        hoarder = GMPersona(label="h", asset_hoarding=0.9)
-        assert hoarder.max_assets_out == 1
-        with pytest.raises(MalformedProposal, match="asset_hoarding"):
-            build(proposal(["p1", "p2"], ["q1"]), self.ctx, persona=hoarder)
+        assert PackageSelection(selection=-1, reason="none are worth it").declined
 
 
 class TestAllThreeVerdictsAreReachable:
     def test_approved(self):
-        """Under the cap, comfortably matched."""
-        ctx = context(
-            own=[("p1", "One", 20_000_000)],
-            theirs=[("q1", "Two", 20_500_000)],
-            team_salary=150_000_000,
-        )
-        result = judge(build(proposal(["p1"], ["q1"]), ctx))
-        assert result.verdict is Verdict.APPROVED
-        assert result.legal is True
+        own = assets(("p1", 20_000_000))
+        theirs = assets(("q1", 20_500_000))
+        result = solve_for(own, theirs)
+        assert result.satisfiable
+        assert result.packages[0].verdict is Verdict.APPROVED
 
-    def test_rejected_with_a_usable_reason(self):
-        """Taking back far more than the brackets allow."""
-        ctx = context(
-            own=[("p1", "One", 5_000_000)],
-            theirs=[("q1", "Two", 40_000_000)],
-            team_salary=180_000_000,
-        )
-        result = judge(build(proposal(["p1"], ["q1"]), ctx))
-        assert result.verdict is Verdict.REJECTED
-        reason = rejection_reason(result)
-        assert "SALARY_MATCH" in reason
-        assert "$" in reason  # the numbers, so a revision has something to aim at
+    def test_rejected_is_now_unreachable_through_the_agent_path(self):
+        """Rejections still exist; the agent simply cannot cause one.
+
+        A package the validator would reject is never returned by the solver,
+        so no selection the model makes can produce one. The rejection path
+        remains exercised directly against validate_trade in the M0 suite.
+        """
+        own = assets(("p1", 5_000_000))
+        theirs = assets(("q1", 40_000_000))
+        result = solve_for(own, theirs, own_salary=180_000_000)
+        assert not result.satisfiable
+        assert result.binding_constraint == "SALARY_MATCH"
 
     def test_undetermined_when_byc_is_unresolved(self):
-        """The path a snapshot-derived trade actually takes.
+        own = assets(("p1", 20_000_000))
+        theirs = assets(("q1", 20_500_000))
+        result = solve_for(own, theirs, byc=UNRESOLVED)
+        assert result.satisfiable
+        package = result.packages[0]
+        assert package.verdict is Verdict.UNDETERMINED
 
-        re_sign_status is UNKNOWN for every ingested player, so this is not an
-        exotic case — it is the default, and the validator refuses to guess.
-        """
-        ctx = context(
-            own=[("p1", "One", 20_000_000)],
-            theirs=[("q1", "Two", 20_500_000)],
-            team_salary=150_000_000,
+    def test_an_undetermined_package_still_raises_on_legal(self):
+        own = assets(("p1", 20_000_000))
+        theirs = assets(("q1", 20_500_000))
+        result = solve_for(own, theirs, byc=UNRESOLVED)
+        trade = build_trade(
+            result.packages[0].send_player_ids,
+            result.packages[0].receive_player_ids,
+            own=own,
+            theirs=theirs,
+            own_team=team("LAL", 150_000_000),
+            partner_team=team("GSW", 150_000_000),
+            season=SEASON,
+            trade_date=TRADE_DATE,
+            re_sign_status=ReSignStatus.UNKNOWN,
         )
-        trade = build(proposal(["p1"], ["q1"]), ctx, byc=UNRESOLVED)
-        assert all(p.re_sign_status is ReSignStatus.UNKNOWN for p in trade.players)
-        result = judge(trade)
-        assert result.verdict is Verdict.UNDETERMINED
+        validation = judge(trade)
         with pytest.raises(VerdictUndetermined):
-            _ = result.legal
-
-    def test_undetermined_gives_the_agent_something_to_read(self):
-        ctx = context(
-            own=[("p1", "One", 20_000_000)],
-            theirs=[("q1", "Two", 20_500_000)],
-            team_salary=150_000_000,
-        )
-        result = judge(build(proposal(["p1"], ["q1"]), ctx, byc=UNRESOLVED))
-        assert "UNDETERMINED" in rejection_reason(result)
+            _ = validation.legal
+        assert "UNDETERMINED" in rejection_reason(validation)
 
 
 class TestBYCResolution:
@@ -215,14 +197,9 @@ class TestBYCResolution:
 
 class TestOnlyRulesMayApprove:
     def test_no_agent_or_llm_module_imports_the_validator(self):
-        """The charter's first non-negotiable, checked structurally.
-
-        `boundary.py` is the single crossing point. If an agent ever imports
-        validate_trade directly, the LLM has a path to deciding legality and
-        this fails.
-        """
+        """The charter's first non-negotiable, checked structurally."""
         root = Path(__file__).resolve().parents[1] / "mironba"
-        allowed = {"boundary.py", "tick.py", "bench.py"}
+        allowed = {"boundary.py", "tick.py", "bench.py", "solver.py"}
         offenders = []
         for part in ("agents", "llm"):
             for path in (root / part).rglob("*.py"):
@@ -231,11 +208,40 @@ class TestOnlyRulesMayApprove:
                     offenders.append(str(path.relative_to(root)))
         assert not offenders, (
             f"modules reaching past the boundary: {offenders}. Only "
-            "sim/boundary.py may call the validator."
+            "rules/solver.py and sim/boundary.py may call the validator."
         )
 
+    def test_the_solver_lives_in_rules_not_in_agents(self):
+        """Package construction is a deterministic rule, not agent behaviour.
+
+        If it ever moves under agents/ or llm/, the thing deciding what is
+        legal has moved to the side of the boundary that may not decide it.
+        """
+        from mironba.rules import solver
+
+        assert Path(solver.__file__).parent.name == "rules"
+
     def test_the_verdict_is_never_taken_from_the_model(self):
-        """Nothing in the agent-facing schemas can express approval."""
-        blob = str(TradeProposal.model_json_schema()).lower()
-        for token in ("approved", "legal", "verdict", "valid"):
-            assert token not in blob
+        """Field names and allowed values, not prose.
+
+        An earlier version scanned the whole serialised schema and tripped over
+        the word "validator" inside a docstring. Descriptions are where we
+        *explain* that the model does not judge legality, so forbidding the
+        vocabulary there is backwards — it is the fields and the enums that
+        must not offer a way to say it.
+        """
+        for schema in AGENT_SCHEMAS:
+            spec = schema.model_json_schema()
+            names = {name.lower() for name in schema.model_fields}
+            values = {
+                str(value).lower()
+                for prop in (spec.get("properties") or {}).values()
+                for value in (prop.get("enum") or [])
+            }
+            for token in ("approved", "legal", "verdict", "valid"):
+                assert not any(token in name for name in names), (
+                    f"{schema.__name__} has a {token!r} field"
+                )
+                assert token not in values, (
+                    f"{schema.__name__} offers {token!r} as an allowed value"
+                )

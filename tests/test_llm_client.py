@@ -30,7 +30,7 @@ from mironba.llm.schemas import (
     AGENT_SCHEMAS,
     FORBIDDEN_FIELD_TOKENS,
     ActionChoice,
-    TradeProposal,
+    TradeIntent,
 )
 from mironba.world.manifest import ManifestError, Run, build_manifest
 
@@ -148,8 +148,8 @@ class TestSchemaIsPassedToTheServer:
         left guessing field names with no constraint at all, and duly invented
         `{"trade": {"sent_ids": [...]}}`.
         """
-        fake_provider.enforces = False
         fake_provider.script = ['{"action":"go","count":1}']
+        client.schema_enforcement = False
         client.complete([{"role": "user", "content": "decide"}], schema=Tiny)
         sent = fake_provider.calls[0]["messages"][-1]["content"]
         assert "decide" in sent           # the instruction survives
@@ -158,8 +158,8 @@ class TestSchemaIsPassedToTheServer:
     def test_a_verified_server_does_not_pay_for_the_prompt_copy(
         self, client, fake_provider
     ):
-        fake_provider.enforces = True
         fake_provider.script = ['{"action":"go","count":1}']
+        client.schema_enforcement = True   # as measured by llm/probe.py
         client.complete([{"role": "user", "content": "decide"}], schema=Tiny)
         assert fake_provider.calls[0]["messages"][-1]["content"] == "decide"
 
@@ -263,14 +263,14 @@ class TestRawLogging:
         different numbers, and reporting one as the other is the easiest
         mistake to make here — we made it on the first live run.
         """
-        fake_provider.enforces = True
         fake_provider.script = ['{"action":"go","count":1}']
+        client.schema_enforcement = True
         client.complete([{"role": "user", "content": "hi"}], schema=Tiny)
         row = json.loads(
             (run.dir / "llm_calls.jsonl").read_text(encoding="utf-8").splitlines()[0]
         )
         assert row["schema_sent_to_server"] is True
-        assert row["schema_enforcement_verified"] is True
+        assert row["schema_enforcement_observed"] is True
         assert row["schema_in_prompt"] is False
 
     def test_a_client_cannot_exist_without_a_run(self):
@@ -329,12 +329,13 @@ class TestSchemasAreSmallAndSafe:
         spec = ActionChoice.model_json_schema()["properties"]["action"]
         assert spec.get("enum") == ["propose_trade", "stand_pat"]
 
-    def test_a_proposal_names_players_by_id_only(self):
-        props = set(TradeProposal.model_json_schema()["properties"])
+    def test_an_intent_names_wants_by_id_only(self):
+        props = set(TradeIntent.model_json_schema()["properties"])
         assert props == {
-            "partner_team",
-            "send_player_ids",
-            "receive_player_ids",
+            "target_player_ids",
+            "tradeable_asset_ids",
+            "excluded_player_ids",
+            "priority",
             "reason",
         }
 

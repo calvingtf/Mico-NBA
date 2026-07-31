@@ -34,6 +34,9 @@ class EventType:
     AGENT_PROMPTED = "agent.prompted"
     AGENT_ACTION_CHOSEN = "agent.action_chosen"
     AGENT_PROPOSED = "agent.proposed"
+    AGENT_INTENT = "agent.intent"
+    AGENT_SELECTED = "agent.selected"
+    SELECTION_OUT_OF_RANGE = "agent.selection_out_of_range"
     AGENT_STOOD_PAT = "agent.stood_pat"
 
     LLM_CALL = "llm.call"
@@ -43,6 +46,8 @@ class EventType:
 
     PROPOSAL_ASSEMBLED = "proposal.assembled"
     PROPOSAL_MALFORMED = "proposal.malformed"
+    SOLVER_RESULT = "solver.result"
+    INTENT_UNSATISFIABLE = "solver.unsatisfiable"
 
     VERDICT = "rules.verdict"
     REJECTION_RETURNED = "agent.rejection_returned"
