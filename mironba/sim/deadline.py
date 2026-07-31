@@ -346,6 +346,10 @@ class DeadlineScore:
     actual: int
     representable: int
     pair_hits: int
+    #: Distinct *actual* trades matched by at least one proposal. Recall's
+    #: numerator, and not the same number as ``pair_hits``: several proposals
+    #: can hit one real trade, which made recall read 200% before this existed.
+    actual_matched: int
     player_hits: int
     exact_hits: int
     solver_legal: int
@@ -357,7 +361,7 @@ class DeadlineScore:
 
     @property
     def recall(self) -> float:
-        return self.pair_hits / self.representable if self.representable else 0.0
+        return self.actual_matched / self.representable if self.representable else 0.0
 
 
 def actual_deadline_trades(season: str = SEASON, window_days: int = 14):
@@ -372,11 +376,11 @@ def actual_deadline_trades(season: str = SEASON, window_days: int = 14):
 
     Read through eval/, which is the only place allowed to look at outcomes.
     """
-    from mironba.eval.real_trades import parse_two_team_trades
+    from mironba.eval.real_trades import parse_trades
 
     calendar = calendar_for(season)
     return [
-        t for t in parse_two_team_trades(season)
+        t for t in parse_trades(season)
         if 0 <= (calendar.deadline - t.when).days < window_days + 1
         and t.representable
     ]
@@ -390,10 +394,23 @@ def score(result: DeadlineResult, season: str = SEASON) -> DeadlineScore:
     scored = [c for c in checks if c.scored]
     legal = [c for c in scored if c.legal]
 
-    actual_pairs = {frozenset((t.team_a, t.team_b)) for t in actual}
-    actual_players = {p for t in actual for p in t.a_sends + t.b_sends}
+    # A two-team proposal counts as a pair hit against a three-team trade when
+    # both its teams were really in that trade. The planner cannot construct a
+    # three-team deal, so demanding an exact team-set match would score it
+    # against a shape it is structurally unable to produce - which measures the
+    # scope limit, not the planner. Stated here because it is a scoring choice
+    # that makes the number *easier*, and every such choice should be visible.
+    actual_team_sets = [frozenset(t.teams) for t in actual]
+    actual_players = {m.player_id for t in actual for m in t.moves}
 
-    pair_hits = sum(1 for p in result.proposals if p.pair in actual_pairs)
+    pair_hits = sum(
+        1 for p in result.proposals
+        if any(p.pair <= teams for teams in actual_team_sets)
+    )
+    actual_matched = sum(
+        1 for teams in actual_team_sets
+        if any(p.pair <= teams for p in result.proposals)
+    )
     player_hits = sum(
         1 for p in result.proposals
         if set(p.receive) & actual_players or set(p.send) & actual_players
@@ -401,8 +418,8 @@ def score(result: DeadlineResult, season: str = SEASON) -> DeadlineScore:
     exact = 0
     for proposal in result.proposals:
         for t in actual:
-            moved = {frozenset(t.a_sends), frozenset(t.b_sends)}
-            if {frozenset(proposal.send), frozenset(proposal.receive)} == moved:
+            moved = {frozenset(t.sends(team)) for team in t.teams}
+            if {frozenset(proposal.send), frozenset(proposal.receive)} <= moved:
                 exact += 1
                 break
 
@@ -411,6 +428,7 @@ def score(result: DeadlineResult, season: str = SEASON) -> DeadlineScore:
         actual=len(actual),
         representable=len(actual),
         pair_hits=pair_hits,
+        actual_matched=actual_matched,
         player_hits=player_hits,
         exact_hits=exact,
         solver_legal=len(legal),

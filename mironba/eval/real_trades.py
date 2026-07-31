@@ -39,8 +39,10 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from mironba.data.candidates import TEAM_NAMES
 from mironba.rules.constants import environment_for
 from mironba.rules.trade_validator import (
+    PickAsset,
     PlayerAsset,
     ReSignStatus,
     Severity,
@@ -146,28 +148,121 @@ def _traded_ids(fragment: str) -> tuple[str, ...]:
     return tuple(_MARK.findall(_PARENTHETICAL.sub(" ", fragment)))
 
 
+@dataclass(frozen=True, slots=True)
+class Move:
+    """One player changing hands. Multi-team trades are not symmetric, so a
+    destination has to be carried per player rather than per side."""
+
+    player_id: str
+    from_team: str
+    to_team: str
+
+
+@dataclass(frozen=True, slots=True)
+class PickMove:
+    from_team: str
+    to_team: str
+    draft_year: int
+    round: int
+    #: Text as written - "top 4 protected", "is a swap". Parsed into a
+    #: structured protection by ``rules/picks.py``; kept verbatim here so the
+    #: parser never has to interpret.
+    note: str = ""
+
+
 @dataclass
 class RealTrade:
     when: date
     season: str
-    team_a: str
-    team_b: str
-    a_sends: tuple[str, ...]
-    b_sends: tuple[str, ...]
+    teams: tuple[str, ...]
+    moves: tuple[Move, ...]
     text: str
+    picks: tuple[PickMove, ...] = ()
+
+    @property
+    def n_teams(self) -> int:
+        return len(self.teams)
+
+    def sends(self, team: str) -> tuple[str, ...]:
+        return tuple(m.player_id for m in self.moves if m.from_team == team)
+
+    def receives(self, team: str) -> tuple[str, ...]:
+        return tuple(m.player_id for m in self.moves if m.to_team == team)
+
+    # Two-team accessors, kept because the deadline scorer and several tests
+    # were written against them before multi-team parsing existed.
+    @property
+    def team_a(self) -> str:
+        return self.teams[0]
+
+    @property
+    def team_b(self) -> str:
+        return self.teams[1]
+
+    @property
+    def a_sends(self) -> tuple[str, ...]:
+        return self.sends(self.teams[0])
+
+    @property
+    def b_sends(self) -> tuple[str, ...]:
+        return self.sends(self.teams[1])
 
     @property
     def representable(self) -> bool:
-        """Both sides send at least one named player.
+        """Every participant sends at least one named player.
 
-        A trade that is players-for-picks is legal under rules this module does
-        not model (picks have no salary), so validating it would measure the
-        gap rather than the validator.
+        Under two-team parsing this meant "both sides send a player", which
+        excluded players-for-picks because picks had no value. With a pick
+        model that reason is gone for the *pricing*, but the criterion stays
+        for a different one: a team that sends nothing is a pure absorber, and
+        its side of the salary match is trivially satisfied. Those are counted
+        separately rather than folded into the legality rate.
         """
-        return bool(self.a_sends) and bool(self.b_sends)
+        return all(self.sends(t) for t in self.teams)
+
+    @property
+    def sends_only_picks(self) -> tuple[str, ...]:
+        """Participants sending no players. Named, not silently dropped."""
+        return tuple(t for t in self.teams if not self.sends(t))
 
 
-def parse_two_team_trades(season: str) -> list[RealTrade]:
+#: One leg of a multi-team trade: "the X traded A, B and a pick to the Y".
+#: Basketball-Reference writes every N-team deal as a semicolon-separated list
+#: of these, which is why a targeted parser beats trying to generalise the
+#: two-team "traded ... for ..." form.
+_LEG = re.compile(
+    r"the (?P<from>[A-Z][^;]*?) traded (?P<what>.+?) to the (?P<to>[A-Z][^;]*?)\s*$"
+)
+_HEADER = re.compile(r"^In a (?P<n>\d+)-team trade,\s*")
+_PICK = re.compile(
+    r"(?P<year>\d{4}) (?P<round>1st|2nd) round draft pick"
+)
+
+
+def _pick_moves(fragment: str, src: str, dst: str) -> tuple[PickMove, ...]:
+    """Picks named in one leg. The parenthetical says who was *later* selected
+    and is stripped: that player was not in the trade and did not exist as an
+    NBA contract at the time."""
+    clean = _PARENTHETICAL.sub(" ", fragment)
+    return tuple(
+        PickMove(src, dst, int(m.group("year")), 1 if m.group("round") == "1st" else 2)
+        for m in _PICK.finditer(clean)
+    )
+
+
+def parse_trades(season: str, max_teams: int = 3) -> list[RealTrade]:
+    """Every trade in a season's log with named players, up to ``max_teams``.
+
+    Supersedes ``parse_two_team_trades``, which is kept as a filter over this.
+    The two-team restriction was the single largest cause of the empty
+    denominator: real deadline business is multi-team, and of 19 trade rows in
+    the 2025 deadline window only one was a two-team deal with players moving
+    both ways.
+
+    ``max_teams`` is 3 by charter. Four- and five-team deals parse identically
+    and are counted as out of scope rather than mis-parsed, because the solver
+    is only being extended to three.
+    """
     path = SNAPSHOTS / f"bbref-{season}" / "transactions.csv"
     if not path.is_file():
         return []
@@ -176,24 +271,66 @@ def parse_two_team_trades(season: str) -> list[RealTrade]:
         for row in csv.DictReader(handle):
             if row["is_trade"] != "1" or not row["player_ids"].strip():
                 continue
-            teams = row["team_ids"].split("|")
-            if len(teams) != 2:
+            teams = tuple(row["team_ids"].split("|"))
+            if not 2 <= len(teams) <= max_teams:
                 continue
-            match = _TWO_TEAM.match(row["marked_text"].strip())
-            if not match:
-                continue
-            out.append(
-                RealTrade(
-                    when=date.fromisoformat(row["date"]),
-                    season=season,
-                    team_a=teams[0],
-                    team_b=teams[1],
-                    a_sends=_traded_ids(match.group("out")),
-                    b_sends=_traded_ids(match.group("back")),
-                    text=row["text"],
-                )
-            )
+            parsed = _parse_row(row, season, teams)
+            if parsed is not None:
+                out.append(parsed)
     return out
+
+
+def _parse_row(row: dict, season: str, teams: tuple[str, ...]) -> RealTrade | None:
+    text = row["marked_text"].strip().rstrip(".").strip()
+    when = date.fromisoformat(row["date"])
+
+    header = _HEADER.match(text)
+    if header is None:
+        # Two-team form: "The A traded X to the B for Y."
+        match = _TWO_TEAM.match(row["marked_text"].strip())
+        if match is None or len(teams) != 2:
+            return None
+        a, b = teams
+        moves = tuple(
+            Move(pid, a, b) for pid in _traded_ids(match.group("out"))
+        ) + tuple(
+            Move(pid, b, a) for pid in _traded_ids(match.group("back"))
+        )
+        picks = _pick_moves(match.group("out"), a, b) + _pick_moves(
+            match.group("back"), b, a
+        )
+        return RealTrade(when, season, teams, moves, row["text"], picks)
+
+    # N-team form. Trailing prose after the final leg ("Atlanta received a
+    # trade exception", pick conditions) is not part of any leg, so each leg is
+    # matched from its right edge and unmatched tails are dropped rather than
+    # guessed at.
+    body = text[header.end():]
+    moves: list[Move] = []
+    picks: list[PickMove] = []
+    seen: set[str] = set()
+    for clause in body.split(";"):
+        clause = clause.strip().removeprefix("and ").strip()
+        leg = _LEG.match(clause)
+        if leg is None:
+            continue
+        src = TEAM_NAMES.get(leg.group("from").strip())
+        dst = TEAM_NAMES.get(leg.group("to").strip().split(" . ")[0].strip())
+        if src is None or dst is None or src == dst:
+            continue
+        seen.update((src, dst))
+        moves.extend(Move(pid, src, dst) for pid in _traded_ids(leg.group("what")))
+        picks.extend(_pick_moves(leg.group("what"), src, dst))
+
+    if not moves or not seen.issubset(set(teams)):
+        return None
+    return RealTrade(when, season, teams, tuple(moves), row["text"], tuple(picks))
+
+
+def parse_two_team_trades(season: str) -> list[RealTrade]:
+    """Two-team trades only. A filter over :func:`parse_trades`, kept so the
+    pre-M9 coverage figures stay recomputable and comparable."""
+    return [t for t in parse_trades(season, max_teams=2) if t.n_teams == 2]
 
 
 def _contracts(season: str) -> tuple[dict[str, int], dict[str, str], dict[str, int]]:
@@ -225,27 +362,45 @@ class TradeCheck:
     def legal(self) -> bool:
         return self.verdict in (Verdict.APPROVED, Verdict.UNDETERMINED)
 
+    @property
+    def roster_only(self) -> bool:
+        """Rejected solely on roster count, which the ingest does not carry.
+
+        Kept separate rather than folded into the legality rate: a season
+        contracts table counts everyone who appeared, so roster size on the
+        trade date is unavailable, and a rejection that turns on it measures
+        the input rather than the rule.
+        """
+        return bool(self.errors) and all("ROSTER_LIMIT" in e for e in self.errors)
+
     def line(self, names=lambda p: p) -> str:
+        teams = "/".join(self.trade.teams)
         if not self.scored:
             return (
-                f"  SKIP {self.trade.when} {self.trade.team_a}/{self.trade.team_b}"
+                f"  SKIP {self.trade.when} {teams}"
                 f"  {self.skip_reason}: {', '.join(self.missing[:3])}"
             )
         mark = {"approved": "OK  ", "undetermined": "?   "}.get(
             self.verdict.value, "NO  "
         )
         detail = f"  {self.errors[0][:88]}" if self.errors else ""
-        return (
-            f"  {mark}{self.trade.when} {self.trade.team_a}/{self.trade.team_b}"
-            f"  {len(self.trade.a_sends)}-for-{len(self.trade.b_sends)}{detail}"
-        )
+        shape = "-".join(str(len(self.trade.sends(t))) for t in self.trade.teams)
+        return f"  {mark}{self.trade.when} {teams}  sends {shape}{detail}"
 
 
 def check(trade: RealTrade) -> TradeCheck:
+    """Validate one real trade, two teams or three.
+
+    The validator has always been N-team - ``Trade.teams`` is a tuple and each
+    participant is checked against its own cap position - but this harness was
+    written when the parser could only produce two-team deals, so it hardcoded
+    ``team_a``/``team_b``. That, not the rules, was what capped the scoreable
+    denominator at 4 across three deadlines.
+    """
     salary, team_of, payroll = _contracts(trade.season)
     env = environment_for(trade.season)
 
-    everyone = trade.a_sends + trade.b_sends
+    everyone = tuple(m.player_id for m in trade.moves)
     missing = tuple(p for p in everyone if p not in salary)
     if missing:
         return TradeCheck(trade, None, (), missing, skip_reason="no salary")
@@ -261,33 +416,38 @@ def check(trade: RealTrade) -> TradeCheck:
         )
 
     # Roster count on the trade date is not in the ingest either - the
-    # contracts table is a season total and counts everyone who appeared. Both
-    # sides are given 14, one below the limit, which is the only value that
-    # cannot manufacture a roster finding out of an input we do not have.
-    # Roster-limit rejections are reported separately for the same reason.
-    a = TeamTradeState(trade.team_a, payroll.get(trade.team_a, 0), ROSTER_UNKNOWN)
-    b = TeamTradeState(trade.team_b, payroll.get(trade.team_b, 0), ROSTER_UNKNOWN)
+    # contracts table is a season total and counts everyone who appeared.
+    # Every participant is given 14, one below the limit, which is the only
+    # value that cannot manufacture a roster finding out of an input we do not
+    # have. Roster-limit rejections are reported separately for the same reason.
+    states = tuple(
+        TeamTradeState(team, payroll.get(team, 0), ROSTER_UNKNOWN)
+        for team in trade.teams
+    )
     service = _service_years(trade.season)
     players = tuple(
         PlayerAsset(
-            player_id=pid, name=pid, salary=salary[pid],
-            from_team=trade.team_a, to_team=trade.team_b,
+            player_id=move.player_id, name=move.player_id,
+            salary=salary[move.player_id],
+            from_team=move.from_team, to_team=move.to_team,
             re_sign_status=ReSignStatus.UNKNOWN,
-            years_of_service=service.get(pid),
+            years_of_service=service.get(move.player_id),
         )
-        for pid in trade.a_sends
-    ) + tuple(
-        PlayerAsset(
-            player_id=pid, name=pid, salary=salary[pid],
-            from_team=trade.team_b, to_team=trade.team_a,
-            re_sign_status=ReSignStatus.UNKNOWN,
-            years_of_service=service.get(pid),
+        for move in trade.moves
+    )
+    # Picks are carried through so the Stepien check sees them. Their *value*
+    # is not modelled; what matters here is that a first-rounder leaving a team
+    # is visible to the rule that cares.
+    picks = tuple(
+        PickAsset(
+            from_team=pick.from_team, to_team=pick.to_team,
+            draft_year=pick.draft_year, round=pick.round,
         )
-        for pid in trade.b_sends
+        for pick in trade.picks
     )
     result = validate_trade(
-        Trade(season=trade.season, trade_date=trade.when, teams=(a, b),
-              players=players),
+        Trade(season=trade.season, trade_date=trade.when, teams=states,
+              players=players, picks=picks),
         env,
     )
     errors = tuple(
