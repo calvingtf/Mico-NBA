@@ -33,7 +33,7 @@ from datetime import date
 from itertools import combinations
 from typing import Mapping
 
-from mironba.rules.cap import max_incoming_salary
+from mironba.rules.cap import matching_upper_bound
 from mironba.rules.constants import CapEnvironment, environment_for
 from mironba.rules.trade_validator import (
     PlayerAsset,
@@ -252,7 +252,11 @@ def solve(
             # This is the prune that keeps the search tractable: a full
             # validate_trade is orders of magnitude more work than two
             # arithmetic bounds, and most subsets fail one of them.
-            our_limit = max_incoming_salary(outgoing, own_team.team_salary, env)
+            #
+            # matching_upper_bound, not max_incoming_salary — see its docstring.
+            # The conservative figure made this prune unsound and it silently
+            # discarded legal packages.
+            our_limit = matching_upper_bound(outgoing, own_team.team_salary, env)
             if incoming > our_limit:
                 blocking["SALARY_MATCH"] += 1
                 deficit = incoming - our_limit
@@ -264,7 +268,7 @@ def solve(
                         f"${deficit:,} short of ${incoming:,}",
                     )
                 continue
-            their_limit = max_incoming_salary(
+            their_limit = matching_upper_bound(
                 incoming, partner_team.team_salary, env
             )
             if outgoing > their_limit:
@@ -333,6 +337,214 @@ def solve(
         )
         result.closest_miss = best_deficit[1] if best_deficit else ""
     return result
+
+
+# --------------------------------------------------------------------------
+# Pre-filtering the target set
+#
+# M1.5 moved the arithmetic out of the model and satisfiability still measured
+# 0 of 7. The intents were not malformed; they were unaffordable. The prompt
+# showed a roster and a payroll and asked what the GM wanted, while withholding
+# the one quantity that decides what is possible — how much salary can come
+# back — which the solver can compute exactly and for free.
+#
+# So the same move again, one step earlier: instead of asking for a want and
+# then reporting that it was impossible, work out what is possible first and
+# ask the model to choose within it. The model still names no dollar figure and
+# still sees no salary; it sees a list of people it could actually get.
+# --------------------------------------------------------------------------
+
+
+def absorbable_ceiling(
+    own: Mapping[str, Asset],
+    own_team: TeamTradeState,
+    env: CapEnvironment,
+    *,
+    max_assets_out: int = MAX_ASSETS_OUT,
+    tradeable_ids: tuple[str, ...] | None = None,
+) -> tuple[int, tuple[str, ...]]:
+    """Most incoming salary *any* subset of this roster could justify.
+
+    An upper bound, not an achievable figure: it assumes the most expensive
+    legal subset goes out and ignores every constraint except matching. That is
+    what makes it sound as a filter — a target priced above this cannot be
+    acquired by any package, so it can be dropped without validating anything.
+
+    Relies on ``matching_upper_bound`` being non-decreasing in ``outgoing``,
+    which holds for all three branches (apron percentage, cap-room absorption,
+    and the exception brackets) and is pinned by
+    ``test_matching_upper_bound_is_monotone_in_outgoing`` rather than assumed
+    here. Given monotonicity the bound is reached by the k most expensive
+    contracts.
+    """
+    pool = list(tradeable_ids) if tradeable_ids is not None else list(own)
+    ranked = sorted(
+        (pid for pid in pool if pid in own),
+        key=lambda pid: (-own[pid].salary, pid),
+    )
+    k = max(1, min(max_assets_out, MAX_ASSETS_OUT))
+    best = tuple(ranked[:k])
+    if not best:
+        return (0, ())
+    outgoing = sum(own[pid].salary for pid in best)
+    return (matching_upper_bound(outgoing, own_team.team_salary, env), best)
+
+
+@dataclass(frozen=True, slots=True)
+class FeasibleTarget:
+    """A player this team could actually acquire, with no price attached.
+
+    Deliberately carries no salary, no cap figure and no dollar amount of any
+    kind — ``test_feasible_targets_carry_no_money`` enforces that field by
+    field. The whole point is to hand the model a *set it may choose from*
+    rather than a number it might try to do arithmetic with. Counts are safe
+    and useful: "three ways to get him" is a fact about flexibility, not a
+    quantity the model could misuse to argue a trade into legality.
+    """
+
+    player_id: str
+    name: str
+    legal_package_count: int
+    fewest_players_out: int
+
+    def render(self) -> str:
+        ways = "way" if self.legal_package_count == 1 else "ways"
+        bodies = "player" if self.fewest_players_out == 1 else "players"
+        return (
+            f"  {self.player_id:<12} {self.name:<26} "
+            f"{self.legal_package_count} {ways}, from {self.fewest_players_out} "
+            f"{bodies} out"
+        )
+
+
+@dataclass
+class TargetScan:
+    """Who is acquirable at all, and what it cost to find out."""
+
+    targets: list[FeasibleTarget] = field(default_factory=list)
+    #: Contracts on the partner roster the filter looked at.
+    considered: int = 0
+    #: How many survived the O(1) bound and were worth a full solve.
+    survived_bound: int = 0
+    #: The bound itself. Kept for the log, never shown to a model.
+    ceiling: int = 0
+    #: Split deliberately. The filter is the cheap part and the solve is not,
+    #: and a single blended number would hide which one to worry about at M3.
+    prefilter_s: float = 0.0
+    solve_s: float = 0.0
+    empty_reason: str = ""
+
+    @property
+    def any_feasible(self) -> bool:
+        return bool(self.targets)
+
+    @property
+    def ids(self) -> tuple[str, ...]:
+        return tuple(t.player_id for t in self.targets)
+
+    def render(self) -> str:
+        return "\n".join(t.render() for t in self.targets)
+
+    def explain(self) -> str:
+        if self.targets:
+            return (
+                f"{len(self.targets)} acquirable of {self.considered} "
+                f"({self.survived_bound} passed the bound) — "
+                f"filter {self.prefilter_s * 1000:.1f}ms, "
+                f"solve {self.solve_s * 1000:.1f}ms"
+            )
+        return f"no acquirable target: {self.empty_reason}"
+
+
+def scan_targets(
+    *,
+    own: Mapping[str, Asset],
+    theirs: Mapping[str, Asset],
+    own_team: TeamTradeState,
+    partner_team: TeamTradeState,
+    season: str,
+    trade_date: date,
+    re_sign_status: ReSignStatus = ReSignStatus.UNKNOWN,
+    max_assets_out: int = MAX_ASSETS_OUT,
+    tradeable_ids: tuple[str, ...] | None = None,
+    env: CapEnvironment | None = None,
+    limit: int = DEFAULT_LIMIT,
+) -> TargetScan:
+    """Which of the partner's players this team could legally acquire.
+
+    Two passes, in cost order:
+
+      1. **Bound.** One arithmetic ceiling for the whole roster, then one
+         comparison per partner contract. Drops the unaffordable majority
+         without constructing a single ``Trade``.
+      2. **Solve.** A full ``solve`` per survivor, one target at a time, so
+         every name that comes back is backed by a validated package rather
+         than by a bound that merely failed to rule it out.
+
+    Single-target only. A model may still ask for two of these at once and find
+    the pair unaffordable together — feasibility is not additive — which is why
+    the revise-intent path stays. What this guarantees is that *some* intent
+    over this list is satisfiable, which is exactly what was missing.
+    """
+    env = env or environment_for(season)
+    scan = TargetScan()
+
+    started = time.monotonic()
+    pool = [pid for pid in (tradeable_ids if tradeable_ids is not None else own) if pid in own]
+    ceiling, _ = absorbable_ceiling(
+        own, own_team, env, max_assets_out=max_assets_out, tradeable_ids=tuple(pool)
+    )
+    scan.ceiling = ceiling
+    scan.considered = len(theirs)
+    survivors = [pid for pid, asset in theirs.items() if asset.salary <= ceiling]
+    scan.survived_bound = len(survivors)
+    scan.prefilter_s = time.monotonic() - started
+
+    if not pool:
+        scan.empty_reason = "this team has no tradeable contract at all"
+        return scan
+    if not survivors:
+        cheapest = min(theirs.values(), key=lambda a: a.salary, default=None)
+        scan.empty_reason = (
+            f"every one of the {len(theirs)} contracts on the partner roster is "
+            f"priced above the most this team could take back"
+            + (f"; the cheapest is {cheapest.name}" if cheapest else "")
+        )
+        return scan
+
+    started = time.monotonic()
+    for pid in sorted(survivors, key=lambda p: (-theirs[p].salary, p)):
+        result = solve(
+            TradeIntent(target_player_ids=(pid,), tradeable_asset_ids=tuple(pool)),
+            own=own,
+            theirs=theirs,
+            own_team=own_team,
+            partner_team=partner_team,
+            season=season,
+            trade_date=trade_date,
+            re_sign_status=re_sign_status,
+            max_assets_out=max_assets_out,
+            limit=limit,
+            env=env,
+        )
+        if result.satisfiable:
+            scan.targets.append(
+                FeasibleTarget(
+                    player_id=pid,
+                    name=theirs[pid].name,
+                    legal_package_count=result.feasible_found,
+                    # solve() sorts fewest-bodies-first, so the head is the min.
+                    fewest_players_out=len(result.packages[0].send_player_ids),
+                )
+            )
+    scan.solve_s = time.monotonic() - started
+
+    if not scan.targets:
+        scan.empty_reason = (
+            f"{scan.survived_bound} contract(s) were cheap enough on the bound, "
+            "but none of them yields a package that passes the full validator"
+        )
+    return scan
 
 
 def constraint_explanation(result: SolverResult) -> str:
