@@ -25,7 +25,7 @@ import copy
 import sys
 from pathlib import Path
 
-from mironba.agents.gm import TEMPLATES, GMAgent
+from mironba.agents.gm import ARMS, TEMPLATES, GMAgent
 from mironba.llm.client import (
     DEFAULT_CONFIG,
     SCHEMA_VERSION,
@@ -39,8 +39,8 @@ from mironba.llm.client import (
 )
 from mironba.llm.probe import observed_enforcement
 from mironba.llm.providers import ProviderError
-from mironba.rules.trade_validator import TeamTradeState, Verdict, summarize
-from mironba.rules.solver import Asset, TradeIntent, build_trade, constraint_explanation, solve
+from mironba.rules.trade_validator import Verdict, summarize
+from mironba.rules.solver import TradeIntent, build_trade, constraint_explanation, solve
 from mironba.sim.boundary import judge, rejection_reason
 from mironba.sim.scenario import load_scenario, stage
 from mironba.world.events import EventLog, EventType, Visibility
@@ -62,6 +62,18 @@ class TickResult:
         self.decline_reason: str = ""
         self.solver_seconds: list[float] = []
         self.binding_constraints: list[str] = []
+        #: Which arm this trial ran in, and what the pre-filter found.
+        self.arm: str = "blind"
+        self.feasible_count: int = 0
+        self.feasible_shown: bool = False
+        #: Kept apart from solver_seconds on purpose. The pre-filter is one
+        #: comparison per contract and the scan behind it is a full solve per
+        #: survivor; blending them would hide which half grows at M3.
+        self.prefilter_seconds: float = 0.0
+        self.scan_solve_seconds: float = 0.0
+        #: Did the model ask for someone the solver had already ruled out?
+        self.targets_off_list: int = 0
+        self.selection_index: int | None = None
 
     @property
     def final_verdict(self) -> Verdict | None:
@@ -76,6 +88,7 @@ def run_tick(
     config_path: Path | str | None = None,
     quiet: bool = False,
     seed: int | None = None,
+    arm: str = "blind",
 ) -> tuple[TickResult, Run, LLMClient]:
     scenario = load_scenario(scenario_path)
     staged = stage(scenario)
@@ -139,6 +152,10 @@ def run_tick(
         model_size_vram_bytes=runtime.size_vram_bytes,
         gpu_fraction=runtime.gpu_fraction,
         fully_resident=runtime.fully_resident,
+        # The experiment condition. Two runs identical in every other manifest
+        # field can differ only here, so it has to be recorded here.
+        arm=arm,
+        feasible_targets=len(staged.scan.targets),
     )
     run = Run.start(manifest, runs_dir=runs_dir)
     # Measured once per process and cached: whether this server actually
@@ -163,13 +180,41 @@ def run_tick(
         client=client,
         log=log,
         profile=profile,
+        arm=arm,
     )
 
     result = TickResult()
+    result.arm = arm
+    result.feasible_count = len(staged.scan.targets)
+    result.feasible_shown = agent.shows_feasible(staged.context)
+    result.prefilter_seconds = staged.scan.prefilter_s
+    result.scan_solve_seconds = staged.scan.solve_s
     say = (lambda *a, **k: None) if quiet else print
 
     say(f"\n=== {scenario.id} — {scenario.team} GM, {scenario.season} ===")
-    say(f"seed: {scenario.seed}\n")
+    say(f"arm: {arm}   seed: {scenario.seed}\n")
+
+    log.emit(
+        EventType.TARGET_SCAN,
+        actor="solver",
+        arm=arm,
+        shown_to_model=result.feasible_shown,
+        feasible=list(staged.scan.ids),
+        considered=staged.scan.considered,
+        survived_bound=staged.scan.survived_bound,
+        ceiling=staged.scan.ceiling,
+        prefilter_s=round(staged.scan.prefilter_s, 5),
+        solve_s=round(staged.scan.solve_s, 5),
+        empty_reason=staged.scan.empty_reason,
+    )
+    say(f"FEASIBLE TARGETS: {staged.scan.explain()}")
+    if staged.scan.any_feasible:
+        say(staged.scan.render())
+    else:
+        # Not a failure. A team with nothing acquirable is a result about the
+        # team, and saying so is the point of computing this before asking.
+        say(f"  (none) {staged.scan.empty_reason}")
+    say(f"  shown to model: {result.feasible_shown}\n")
 
     try:
         decision = agent.decide(staged.context)
@@ -190,24 +235,13 @@ def run_tick(
     say("ACTION: pursue a trade")
     say(f"  reason: {decision.reason}")
 
-    own_assets = {
-        entry.player_id: Asset(entry.player_id, entry.name, entry.salary)
-        for entry in staged.context.own_roster
-    }
-    partner_assets = {
-        entry.player_id: Asset(entry.player_id, entry.name, entry.salary)
-        for entry in staged.context.partner_roster
-    }
-    own_team = TeamTradeState(
-        team_id=staged.context.team_id,
-        team_salary=staged.context.team_salary,
-        roster_count=staged.context.roster_count,
-    )
-    partner_state = TeamTradeState(
-        team_id=staged.context.partner_team,
-        team_salary=staged.partner_salary,
-        roster_count=scenario.roster_count,
-    )
+    # One source for these, shared with the pre-filter, so the scan and the
+    # solve can never disagree about what a contract is worth.
+    own_assets = staged.own_assets
+    partner_assets = staged.partner_assets
+    own_team = staged.own_team
+    partner_state = staged.partner_team
+    feasible_ids = set(staged.scan.ids)
 
     solved = None
     for attempt in (1, 2):
@@ -218,8 +252,18 @@ def run_tick(
             priority=tuple(intent_form.priority),
             rationale=intent_form.reason,
         )
+        # Asking for someone the scan already ruled out is the single most
+        # informative thing the model can do here: in the feasible arm it means
+        # it ignored the list, and in the blind arm it is the baseline rate the
+        # list is meant to fix.
+        off_list = [p for p in intent.target_player_ids if p not in feasible_ids]
+        if attempt == 1:
+            result.targets_off_list = len(off_list)
+
         say(f"\nINTENT (attempt {attempt}):")
         say(f"  want:     {', '.join(intent.target_player_ids) or '-'}")
+        if off_list and staged.scan.any_feasible:
+            say(f"  off-list: {', '.join(off_list)}  (not acquirable)")
         say(f"  offering: {', '.join(intent.tradeable_asset_ids) or '-'}")
         if intent.excluded_player_ids:
             say(f"  excluded: {', '.join(intent.excluded_player_ids)}")
@@ -299,6 +343,7 @@ def run_tick(
         _finish(run, log, client, result, quiet=quiet)
         return result, run, client
 
+    result.selection_index = choice.selection
     package = solved.packages[choice.selection]
     say(f"\nSELECTED [{choice.selection}]: {package.describe(own_assets, partner_assets)}")
     say(f"  reason: {choice.reason}")
@@ -386,6 +431,13 @@ def _finish(
         decline_reason=result.decline_reason,
         solver_seconds=result.solver_seconds,
         binding_constraints=result.binding_constraints,
+        arm=result.arm,
+        feasible_count=result.feasible_count,
+        feasible_shown=result.feasible_shown,
+        prefilter_seconds=result.prefilter_seconds,
+        scan_solve_seconds=result.scan_solve_seconds,
+        targets_off_list=result.targets_off_list,
+        selection_index=result.selection_index,
     )
     run.write_json("stats.json", client.stats.to_dict())
     if quiet:
@@ -421,6 +473,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default=None, type=Path)
     parser.add_argument("--seed", type=int, default=None,
                         help="override the profile seed for this run")
+    parser.add_argument("--arm", default="blind", choices=list(ARMS),
+                        help="blind = M1.5 behaviour; feasible = show the "
+                             "solver-computed acquirable targets")
     args = parser.parse_args(argv)
 
     try:
@@ -430,6 +485,7 @@ def main(argv: list[str] | None = None) -> int:
             runs_dir=args.runs_dir,
             config_path=args.config,
             seed=args.seed,
+            arm=args.arm,
         )
     except ProviderError as exc:
         print(f"\nserver problem: {exc}", file=sys.stderr)

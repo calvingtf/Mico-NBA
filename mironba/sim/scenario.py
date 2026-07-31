@@ -9,7 +9,7 @@ undetermined" — both of which have to be recorded rather than defaulted.
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 
@@ -20,6 +20,8 @@ from mironba.data.db import connect, initialize
 from mironba.data.loader import load_snapshot
 from mironba.rules.cap import tier_for_salary
 from mironba.rules.constants import environment_for
+from mironba.rules.solver import Asset, TargetScan, scan_targets
+from mironba.rules.trade_validator import TeamTradeState
 from mironba.sim.boundary import BYCResolution
 
 SNAPSHOT_ROOT = Path(__file__).resolve().parents[1] / "data" / "snapshots"
@@ -145,6 +147,39 @@ class StagedScenario:
     context: GMContext
     partner_salary: int
     snapshot_date: str
+    #: Computed at staging time, before any model is asked anything. Both arms
+    #: pay for it, so the blind arm can report the list its model never saw.
+    scan: TargetScan = field(default_factory=TargetScan)
+
+    @property
+    def own_assets(self) -> dict[str, Asset]:
+        return {
+            e.player_id: Asset(e.player_id, e.name, e.salary)
+            for e in self.context.own_roster
+        }
+
+    @property
+    def partner_assets(self) -> dict[str, Asset]:
+        return {
+            e.player_id: Asset(e.player_id, e.name, e.salary)
+            for e in self.context.partner_roster
+        }
+
+    @property
+    def own_team(self) -> TeamTradeState:
+        return TeamTradeState(
+            team_id=self.context.team_id,
+            team_salary=self.context.team_salary,
+            roster_count=self.context.roster_count,
+        )
+
+    @property
+    def partner_team(self) -> TeamTradeState:
+        return TeamTradeState(
+            team_id=self.context.partner_team,
+            team_salary=self.partner_salary,
+            roster_count=self.scenario.roster_count,
+        )
 
 
 def stage(scenario: Scenario) -> StagedScenario:
@@ -208,9 +243,25 @@ def stage(scenario: Scenario) -> StagedScenario:
         trade_date=scenario.trade_date.isoformat(),
         notes=tuple(notes),
     )
-    return StagedScenario(
+    staged = StagedScenario(
         scenario=scenario,
         context=context,
         partner_salary=partner_salary,
         snapshot_date=as_of,
     )
+    # Deterministic, model-free, and run in both arms. Attached to the context
+    # rather than passed around so the "what may this agent know" question has
+    # exactly one answer to read.
+    staged.scan = scan_targets(
+        own=staged.own_assets,
+        theirs=staged.partner_assets,
+        own_team=staged.own_team,
+        partner_team=staged.partner_team,
+        season=scenario.season,
+        trade_date=scenario.trade_date,
+        re_sign_status=scenario.byc.status,
+        max_assets_out=scenario.persona.max_assets_out,
+        env=env,
+    )
+    staged.context = replace(context, feasible_targets=tuple(staged.scan.targets))
+    return staged

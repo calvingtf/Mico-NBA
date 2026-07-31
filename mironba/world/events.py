@@ -47,6 +47,9 @@ class EventType:
     PROPOSAL_ASSEMBLED = "proposal.assembled"
     PROPOSAL_MALFORMED = "proposal.malformed"
     SOLVER_RESULT = "solver.result"
+    #: The pre-filter, emitted before the model is asked anything. Recorded in
+    #: both arms so a blind run still says what its model was not told.
+    TARGET_SCAN = "solver.target_scan"
     INTENT_UNSATISFIABLE = "solver.unsatisfiable"
 
     VERDICT = "rules.verdict"

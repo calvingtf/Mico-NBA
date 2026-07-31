@@ -34,7 +34,19 @@ from dataclasses import dataclass, field
 from mironba.agents.base import Agent, Persona
 from mironba.llm.schemas import ActionChoice, PackageSelection, TradeIntent
 from mironba.rules.cap import ApronTier
+from mironba.rules.solver import FeasibleTarget
 from mironba.world.events import EventType, Visibility
+
+#: The two experiment arms, kept side by side rather than replaced.
+#:
+#: ``blind`` is the M1.5 behaviour: the model is shown a roster and a payroll
+#: and asked what it wants. ``feasible`` additionally shows the solver-computed
+#: list of players it could actually acquire.
+#:
+#: The old arm stays in the harness permanently. Without it "satisfiability is
+#: N%" is a number with nothing to compare against, and the next change to the
+#: prompt would have no baseline either. The delta is the result.
+ARMS = ("blind", "feasible")
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +110,11 @@ class GMContext:
     roster_count: int
     trade_date: str = ""
     notes: tuple[str, ...] = field(default_factory=tuple)
+    #: Who the solver says this team could actually acquire. Always computed,
+    #: shown to the model only in the ``feasible`` arm — so the blind arm can
+    #: report what the model *would* have been told, and a run where nobody was
+    #: acquirable is distinguishable from one where the list was withheld.
+    feasible_targets: tuple[FeasibleTarget, ...] = field(default_factory=tuple)
 
     def own_ids(self) -> set[str]:
         return {p.player_id for p in self.own_roster}
@@ -171,6 +188,32 @@ ones next.
 Use the exact player ids shown above. Do not invent ids.\
 """
 
+INTENT_FEASIBLE_TEMPLATE = """\
+{context}
+
+You decided to pursue a trade. Your stated reason was: {reason}
+
+The rules engine has already worked out who you can legally acquire from
+{partner_team}. These are the only players any legal trade can bring you, with
+how many different legal packages exist for each:
+
+{feasible}
+
+Anyone not on that list cannot be acquired for any combination of your
+contracts. Asking for one ends this tick with nothing.
+
+State what you WANT. Do not build a trade and do not work out salary matching -
+the engine will show you the legal packages for what you ask for.
+
+  target_player_ids     who you want, chosen from the list above
+  tradeable_asset_ids   who you would be willing to give up
+  excluded_player_ids   who you will not give up under any circumstances
+  priority              your tradeable ids, most expendable first
+
+Use the exact player ids shown above. Do not invent ids. The list is computed
+one player at a time, so asking for two of them together may still not fit.\
+"""
+
 SELECT_TEMPLATE = """\
 {context}
 
@@ -192,9 +235,24 @@ Your stated intent has NO legal package.
   willing to trade: {tradeable}
 
 {constraint}
-
+{feasible_block}
 State a revised intent. Changing what you want is the lever - a cheaper target,
 more assets on the table, or one fewer exclusion.\
+"""
+
+#: Spliced into the revise prompt in the ``feasible`` arm only.
+#:
+#: An intent can be unsatisfiable in that arm even though every target came off
+#: the list: feasibility is computed one player at a time and is not additive,
+#: so two individually-acquirable players may be unaffordable together. Showing
+#: the list again is the same intervention the arm is defined by, not a second
+#: one — withholding it here would make the arm mean "told once, then not".
+REVISE_FEASIBLE_BLOCK = """
+Legally acquirable from {partner_team}, one at a time:
+
+{feasible}
+
+Asking for fewer of them at once is usually the fix.
 """
 
 TEMPLATES = (
@@ -202,8 +260,10 @@ TEMPLATES = (
     CONTEXT_TEMPLATE,
     ACTION_TEMPLATE,
     INTENT_TEMPLATE,
+    INTENT_FEASIBLE_TEMPLATE,
     SELECT_TEMPLATE,
     REVISE_INTENT_TEMPLATE,
+    REVISE_FEASIBLE_BLOCK,
 )
 
 
@@ -236,9 +296,22 @@ class GMAgent(Agent):
 
     role = "gm"
 
-    def __init__(self, agent_id, persona: GMPersona, client, log, profile=None):
+    def __init__(
+        self,
+        agent_id,
+        persona: GMPersona,
+        client,
+        log,
+        profile=None,
+        arm: str = "blind",
+    ):
         super().__init__(agent_id, persona, client, log, profile)
         self.persona: GMPersona = persona
+        if arm not in ARMS:
+            raise ValueError(f"arm must be one of {ARMS}, got {arm!r}")
+        #: Which prompt the intent step uses. Defaults to the old behaviour so
+        #: an existing caller keeps measuring what it was measuring.
+        self.arm = arm
 
     def _system(self) -> dict[str, str]:
         return {
@@ -291,18 +364,38 @@ class GMAgent(Agent):
 
     # -- step two ---------------------------------------------------------
 
+    def shows_feasible(self, context: GMContext) -> bool:
+        """Whether this call actually gets the list.
+
+        Both conditions matter. An empty list in the ``feasible`` arm falls
+        back to the blind prompt rather than printing an empty heading, because
+        "here is who you can get: (nothing)" invites the model to invent one,
+        and because a run with nothing acquirable is a fact about the team that
+        should not be dressed up as a withheld list.
+        """
+        return self.arm == "feasible" and bool(context.feasible_targets)
+
     def state_intent(self, context: GMContext, reason: str) -> TradeIntent:
         rendered = render_context(context, self.persona)
-        messages = self._messages(
-            context,
-            INTENT_TEMPLATE.format(
+        if self.shows_feasible(context):
+            user = INTENT_FEASIBLE_TEMPLATE.format(
+                context=rendered,
+                reason=reason,
+                partner_team=context.partner_team,
+                feasible="\n".join(t.render() for t in context.feasible_targets),
+            )
+        else:
+            user = INTENT_TEMPLATE.format(
                 context=rendered, reason=reason, partner_team=context.partner_team
-            ),
-        )
+            )
+        messages = self._messages(context, user)
         self.log.emit(
             EventType.AGENT_PROMPTED,
             actor=self.agent_id,
             step="trade_intent",
+            arm=self.arm,
+            feasible_shown=self.shows_feasible(context),
+            feasible_count=len(context.feasible_targets),
             prompt_chars=sum(len(m["content"]) for m in messages),
         )
         intent = self.client.complete(
@@ -331,6 +424,12 @@ class GMAgent(Agent):
         different *want*, which is a question a language model can answer.
         """
         rendered = render_context(context, self.persona)
+        block = ""
+        if self.shows_feasible(context):
+            block = REVISE_FEASIBLE_BLOCK.format(
+                partner_team=context.partner_team,
+                feasible="\n".join(t.render() for t in context.feasible_targets),
+            )
         messages = self._messages(
             context,
             REVISE_INTENT_TEMPLATE.format(
@@ -338,6 +437,7 @@ class GMAgent(Agent):
                 targets=", ".join(previous.target_player_ids),
                 tradeable=", ".join(previous.tradeable_asset_ids),
                 constraint=constraint,
+                feasible_block=block,
             ),
         )
         self.log.emit(

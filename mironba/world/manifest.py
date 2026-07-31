@@ -199,6 +199,16 @@ class RunManifest:
             f"  code       {self.git_commit_sha[:12]}"
             f"{' (dirty)' if self.git_dirty else ''}\n"
             f"  started    {self.started_at}"
+            + (
+                # Printed, not just stored. `extra` is where an experiment
+                # condition lands (the A/B arm, for one), and a condition you
+                # have to open a JSON file to discover is one that gets
+                # forgotten when the results are written up.
+                "\n  extra      "
+                + " ".join(f"{k}={v}" for k, v in sorted(self.extra.items()))
+                if self.extra
+                else ""
+            )
             + (f"\n  notes      {self.notes}" if self.notes else "")
         )
 

@@ -300,7 +300,26 @@ class TestEventLogging:
 
 class TestPromptTemplates:
     def test_the_hash_covers_every_template(self):
-        assert len(TEMPLATES) == 6
+        """Every prompt constant in gm.py must be in TEMPLATES.
+
+        Discovered from the module rather than counted. A hardcoded count was
+        the original form of this test and it failed the moment a template was
+        added — which is the right alarm, but it says "the number changed"
+        when the thing worth asserting is "the new template is hashed". Adding
+        an unhashed prompt is how M5 ends up comparing two different
+        experiments and calling the difference a model difference.
+        """
+        import mironba.agents.gm as gm
+
+        declared = {
+            name
+            for name, value in vars(gm).items()
+            if isinstance(value, str)
+            and (name.endswith("_TEMPLATE") or name.endswith("_BLOCK"))
+        }
+        hashed = {v for v in TEMPLATES}
+        missing = {n for n in declared if getattr(gm, n) not in hashed}
+        assert not missing, f"prompt text not covered by template_hash: {sorted(missing)}"
         assert template_hash(*TEMPLATES) == template_hash(*TEMPLATES)
 
     def test_rewording_any_template_changes_the_hash(self):
