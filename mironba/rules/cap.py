@@ -129,6 +129,38 @@ def max_incoming_salary(
     return max(room_limit, exception_match_limit(outgoing, env))
 
 
+def matching_upper_bound(
+    outgoing: int, team_salary_before: int, env: CapEnvironment
+) -> int:
+    """Loosest limit *any* post-trade tier could grant. For pruning only.
+
+    ``max_incoming_salary`` with no ``post_trade_tier`` answers a different
+    question — "what can this team be sure of?" — and answers it conservatively,
+    because ``_self_consistent_tier`` must pick one tier and a tier that would
+    be crossed is not self-consistent. Golden State at $176.5M sending $8M gets
+    $8,000,000 from it, since taking the $15.75M bracket amount would push them
+    over the first apron. The true maximum is $9,591,056: enough to land one
+    dollar below the apron, where the bracket still applies.
+
+    That gap is harmless in ``validate_trade``, which knows the actual incoming
+    salary and passes the resulting tier explicitly. It was not harmless as a
+    search prune. ``solve`` used the conservative figure to discard subsets
+    before validating them, so it threw away packages the validator would have
+    approved — twelve of them for the Lakers, which is the whole reason that
+    scenario reported no acquirable target at all.
+
+    A prune may over-admit; the full validator is right behind it and the only
+    cost is time. A prune may never under-admit, because nothing runs behind it
+    to catch what it dropped. Taking the maximum over every tier makes the
+    bound sound by construction: whatever tier the trade actually lands in,
+    this is at least that tier's limit.
+    """
+    return max(
+        max_incoming_salary(outgoing, team_salary_before, env, post_trade_tier=tier)
+        for tier in ApronTier
+    )
+
+
 def _self_consistent_tier(
     outgoing: int, team_salary_before: int, env: CapEnvironment
 ) -> ApronTier:
