@@ -2,7 +2,7 @@
 
 The charter's "~30 real trades" was a proxy for the thing that actually
 matters: every rule path having at least one verified fixture. The matrix in
-README.md is the real gate.
+docs/milestones.md holds the matrix; that table is the real gate.
 
 The gate is split by what kind of question a row asks.
 `test_formula_coverage_is_complete` is the M0 gate proper and must be green:
@@ -303,7 +303,7 @@ def test_deferred_reality_cells_are_declared():
     REALITY rows are deferred rather than failed because they need per-team
     apron salary on the trade date and BYC status, and no source we have
     publishes either. That is a real constraint, not an excuse — so the escape
-    hatch is narrow: the row id has to appear in the README's deferred
+    hatch is narrow: the row id has to appear in the milestone record's deferred
     register. An open cell nobody declared still fails.
     """
     declared = deferred_row_ids()
@@ -312,7 +312,7 @@ def test_deferred_reality_cells_are_declared():
     )
     assert not undeclared, (
         f"{len(undeclared)} REALITY row(s) unchecked but not declared under "
-        f"'### Deferred to M4' in README.md: {', '.join(undeclared)}. "
+        f"'### Deferred to M4' in docs/milestones.md: {', '.join(undeclared)}. "
         "Either check the cell with a verified real fixture, or add the row "
         "to the deferred register saying what data it is waiting on."
     )

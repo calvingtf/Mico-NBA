@@ -44,7 +44,7 @@ SNAPSHOT_DIR = (
 )
 
 #: The ingested tables are not redistributed, so a fresh clone does not have
-#: them (see "Reproducing the data snapshot" in README.md). Tests that need
+#: them (see "Reproducing the data snapshot" in docs/milestones.md). Tests that need
 #: real salaries skip with the rebuild command in the reason — a clean
 #: checkout must not look broken. `sources.csv` *is* committed, so the
 #: provenance test below keeps running either way.
@@ -168,7 +168,7 @@ def test_provenance_manifest_outlives_the_data(snapshot):
     nothing else in the suite would notice if a snapshot lost its provenance.
     `sources.csv` and `snapshot.yaml` are the part that must survive a clone:
     without them there is no record of which URLs produced the figures quoted
-    in the README, and the rebuild cannot be checked against the original run.
+    in the milestone record, and the rebuild cannot be checked against the original run.
     """
     for name in ("sources.csv", "snapshot.yaml"):
         assert (SNAPSHOT_DIR.parent / snapshot / name).exists(), (

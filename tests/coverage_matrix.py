@@ -1,4 +1,4 @@
-"""The M0 coverage matrix, parsed out of README.md.
+"""The M0 coverage matrix, parsed out of docs/milestones.md.
 
 Shared by the gate tests and by the pytest session header, so the count
 printed at the top of a run and the count the gate enforces cannot drift.
@@ -13,7 +13,7 @@ Two kinds of row, and the distinction is the whole point:
   base-year-compensation status, neither of which the ingest can supply.
   These are *evidence*, not safety properties, so an unchecked REALITY cell
   is reported as deferred rather than failed — but it must be declared in the
-  README's deferred list, or the gate fails anyway. Silence is the failure
+  milestone record's deferred list, or the gate fails anyway. Silence is the failure
   mode this guards against.
 """
 
@@ -22,7 +22,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-README = Path(__file__).resolve().parents[1] / "README.md"
+#: The matrix lives in the milestone record. It was in README.md until the
+#: README was cut down to something a stranger can read in three minutes; the
+#: gate follows the table rather than the filename, and this test failing was
+#: how the move got noticed.
+MATRIX_DOC = Path(__file__).resolve().parents[1] / "docs" / "milestones.md"
 
 MATRIX_ROW = re.compile(
     r"^\|\s*(?P<row_id>[a-z0-9-]+)\s*\|"           # row id
@@ -43,17 +47,17 @@ CELLS = ("positive", "negative")
 
 
 def _readme() -> str:
-    return README.read_text(encoding="utf-8")
+    return MATRIX_DOC.read_text(encoding="utf-8")
 
 
 def matrix_rows() -> list[dict]:
     rows = [m.groupdict() for m in MATRIX_ROW.finditer(_readme())]
-    assert rows, "no coverage matrix rows found in README.md"
+    assert rows, f"no coverage matrix rows found in {MATRIX_DOC.name}"
     return rows
 
 
 def deferred_row_ids() -> set[str]:
-    """Row ids named in the README's 'Deferred to M4' section.
+    """Row ids named in the 'Deferred to M4' section.
 
     Deliberately literal: a row is deferred only if someone wrote its id down
     under that heading with a reason beside it.
