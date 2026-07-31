@@ -170,6 +170,68 @@ not redistributed; the ingest that fetches them is.
 
 ---
 
+## See it
+
+Three commands, each reading a completed run. None of them changes a result.
+
+```bash
+python -m mironba.report.timeline runs/<run-id>     # the event log as a feed
+python -m mironba.agents.report   runs/<run-id>     # prose, with claims filtered
+python -m mironba.agents.chat     runs/<run-id> "why did you decline?"
+python -m mironba.report.html     --out docs/example-run.html
+```
+
+The last produces **[`docs/example-run.html`](docs/example-run.html)** — one
+self-contained file, no server, no external requests. It is committed, so it
+can be opened straight from the repo.
+
+**The feed leads with refusals, because refusal is what this system measurably
+does.** A run that declined everything:
+
+```
+   08:26:49    5  [LAL] LAL wants 1 target(s): Gary Payton
+          "Curry is unavailable per engine constraints. Gary Payton II offe"
+   08:26:49    6  [solver] solver: 0 legal package(s), binding: ROSTER_LIMIT
+** 08:26:49    7  [LAL] REFUSED by the rules - no legal package exists
+** 08:29:22   11  [LAL] LAL DECLINES every package it was shown
+          "The proposed trade swaps Dalton Knecht for Brandin Podziemski. W"
+
+  2 refusal/failure event(s) of 10 rendered
+  verdict=None  stood_pat=False  declined_all=True  first_intent_satisfiable=False
+```
+
+Every line traces to one event in `events.jsonl` by sequence number. Nothing is
+inferred and no model is involved in the rendering — full example in
+[`docs/example-timeline.txt`](docs/example-timeline.txt).
+
+**The report agent cannot oversell, structurally.** The numbers and the
+limitation block are module constants appended after the model's prose, so no
+prompt failure can drop them, and a filter removes any sentence that presents a
+simulated outcome as a prediction or ranks options the value model cannot
+separate. Dropped sentences are *shown*, not silently discarded. Six tests in
+`tests/test_surface.py` assert every limitation reaches both the terminal
+report and the HTML.
+
+**Agents still never see a salary — including when you ask them about one.**
+Money questions are routed to the solver's own record rather than to the model
+([`docs/example-chat.txt`](docs/example-chat.txt)):
+
+```
+$ ... chat <run> "how much cap room did you have?"
+
+  [solver record, not the model]
+  The agent never saw a salary, so this comes from the solver's record for
+  this run: the solver's absorbable ceiling was $154,856,190; ... Closest
+  attempt: sending Dalton Knecht ($3,819,120) allows $7,888,240 back,
+  $1,241,760 short of $9,130,000.
+```
+
+Ask it a reasoning question instead and it answers from the option set it was
+actually shown, which is in the run — so "why did you decline" has a referent
+rather than a confabulation.
+
+---
+
 ## How it is put together
 
 ```
@@ -261,5 +323,5 @@ not redistributed; the ingest that fetches them is.
 - [`docs/backtests/lebron-2026.md`](docs/backtests/lebron-2026.md) — freeze,
   evidence, conditional commitments, cutoff enforcement.
 
-673 tests, run by a pre-commit hook that exists because a commit once went in
+702 tests, run by a pre-commit hook that exists because a commit once went in
 red and broke a milestone gate.

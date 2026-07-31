@@ -1,0 +1,21 @@
+$ python -m mironba.agents.chat <run> "why did you decline the package you were shown?"
+
+  [the agent, from its own record]
+  I declined the package because with a one-season win-now horizon and a
+  core featuring LeBron James and Luka Dončić, maintaining floor spacing was
+  critical. Dalton Knecht offers reliable three-point shooting that better
+  complements our immediate championship push than Brandin Podziemski would.
+
+  The option set this answer refers to:
+    [0] 1 legal package(s); contents not recorded in this run
+
+$ python -m mironba.agents.chat <run> "how much cap room did you have?"
+
+  [solver record, not the model]
+  The agent never saw a salary, so this comes from the solver's record for
+  this run: the solver's absorbable ceiling was $154,856,190; 14 targets
+  were considered and 4 were reachable under salary matching; on attempt 1
+  the binding constraint was ROSTER_LIMIT; No legal package exists for that
+  intent (ROSTER_LIMIT). Closest attempt: sending Dalton Knecht ($3,819,120)
+  allows $7,888,240 back, $1,241,760 short of $9,130,000. Blocked by:
+  ROSTER_LIMIT x80, SALARY_MATCH x79, SALARY_M.

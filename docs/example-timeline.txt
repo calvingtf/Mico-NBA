@@ -1,0 +1,24 @@
+==============================================================================
+  TIMELINE  curry-to-lakers-20260731T082402Z-b1563d15
+==============================================================================
+
+   08:24:02    0  [system] run begins - curry-to-lakers, LAL with GSW
+   08:24:02    1  [solver] solver scans 14 targets, 4 reachable
+   08:25:12    3  [LAL] LAL decides to propose_trade
+          "With a 1-season win-now horizon and high risk tolerance, acquiri"
+   08:26:49    5  [LAL] LAL wants 1 target(s): Gary Payton
+          "Curry is unavailable per engine constraints. Gary Payton II offe"
+   08:26:49    6  [solver] solver: 0 legal package(s), binding: ROSTER_LIMIT
+** 08:26:49    7  [LAL] REFUSED by the rules - no legal package exists
+          "No legal package exists for that intent (ROSTER_LIMIT). Closest "
+   08:28:25    8  [LAL] LAL wants 1 target(s): Brandin Podziemski
+          "Lower salary target fits first-apron matching window with Knecht"
+   08:28:25    9  [solver] solver: 1 legal package(s), unconstrained
+** 08:29:22   11  [LAL] LAL DECLINES every package it was shown
+          "The proposed trade swaps Dalton Knecht for Brandin Podziemski. W"
+   08:29:22   12  [system] run ends - None
+
+------------------------------------------------------------------------------
+  2 refusal/failure event(s) of 10 rendered
+  verdict=None  stood_pat=False  declined_all=True  first_intent_satisfiable=False
+------------------------------------------------------------------------------
