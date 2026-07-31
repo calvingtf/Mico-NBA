@@ -6,6 +6,28 @@ project charter; this file records what actually exists.
 Part of the MiroFish/MiroShark family. Package, charter, and repo folder all
 read `MiroNBA`/`mironba`.
 
+## Status: M1.5 — illegal proposals made unrepresentable
+
+M1 measured the propose-then-validate loop at **0 legal proposals in 12 live
+attempts**, with 9 repair retries rescuing none. That result is preserved below
+in full, with its manifest, because it is the entire justification for this
+architecture and deleting it would leave the design looking like a preference.
+
+The response was not a better prompt. Salary matching is integer constraint
+satisfaction, and a language model is the wrong instrument for it. So the model
+no longer proposes packages:
+
+    1. choose an action        (LLM)
+    2. state a TradeIntent     (LLM)   — what it wants, never a package
+       -> rules/solver.py enumerates every LEGAL package (deterministic)
+    3. pick one by index       (LLM)   — or decline all, with a reason
+
+An illegal package is now unrepresentable rather than merely discouraged. No
+agent-facing schema can pair an outgoing player with an incoming one, and
+`test_no_agent_facing_schema_can_express_a_package` enforces that. The
+legal-proposal rate is 100% by construction and is deliberately **not** reported
+as a finding — see [M1.5 measurements](#m15-what-changed-when-the-model-stopped-proposing).
+
 ## Status: M1 — one agent, one tick, first LLM code
 
 M0 is complete and tagged `v0.1.0-m0`; its record is below and unchanged. M1
@@ -571,3 +593,182 @@ before-retry and after-retry rates should be read as a direction rather than a
 measurement. `local_deep` (`qwen3.6:27b`) is declared in `configs/models.yaml`
 but not pulled, so nothing here says anything about a dense model. That
 comparison is M5's job, which is why the manifest records what it records.
+
+## M1.5: what changed when the model stopped proposing
+
+M1's number is the premise of this section, so it stays visible: **0 legal
+proposals in 12 live attempts, 9 repair retries, 0 rescued.** Its manifests are
+described under [M1](#m1-what-the-live-model-actually-did). Everything here is
+the consequence.
+
+### The architecture
+
+The model states a `TradeIntent` — players it wants, players it will give up,
+players it refuses to give up, and an ordering over the willing set. It cannot
+express a package, a salary, or a verdict. `rules/solver.py` then enumerates
+subsets of the tradeable contracts, prunes on the salary-matching bound, and
+runs every survivor through `validate_trade`. Only packages with no ERROR
+finding come back. The model picks one by index or declines all.
+
+Three properties hold by construction rather than by encouragement:
+
+- **Every option shown is legal.** The solver never re-implements a rule; it
+  calls the validator and discards what the validator rejects.
+  `test_solver_and_validator_never_disagree` re-validates every returned package
+  over 120 generated intents.
+- **No salary crosses the boundary.** Figures come from the snapshot inside
+  `solver.build_trade`, which is the only place a `Trade` is constructed.
+- **UNDETERMINED is legal-so-far, not illegal.** Base-year compensation is an
+  unknown; every snapshot-derived player is UNKNOWN for re-sign status, so
+  discarding those would return nothing on real data.
+
+### Solver latency
+
+Measured on this machine, 40 randomised intents per row:
+
+| Tradeable assets | Max out | p50 | worst |
+| --- | --- | --- | --- |
+| 8 | 2 | 0.6 ms | 1.4 ms |
+| 14 (realistic roster) | 4 | **10.6 ms** | **27.7 ms** |
+| 20 | 4 | 44 ms | 118 ms |
+| 25 | 4 | 106 ms | 345 ms |
+
+Growth is roughly C(n,4). A 15-man roster is the realistic ceiling, so M3
+fanning out to 20 agents a tick costs well under a second of solver time in
+total. Reported now rather than discovered at M3.
+
+### Schema enforcement: measured, not assumed
+
+M1 logged `schema_enforced_by_server: true` because the code *sent* a schema.
+`llm/probe.py` now measures it: it asks a question whose natural answer is
+prose, supplies the schema **only** through the server parameter, never in the
+prompt, and checks whether the reply conforms. A probe the model would pass
+anyway proves nothing, which is the trap the M1 flag fell into.
+
+Result on Ollama 0.31.1 / qwen3.6:35b-a3b — **0 of 9 conformed**:
+
+| Schema shape | Conformed | Verdict |
+| --- | --- | --- |
+| Flat, no `$refs` | 0/3 | not enforced |
+| With `$defs`/`$ref` | 0/3 | not enforced |
+| Same, refs inlined | 0/3 | not enforced |
+
+**`$defs` is not the cause.** The flat schema fails identically, so the
+reference-following hypothesis is dead: this server accepts `format` and
+ignores it entirely. `inline_refs()` exists anyway, because the hypothesis was
+worth testing and the next server may differ.
+
+The log flag is now `schema_enforcement_observed`, derived from that probe and
+cached once per process. `None` means it could not be measured — distinct from
+`False`, because "unreachable" and "ignored the schema" are different facts.
+
+The same server also ignores `num_gpu`, which is why the measurements below run
+on CPU.
+
+### A rules bug the solver found
+
+`_self_consistent_tier` resolves the circularity between "how much can this team
+take back" and "which tier does that leave it in". It iterated `UNDER_CAP,
+FIRST_APRON, SECOND_APRON` and **skipped `OVER_CAP`**. A team over the cap but
+below the first apron — most of the league, most of the time — therefore fell
+through to the apron branch and received flat 100% matching instead of the
+bracket table. At $20M outgoing that is $20M back rather than $27,752,000.
+
+The M0 coverage matrix was 16/16 FORMULA green throughout, and stayed green
+after the fix: every FORMULA fixture either sat under the cap or passed
+`post_trade_tier` explicitly, so the gap was in the *resolution* of the tier
+rather than in any bracket. It surfaced only because the solver could not
+construct a legal package for an ordinary over-cap team and the arithmetic had
+to be reconciled by hand.
+
+This means M1's 0/12 was measured against an over-strict validator. The
+architecture change is still justified — the model was failing on apron teams,
+where the rule was correct — but the old number was worse than the rule alone
+warranted, and that is worth stating plainly rather than letting it stand as
+pure evidence for the redesign.
+
+Pinned by `TestSelfConsistentTierCoversEveryTier`.
+
+### Run artifacts are append-only
+
+`runs/` is never deleted from inside the package, and a test greps for
+`rmtree`, `unlink`, `os.remove` and `os.rmdir` across `mironba/` to keep it that
+way. Written after an M1 benchmark's artifacts were deleted to tidy up before a
+replacement run that then failed, destroying the only complete measurement then
+in existence. A codebase whose rule is "no manifest, no result" should not ship
+a convenient way to destroy manifests. Cleanup is a manual act, outside the
+code.
+
+### The numbers
+
+16 trials across two scenarios, 30 LLM calls, on CPU (`gpu_fraction: 0.0`
+recorded in every manifest — the latency below is CPU-bound and not comparable
+to a GPU-resident run).
+
+| | curry-to-lakers (LAL, 2nd apron) | undetermined-byc (DET, cap room) |
+| --- | --- | --- |
+| Trials / LLM calls | 8 / 20 | 8 / 10 |
+| Schema failure, first attempt | **0%** (0/20) | **0%** (0/10) |
+| Intents stated | 6 | 1 |
+| **Intent satisfiable (first)** | **0%** | **0%** |
+| **Intent satisfiable (final)** | **0%** | **0%** |
+| Revisions that rescued | 0/6 | 0/1 |
+| Packages per satisfiable intent | n/a — none were | n/a |
+| Declined all legal options | 0 | 0 |
+| Solver p50 / worst | <1 ms / <1 ms | <1 ms / <1 ms |
+| Binding constraint | SALARY_MATCH ×12 | SALARY_MATCH ×2 |
+| Latency mean / median / p90 | 41.4s / 36.8s / 60.3s | 27.4s / 22.4s / 45.7s |
+| Outcomes | 6 unsatisfiable, 2 stood pat | 1 unsatisfiable, 7 stood pat |
+
+Legal-proposal rate is omitted deliberately. It is 100% by construction and
+reporting it would be self-congratulation.
+
+**The bottleneck moved rather than disappeared.** The model no longer emits
+illegal packages, because it cannot. What it does instead is want things it
+cannot afford. Every one of the seven intents was blocked on SALARY_MATCH, and
+the solver was right every time — checked by hand on the clearest case: Detroit
+is "under the cap" by **$207,451**, and the model offered Dennis Schröder
+($13,025,250) for Lauri Markkanen ($42,176,400), which is $21.4M short of any
+legal structure.
+
+**The revised intent never converted an unsatisfiable want into a satisfiable
+one — 0 of 7.** It is not inert, though, and the difference from M1's retry is
+visible in the transcripts: handed "you were $7,824,647 short of $55,761,216",
+the model moved from Curry ($55.7M) to Jimmy Butler ($48.8M) and reasoned
+explicitly about the gap. It closed most of the distance and still missed, by
+$862,108. Directionally responsive, quantitatively short.
+
+**The selection step was never exercised live.** No intent was satisfiable, so
+the model never saw an options list and never had the chance to decline one.
+Steps 1 and 2 are measured; step 3 is covered only by the offline suite.
+
+### Is UNDETERMINED reachable? Yes — but not observed from a model intent
+
+Requirement checked directly, with a hand-supplied feasible intent on the
+cap-room scenario rather than a model-generated one:
+
+```
+target Josh Richardson ($3,051,153) -> 3 legal package(s)
+  chosen:  send Marcus Sasser -> receive Josh Richardson
+  VERDICT: UNDETERMINED
+  BASE_YEAR_COMPENSATION: ... we do not know whether he re-signed ...
+```
+
+So the masking is genuinely gone: a package that is legal on every decidable
+axis now surfaces BYC as the only open question, which is what M0 built a third
+verdict for. It has still never been reached from an LLM-generated intent,
+because no LLM-generated intent has been satisfiable.
+
+### What this says to do next
+
+The diagnosis is specific and the fix is not a prompt tweak. The intent prompt
+shows the model a roster and a payroll and asks what it wants, while withholding
+the one number that determines what is possible: how much salary it can take
+back. The solver computes that for free. Telling the model "given the assets you
+are willing to move, the most expensive player you can absorb is $X" is a
+deterministic fact from the same layer that already owns the arithmetic — the
+M1.5 principle applied one step earlier, not a prompt being tuned against a
+disappointing result.
+
+That is deliberately **not** implemented here. It would change the measurement
+above, and the measurement above is what justifies it.

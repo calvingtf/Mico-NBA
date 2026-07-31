@@ -1,0 +1,46 @@
+{
+  "trials": 8,
+  "completed": 8,
+  "incomplete": 0,
+  "calls": 20,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 41.39,
+  "median_latency_s": 36.78,
+  "p90_latency_s": 60.25,
+  "intents": 6,
+  "intent_satisfiable_first": 0.0,
+  "intent_satisfiable_final": 0.0,
+  "revised_intents": 6,
+  "revisions_that_became_satisfiable": 0,
+  "revision_rescue_rate": 0.0,
+  "mean_packages_per_satisfiable_intent": null,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "solver_p50_s": 0.0001,
+  "solver_worst_s": 0.003,
+  "binding_constraints": {
+    "SALARY_MATCH": 12
+  },
+  "verdicts_first": {},
+  "verdicts_final": {},
+  "outcomes": {
+    "stood_pat": 2,
+    "unsatisfiable": 6
+  },
+  "trials_that_retried": 6,
+  "run_ids": [
+    "curry-to-lakers-20260731T032520Z-6ff3d711",
+    "curry-to-lakers-20260731T032722Z-e32b74e0",
+    "curry-to-lakers-20260731T032910Z-63f2c3c0",
+    "curry-to-lakers-20260731T033115Z-502b8b64",
+    "curry-to-lakers-20260731T033249Z-3560219e",
+    "curry-to-lakers-20260731T033440Z-07f46a3a",
+    "curry-to-lakers-20260731T033743Z-aaeaaa3a",
+    "curry-to-lakers-20260731T034015Z-c137e398"
+  ]
+}

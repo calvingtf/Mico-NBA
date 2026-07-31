@@ -1,0 +1,46 @@
+{
+  "trials": 8,
+  "completed": 8,
+  "incomplete": 0,
+  "calls": 10,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 27.38,
+  "median_latency_s": 22.37,
+  "p90_latency_s": 45.67,
+  "intents": 1,
+  "intent_satisfiable_first": 0.0,
+  "intent_satisfiable_final": 0.0,
+  "revised_intents": 1,
+  "revisions_that_became_satisfiable": 0,
+  "revision_rescue_rate": 0.0,
+  "mean_packages_per_satisfiable_intent": null,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "solver_p50_s": 0.0003,
+  "solver_worst_s": 0.0005,
+  "binding_constraints": {
+    "SALARY_MATCH": 2
+  },
+  "verdicts_first": {},
+  "verdicts_final": {},
+  "outcomes": {
+    "unsatisfiable": 1,
+    "stood_pat": 7
+  },
+  "trials_that_retried": 1,
+  "run_ids": [
+    "undetermined-byc-20260731T034102Z-249d8192",
+    "undetermined-byc-20260731T034413Z-306298b1",
+    "undetermined-byc-20260731T034440Z-166efae6",
+    "undetermined-byc-20260731T034505Z-b13470b5",
+    "undetermined-byc-20260731T034535Z-e3c45c64",
+    "undetermined-byc-20260731T034602Z-6260165c",
+    "undetermined-byc-20260731T034628Z-ae0d4210",
+    "undetermined-byc-20260731T034702Z-caa817ac"
+  ]
+}
