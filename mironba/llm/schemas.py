@@ -30,6 +30,19 @@ from pydantic import BaseModel, Field
 #: it and a branch in the agent — not widening an existing form.
 ActionType = Literal["propose_trade", "stand_pat"]
 
+#: The offseason vocabulary. Signing is a different action from trading, with a
+#: different solver behind it, so it gets its own enum value rather than being
+#: squeezed into "propose_trade".
+OffseasonActionType = Literal["sign_player", "propose_trade", "stand_pat"]
+
+#: The signing routes an agent may name. Deliberately the route *labels* and
+#: nothing else — naming a lever is not stating what the lever is worth, and
+#: the solver still produces every term.
+SigningRouteName = Literal[
+    "cap_space", "bird", "early_bird", "non_bird", "non_taxpayer_mle",
+    "taxpayer_mle", "room_exception", "bi_annual", "minimum",
+]
+
 #: Bounded by what the grammar compiler will accept, not by taste.
 #:
 #: This was 4000, chosen so a verbose rationale could not be counted as a schema
@@ -120,6 +133,41 @@ class PackageSelection(BaseModel):
         return self.selection < 0
 
 
+class OffseasonAction(BaseModel):
+    """Step one of an offseason tick: sign, trade, or stand pat."""
+
+    action: OffseasonActionType = Field(
+        description="The kind of move to make this tick."
+    )
+    reason: str = Field(min_length=1, max_length=REASON_MAX)
+
+
+class SigningIntent(BaseModel):
+    """Who to sign and by which route. Never for how much.
+
+    The signing analogue of ``TradeIntent``, and it holds the same line. A
+    model that could state a first-year salary could sign a player its team
+    cannot afford, and the cap sheet would have no way to know — the same
+    failure the trade solver exists to prevent, one action type over.
+
+    The route is named rather than chosen by the solver because which
+    exception a team spends is a genuine strategic choice with consequences
+    the solver cannot weigh: using the non-taxpayer mid-level hard-caps the
+    team at the first apron for the rest of the year. That is a basketball
+    decision. What it is worth is not.
+    """
+
+    target_player_ids: list[str] = Field(
+        min_length=1,
+        max_length=3,
+        description="Ids of free agents to sign, from the list you were shown.",
+    )
+    route: SigningRouteName = Field(
+        description="Which signing route to use for them."
+    )
+    reason: str = Field(min_length=1, max_length=REASON_MAX)
+
+
 class StandPatReason(BaseModel):
     """Step two for the other branch. Exists so both branches are symmetric."""
 
@@ -131,7 +179,9 @@ class StandPatReason(BaseModel):
 #: registered — and one that is not registered is caught too.
 AGENT_SCHEMAS: tuple[type[BaseModel], ...] = (
     ActionChoice,
+    OffseasonAction,
     TradeIntent,
+    SigningIntent,
     PackageSelection,
     StandPatReason,
 )

@@ -141,18 +141,41 @@ class TestNothingElseCanReadTheAnswer:
             + ". Only eval/ may read the answer."
         )
 
-    def test_the_simulator_packages_do_not_import_evidence_at_all(self):
-        """Stronger than the grep above, and cheap. sim/ and agents/ have no
-        business touching the evidence file even for its PRE half yet: the
-        pending-decision primitive does not exist, so any import today would be
-        speculative plumbing around the one thing that must not leak."""
+    def test_agents_never_touch_the_evidence_file(self):
+        """agents/ has no business reading evidence even in its PRE half. An
+        agent is handed a world state; assembling one is the simulator's job,
+        and an agent that could read the ledger could read past the freeze."""
+        for path in (PACKAGE / "agents").rglob("*.py"):
+            assert "world.evidence" not in path.read_text(encoding="utf-8"), (
+                f"{path.name} imports evidence"
+            )
+
+    def test_the_simulator_reads_only_the_pre_freeze_api(self):
+        """sim/ may build a world state — that is what M4's branch runner does
+        — but only through world_state() and open_conditionals(). This was
+        widened from a blanket ban once the pending-decision primitive existed;
+        the ban had been standing in for this narrower rule."""
+        for path in (PACKAGE / "sim").rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            if "world.evidence" not in text:
+                continue
+            for banned in ("ground_truth", "SCORING_UNLOCK"):
+                assert banned not in text, f"{path.name} reads the answer"
+
+    def test_no_simulator_module_carries_the_real_outcome_figures(self):
+        """The leak that actually happened. The branch scorer began life inside
+        sim/branch.py with the real post-freeze salaries as a module-level
+        dict, one import away from the planner that must never see them."""
+        outcomes = ("27678571", "27_678_571", "3876529", "3_876_529",
+                    "19512195", "19_512_195")
         for package in ("sim", "agents"):
             for path in (PACKAGE / package).rglob("*.py"):
                 text = path.read_text(encoding="utf-8")
-                assert "world.evidence" not in text, (
-                    f"{path.name} imports evidence; see docs/backtests/"
-                    f"{BACKTEST}.md for why that waits for M4"
-                )
+                for figure in outcomes:
+                    assert figure not in text, (
+                        f"{path.name} hardcodes the post-freeze figure {figure}; "
+                        "ground truth belongs in eval/"
+                    )
 
 
 class TestTheIngestLeaksToo:

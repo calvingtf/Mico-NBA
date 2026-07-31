@@ -239,6 +239,49 @@ def fit_win_model(
     )
 
 
+#: Year-over-year standard deviation of a player's box_pm36, minutes-weighted,
+#: measured across 2,870 consecutive player-season pairs. This is the honest
+#: uncertainty in "what will this player be next season", and for a roster
+#: change it is the uncertainty that actually applies.
+#:
+#: Measured rather than assumed: see ``measure_quality_sd``.
+DEFAULT_QUALITY_SD = 1.686
+
+
+def measure_quality_sd(model, players, seasons) -> float:
+    """How much a player's rate moves from one season to the next.
+
+    The empirical alternative to propagating the win model's residual. That
+    residual is about team-level things - coaching, health, schedule, luck -
+    which are the same in both branches of a counterfactual and cancel in the
+    difference. What does not cancel is being wrong about the players who
+    changed, and this measures exactly that.
+    """
+    from collections import defaultdict
+
+    from mironba.models.value import MIN_MINUTES_TO_FIT
+
+    order = sorted(seasons)
+    by_player: dict[str, dict[str, tuple[float, float]]] = defaultdict(dict)
+    for player in players:
+        if player.season in seasons and player.minutes >= MIN_MINUTES_TO_FIT:
+            by_player[player.player_id][player.season] = (
+                model.box_pm36(player), player.minutes
+            )
+    changes, weights = [], []
+    for seasons_seen in by_player.values():
+        for earlier, later in zip(order, order[1:]):
+            if earlier in seasons_seen and later in seasons_seen:
+                changes.append(seasons_seen[later][0] - seasons_seen[earlier][0])
+                weights.append(min(seasons_seen[earlier][1], seasons_seen[later][1]))
+    if len(changes) < 30:
+        return DEFAULT_QUALITY_SD
+    values = np.asarray(changes)
+    w = np.asarray(weights, dtype=float)
+    mean = float(np.average(values, weights=w))
+    return float(np.sqrt(np.average((values - mean) ** 2, weights=w)))
+
+
 @dataclass
 class WinDelta:
     """The change a roster change makes, with an interval, never a point.
@@ -253,6 +296,13 @@ class WinDelta:
     before: float
     after: float
     residual_sd: float
+    #: Set when the delta was computed from the changed players rather than by
+    #: differencing two whole-team projections. None means the old, wide,
+    #: team-level interval applies.
+    change_sd: float | None = None
+    #: Minute share that actually changed hands. Drives the interval, and is
+    #: reported because it is what makes one delta tighter than another.
+    changed_share: float = 0.0
 
     @property
     def point(self) -> float:
@@ -260,9 +310,20 @@ class WinDelta:
 
     @property
     def sd(self) -> float:
-        # Two projections, same model, so their errors are correlated rather
-        # than independent — differencing cancels the shared part. sqrt(2) is
-        # the independent case and is therefore an upper bound on the spread.
+        """Uncertainty in the difference, not in either projection.
+
+        When the delta comes from a roster change, most of the win model's
+        residual is common to both branches — same coach, same schedule, same
+        eighty percent of the roster — and cancels. What remains is the risk of
+        being wrong about the players who moved. That is measured directly and
+        is several times tighter than the team-level figure.
+
+        The fallback is the old behaviour: two projections differenced, with
+        sqrt(2) standing in for independent errors, which is an upper bound
+        rather than an estimate.
+        """
+        if self.change_sd is not None:
+            return self.change_sd
         return self.residual_sd * float(np.sqrt(2))
 
     def interval(self, z: float = 1.0) -> tuple[float, float]:
@@ -292,3 +353,82 @@ def win_delta(
         after=model.wins(after),
         residual_sd=model.residual_sd,
     )
+
+
+def win_delta_from_changes(
+    roster_before: list[str],
+    roster_after: list[str],
+    quality: dict[str, float],
+    minutes: dict[str, float],
+    model: WinModel,
+    replacement: float,
+    *,
+    quality_sd: float = DEFAULT_QUALITY_SD,
+) -> WinDelta:
+    """Projected win change, with the interval taken from what changed.
+
+    The point estimate is identical to ``win_delta`` — it is exact arithmetic
+    over the qualities and shares, and there was never anything wrong with it.
+    What changes is the interval.
+
+    Differencing two whole-team projections inherits the win model's residual
+    twice, and that residual is dominated by things both branches share:
+    coaching, schedule, injuries, the eighty percent of the roster that did not
+    move. In a counterfactual those are literally the same world, so they
+    cancel. Carrying them made every realistic option "within noise".
+
+    What does not cancel is being wrong about the players who moved. That is
+    measured — the year-over-year spread of a player's rate — and weighted by
+    the minute share each player accounts for, because misjudging a starter
+    costs more than misjudging a fifteenth man.
+
+    **The minutes-reallocation assumption is now the dominant modelling
+    choice, and it is this:** minute shares come from prior-season minutes per
+    game, renormalised over whoever is on the roster. So when a player leaves,
+    his minutes are absorbed by the remaining roster *in proportion to what
+    they already played*, and an arriving player takes the share his own prior
+    season implies rather than the share of the man he replaced. That is a real
+    assumption and a consequential one — it means the model cannot represent
+    "we signed him to start" or "he will be brought along slowly", and a team
+    whose coach reallocates differently will be mispriced. It is stated here
+    rather than buried because at these interval widths it matters more than
+    the quality estimates do.
+    """
+    before, *_ = team_strength(roster_before, quality, minutes, replacement)
+    after, *_ = team_strength(roster_after, quality, minutes, replacement)
+
+    departures = [p for p in roster_before if p not in set(roster_after)]
+    arrivals = [p for p in roster_after if p not in set(roster_before)]
+
+    def shares(roster: list[str]) -> dict[str, float]:
+        weights = {
+            pid: minutes.get(pid, ROOKIE_MINUTES_PER_GAME) for pid in roster
+        }
+        total = sum(weights.values())
+        return {pid: (w / total if total else 0.0) for pid, w in weights.items()}
+
+    share_before = shares(roster_before)
+    share_after = shares(roster_after)
+
+    # Independent errors across players. They are not perfectly independent —
+    # a bad season is partly a team effect — but assuming independence here
+    # makes the interval wider, not narrower, so it errs the safe way.
+    variance = 0.0
+    changed = 0.0
+    for pid in departures:
+        share = share_before.get(pid, 0.0)
+        variance += (share * quality_sd) ** 2
+        changed += share
+    for pid in arrivals:
+        share = share_after.get(pid, 0.0)
+        variance += (share * quality_sd) ** 2
+        changed += share
+
+    return WinDelta(
+        before=model.wins(before),
+        after=model.wins(after),
+        residual_sd=model.residual_sd,
+        change_sd=abs(model.slope) * float(np.sqrt(variance)),
+        changed_share=changed,
+    )
+

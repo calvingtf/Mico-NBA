@@ -57,3 +57,4 @@ bench-*.log
 bench-*.marker
 ollama-serve.log
 bench-*.pid
+branch-*.json
