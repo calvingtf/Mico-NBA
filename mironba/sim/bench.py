@@ -9,11 +9,11 @@ validation. First attempt, not final — the repair retry is our mitigation, and
 folding it in would measure the mitigation while calling it the model. The
 unrecovered rate (failed twice) is reported separately.
 
-**Illegal-proposal rate, before and after the retry.** Before is how often a
-well-formed proposal is rejected by ``rules/``. After is how often it is still
-rejected once the CBA's objection has been handed back. The gap between them is
-the only thing in M1 that says whether feeding a rejection reason back does
-anything at all.
+**Legal-proposal rate is gone.** It is 100% by construction under M1.5 and
+reporting it would be self-congratulation: the solver cannot emit an illegal
+package, so measuring how many packages are legal measures nothing. What
+replaces it is *intent satisfiability* — how often what the model wants is
+achievable at all — which is the question the old number was badly proxying.
 
 **Latency per call.** Mean and median wall-clock per HTTP round trip, on this
 hardware, at this quantization and offload split. Not portable — the manifest
@@ -54,6 +54,12 @@ def bench(
     calls = failures = repairs_ok = gave_up = truncations = 0
     retried = 0
     run_ids: list[str] = []
+    intents = satisfiable_first = satisfiable_final = 0
+    revised = revision_rescued = 0
+    packages_per_intent: list[int] = []
+    decline_reasons: list[str] = []
+    solver_times: list[float] = []
+    binding: Counter[str] = Counter()
 
     for i in range(trials):
         print(f"\n----- trial {i + 1}/{trials} -----", flush=True)
@@ -87,10 +93,29 @@ def bench(
             outcomes["schema_failed"] += 1
         elif result.stood_pat:
             outcomes["stood_pat"] += 1
-        elif result.malformed and not result.verdicts:
-            outcomes["malformed_only"] += 1
+        elif result.declined_all:
+            outcomes["declined_all"] += 1
+        elif result.final_intent_satisfiable is False:
+            outcomes["unsatisfiable"] += 1
         else:
-            outcomes["proposed"] += 1
+            outcomes["traded"] += 1
+
+        if result.first_intent_satisfiable is not None:
+            intents += 1
+            if result.first_intent_satisfiable:
+                satisfiable_first += 1
+            if result.final_intent_satisfiable:
+                satisfiable_final += 1
+            if result.first_intent_satisfiable is False and result.retried:
+                revised += 1
+                if result.final_intent_satisfiable:
+                    revision_rescued += 1
+        if result.packages_offered:
+            packages_per_intent.append(result.packages_offered)
+        if result.declined_all:
+            decline_reasons.append(result.decline_reason[:200])
+        solver_times.extend(result.solver_seconds)
+        binding.update(result.binding_constraints)
 
         if result.retried:
             retried += 1
@@ -99,11 +124,18 @@ def bench(
             verdict_final[result.verdicts[-1].value] += 1
 
         summary = (
-            result.final_verdict.value if result.final_verdict else
-            ("stood_pat" if result.stood_pat else "no verdict")
+            result.final_verdict.value
+            if result.final_verdict
+            else (
+                "stood_pat"
+                if result.stood_pat
+                else "declined_all"
+                if result.declined_all
+                else "unsatisfiable"
+            )
         )
         print(
-            f"  {summary}   malformed={result.malformed} "
+            f"  {summary}   packages={result.packages_offered} "
             f"retried={result.retried} run={run.run_id}",
             flush=True,
         )
@@ -121,6 +153,15 @@ def bench(
         verdict_first=verdict_first,
         verdict_final=verdict_final,
         outcomes=outcomes,
+        intents=intents,
+        satisfiable_first=satisfiable_first,
+        satisfiable_final=satisfiable_final,
+        revised=revised,
+        revision_rescued=revision_rescued,
+        packages_per_intent=packages_per_intent,
+        decline_reasons=decline_reasons,
+        solver_times=solver_times,
+        binding=binding,
     )
 
 
@@ -128,16 +169,19 @@ def _summarise(
     *,
     trials, run_ids, calls, failures, repairs_ok, gave_up, truncations,
     latencies, retried, verdict_first, verdict_final, outcomes, incomplete=0,
+    intents=0, satisfiable_first=0, satisfiable_final=0, revised=0,
+    revision_rescued=0, packages_per_intent=None, decline_reasons=None,
+    solver_times=None, binding=None,
 ) -> dict:
     """One place that turns counters into rates, shared by both entry points.
 
     Shared so the live path and the from-disk path cannot drift into reporting
     the same label two different ways.
     """
-    judged_first = sum(verdict_first.values())
-    judged_final = sum(verdict_final.values())
-    illegal_before = verdict_first.get("rejected", 0)
-    illegal_after = verdict_final.get("rejected", 0)
+    packages_per_intent = packages_per_intent or []
+    decline_reasons = decline_reasons or []
+    solver_times = solver_times or []
+    binding = binding or Counter()
     return {
         "trials": trials,
         "completed": len(run_ids),
@@ -155,12 +199,31 @@ def _summarise(
             round(sorted(latencies)[int(0.9 * (len(latencies) - 1))], 2)
             if latencies else None
         ),
-        "illegal_proposal_rate_before_retry": (
-            round(illegal_before / judged_first, 4) if judged_first else None
+        # Intent satisfiability replaces the legal-proposal rate, which is
+        # 100% by construction and therefore not a finding.
+        "intents": intents,
+        "intent_satisfiable_first": (
+            round(satisfiable_first / intents, 4) if intents else None
         ),
-        "illegal_proposal_rate_after_retry": (
-            round(illegal_after / judged_final, 4) if judged_final else None
+        "intent_satisfiable_final": (
+            round(satisfiable_final / intents, 4) if intents else None
         ),
+        "revised_intents": revised,
+        "revisions_that_became_satisfiable": revision_rescued,
+        "revision_rescue_rate": (
+            round(revision_rescued / revised, 4) if revised else None
+        ),
+        "mean_packages_per_satisfiable_intent": (
+            round(statistics.fmean(packages_per_intent), 2)
+            if packages_per_intent else None
+        ),
+        "declined_all_count": len(decline_reasons),
+        "decline_reasons": decline_reasons[:6],
+        "solver_p50_s": (
+            round(statistics.median(solver_times), 4) if solver_times else None
+        ),
+        "solver_worst_s": round(max(solver_times), 4) if solver_times else None,
+        "binding_constraints": dict(binding.most_common()),
         "verdicts_first": dict(verdict_first),
         "verdicts_final": dict(verdict_final),
         "outcomes": dict(outcomes),
@@ -189,6 +252,12 @@ def aggregate_runs(runs_dir: Path | str, scenario_id: str | None = None) -> dict
     retried = 0
     run_ids: list[str] = []
     incomplete = 0
+    intents = satisfiable_first = satisfiable_final = 0
+    revised = revision_rescued = 0
+    packages_per_intent: list[int] = []
+    decline_reasons: list[str] = []
+    solver_times: list[float] = []
+    binding: Counter[str] = Counter()
 
     for directory in sorted(Path(runs_dir).iterdir()):
         manifest_path = directory / "manifest.json"
@@ -225,6 +294,21 @@ def aggregate_runs(runs_dir: Path | str, scenario_id: str | None = None) -> dict
         payload = finished[-1]["payload"] if finished else {}
         if payload.get("retried"):
             retried += 1
+        first_ok = payload.get("first_intent_satisfiable")
+        final_ok = payload.get("final_intent_satisfiable")
+        if first_ok is not None:
+            intents += 1
+            satisfiable_first += 1 if first_ok else 0
+            satisfiable_final += 1 if final_ok else 0
+            if not first_ok and payload.get("retried"):
+                revised += 1
+                revision_rescued += 1 if final_ok else 0
+        if payload.get("packages_offered"):
+            packages_per_intent.append(payload["packages_offered"])
+        if payload.get("declined_all"):
+            decline_reasons.append(str(payload.get("decline_reason", ""))[:200])
+        solver_times.extend(payload.get("solver_seconds") or [])
+        binding.update(payload.get("binding_constraints") or [])
         if payload.get("schema_failed"):
             outcomes["schema_failed"] += 1
         elif payload.get("stood_pat"):
@@ -251,6 +335,15 @@ def aggregate_runs(runs_dir: Path | str, scenario_id: str | None = None) -> dict
         verdict_final=verdict_final,
         outcomes=outcomes,
         incomplete=incomplete,
+        intents=intents,
+        satisfiable_first=satisfiable_first,
+        satisfiable_final=satisfiable_final,
+        revised=revised,
+        revision_rescued=revision_rescued,
+        packages_per_intent=packages_per_intent,
+        decline_reasons=decline_reasons,
+        solver_times=solver_times,
+        binding=binding,
     )
 
 
@@ -285,9 +378,18 @@ def format_report(stats: dict) -> str:
             f"   ({stats['unrecovered_schema_failures']})",
             f"  truncated completions          {stats['truncations']}",
             "",
-            f"  illegal before retry           {pct(stats['illegal_proposal_rate_before_retry'])}",
-            f"  illegal after retry            {pct(stats['illegal_proposal_rate_after_retry'])}",
-            f"  trials that retried            {stats['trials_that_retried']}",
+            f"  intent satisfiable (1st)       {pct(stats['intent_satisfiable_first'])}"
+            f"   ({stats['intents']} intents)",
+            f"  intent satisfiable (final)     {pct(stats['intent_satisfiable_final'])}",
+            f"  revisions that rescued         {stats['revisions_that_became_satisfiable']}"
+            f"/{stats['revised_intents']}"
+            f"   ({pct(stats['revision_rescue_rate'])})",
+            f"  packages per satisfiable       {stats['mean_packages_per_satisfiable_intent']}",
+            f"  declined all legal options     {stats['declined_all_count']}",
+            "",
+            f"  solver p50 / worst             {secs(stats['solver_p50_s'])}"
+            f" / {secs(stats['solver_worst_s'])}",
+            f"  binding constraints            {stats['binding_constraints']}",
             "",
             f"  latency mean / median / p90    {secs(stats['mean_latency_s'])}"
             f" / {secs(stats['median_latency_s'])} / {secs(stats['p90_latency_s'])}",
@@ -312,9 +414,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile", default="gm_agent")
     parser.add_argument("--runs-dir", default="runs", type=Path)
     parser.add_argument("--out", type=Path, default=None, help="write JSON stats here")
+    parser.add_argument("--probe", action="store_true",
+                        help="probe schema enforcement and exit")
     parser.add_argument("--fixed-seed", action="store_true",
                         help="reuse one seed for every trial (measures determinism, not the distribution)")
     args = parser.parse_args(argv)
+
+    if args.probe:
+        import json as _json
+
+        from mironba.llm.client import load_config, resolve_profile
+        from mironba.llm.probe import probe_schema_enforcement
+
+        cfg = resolve_profile(load_config(), args.profile)
+        print(_json.dumps(probe_schema_enforcement(cfg), indent=2))
+        return 0
 
     if args.from_runs:
         stats = aggregate_runs(args.from_runs, args.scenario_id)

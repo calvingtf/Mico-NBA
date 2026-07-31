@@ -31,6 +31,11 @@ profiles:
     top_p: 0.95
     seed: 20260730
     context_length: 4096         # see README: 8192 crashed llama-server on prompt-cache save
+    # All 40 layers on the GPU. Ollama's scheduler put this model entirely on
+    # the CPU with 22.9 GiB of VRAM free and stayed there across reloads, which
+    # cost ~6x latency. Stated explicitly so the placement is a decision on
+    # record rather than whatever the scheduler felt like.
+    gpu_layers: 40
 
   local_deep:
     model: qwen3.6:27b           # dense, steadier reasoning — NOT PULLED YET
