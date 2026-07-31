@@ -10,6 +10,35 @@ way it does.
 
 ---
 
+## 0. The cash limit that was wrong in the brief
+
+Chronologically first, and listed first because it set the rule everything
+after it follows.
+
+`cash_limit` — the cap on cash a team may send in a trade — was **assumed to
+track the expanded trade-player exception**. It does not. Sourcing it season by
+season gave $7,005,000 / $7,240,000 / $7,964,000 / $8,497,000 for 2023-24
+through 2026-27, and the values in use were **wrong by $250K–$600K each**.
+
+**The cross-check is what made it safe to overrule the assumption**: every one
+of those four figures lands on exactly 5.15% of that season's cap. Four
+independent numbers agreeing on one ratio is not a coincidence, and it is a
+much stronger warrant than any single citation.
+
+A second, smaller one in the same pass: `non_taxpayer_mle` for 2026-27 was
+$15,045,000 against a published $15,044,000.
+
+**What changed.** Every league constant now carries a source and a confidence
+rating — `verified`, `derived`, or `unverified` — and
+`test_unverified_constants_are_declared` asserts the unverified set is **empty**,
+so adding an unsourced number fails the suite. The standing rule dates from
+here: *sourced or absent, never recalled.* Contract structure for historical
+seasons could not be sourced, so it is absent for them rather than filled in.
+
+A figure being handed to me is not provenance. It is a claim to check.
+
+---
+
 ## 1. The propose-validate loop: 0 of 12
 
 **Measured.** A GM agent proposed a trade; `rules/` judged it. Twelve live
@@ -309,18 +338,6 @@ is one the measured 10.5-win error supports.
 
 ---
 
-## What is still unmeasured
-
-- **Whether the LLM plans a better offseason than the deterministic planner.**
-  The backtest uses the deterministic one, on purpose, so a failure is
-  attributable. The comparison has not been run.
-- **Whether thinking mode changes decision quality.** It costs 16x in latency
-  (7.4s against 122s on an identical prompt). It was held constant, not varied.
-- **The counterfactual branch.** Unfalsifiable by construction. It is run and
-  reported, never scored.
-
----
-
 ## 12. The canary fires
 
 **Measured, mid-benchmark.** The throughput canary refused to continue:
@@ -443,3 +460,54 @@ returned zero proposals — invalidating two rows of the first pooled table
 computed here. And the game-log ingest does not cover 2025-26, so that season
 has no standings, no dispositions, and no proposals at all. The first is fixed;
 the second is a data limit, stated rather than filled in.
+
+---
+
+## 16. The symmetric gate: an experiment that changed nothing
+
+The last build experiment, run to settle whether the deadline planner's
+precision problem was still a modelling gap or had become a data-resolution
+limit.
+
+**The change.** The supplier-side gate asks whether a team would really part
+with a player: a seller parts with anyone, a team still in the race parts only
+with a below-median one. That test was applied to the counterparty only. The
+experiment applies it **symmetrically** — the proposing team's outgoing package
+must also survive its own disposition. Deterministic, no extra LLM calls.
+
+| | proposals | matched | precision |
+| --- | --- | --- | --- |
+| asymmetric (default) | 421 | 1 | 0.24% |
+| **symmetric** | **415** | 1 | **0.24%** |
+
+**Six proposals removed. Precision identical to two decimal places.**
+
+**What it settles.** The remaining false positives are not trades a disposition
+test can reject. They are legal, plausible-looking swaps between teams that
+would genuinely consider them, and separating them needs value resolution finer
+than this project has: the measured delta error is **10.48 wins** (entry 8), and
+deadline trades turn on differences far smaller. The evaluation layer cannot
+score the distinction either, with **4** scoreable trades pooled (entry 14).
+
+**What changed.** `SYMMETRIC_GATE = False`, left in place and off, with this
+measurement named in the comment. The README's first limitation — *there is no
+market model* — is stated as measured rather than assumed on the strength of
+this: two named causes were fixed, a third refinement was tried, and precision
+did not move.
+
+The useful negative result is not that the idea failed. It is that the failure
+localises the limit to value resolution, which is a different project.
+
+---
+
+## What is still unmeasured
+
+- **Whether the LLM plans a better offseason than the deterministic planner.**
+  The backtest uses the deterministic one, on purpose, so a failure is
+  attributable. The comparison has not been run.
+- **Whether thinking mode changes decision quality.** It costs 16x in latency
+  (7.4s against 122s on an identical prompt). It was held constant, not varied.
+- **The counterfactual branch.** Unfalsifiable by construction. It is run and
+  reported, never scored.
+
+---

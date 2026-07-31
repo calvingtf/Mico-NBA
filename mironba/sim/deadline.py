@@ -22,8 +22,12 @@ closed rather than trailing off.
 2025-02-05, the day before. Standings come from dated game results, so a team's
 record is a filter rather than an end-of-season figure the simulation is partly
 supposed to predict. `models/disposition.py` turns that into buyer, seller or
-ambiguous, and at this freeze it returns 4 buyers, 3 sellers and 23 ambiguous —
-which is the honest answer and means most teams have no strong prior either way.
+ambiguous, and at this freeze it returns 12 buyers, 6 sellers and 12 ambiguous.
+
+It used to return 4/3/23, because the bands were set from the value model's
+win-delta error — a projection's spread applied to an observed standing. The
+bands are now measured from 90 team-seasons, and ambiguous teams act on both
+sides rather than standing pat.
 
 ## What is NOT scored
 
@@ -71,6 +75,12 @@ VALUE_SEASON = {"2024-25": "2023-24", "2023-24": "2022-23", "2025-26": "2024-25"
 #: Median prior-season box_pm36 among valued players (1.04 in 2023-24). Above
 #: it is a rotation piece a team in the race keeps; below it is the fringe.
 FRINGE_VALUE = 1.04
+
+#: Apply the part-with test to BOTH sides: the proposing team's outgoing
+#: package must also survive its own disposition, not just the counterparty's.
+#: Off by default - see ``docs/measurements.md`` entry 16 for the measurement
+#: that decided it. Deterministic either way; no extra LLM calls.
+SYMMETRIC_GATE = False
 
 
 def _will_part_with(player_id: str, seller_side: str, values: dict) -> bool:
@@ -271,6 +281,7 @@ def run(freeze: date | None = None, season: str = SEASON) -> DeadlineResult:
             if seller == buyer:
                 continue
             seller_side = result.dispositions[seller].side
+            buyer_side = result.dispositions[buyer].side
             theirs = world.assets(seller)
             if not own or not theirs:
                 continue
@@ -302,10 +313,15 @@ def run(freeze: date | None = None, season: str = SEASON) -> DeadlineResult:
                 # Take the legal package that gains the most value, and only
                 # if it gains any. A swap that sends out more than it brings
                 # back is not a deadline move, however legal it is.
+                if not _will_part_with(target.player_id, seller_side, values):
+                    continue
                 gains = [
                     (value_of(pkg.receive_player_ids) - value_of(pkg.send_player_ids), pkg)
                     for pkg in solved.packages
-                    if _will_part_with(target.player_id, seller_side, values)
+                    if not SYMMETRIC_GATE or all(
+                        _will_part_with(pid, buyer_side, values)
+                        for pid in pkg.send_player_ids
+                    )
                 ]
                 gains = [g for g in gains if g[0] > 0]
                 if not gains:
