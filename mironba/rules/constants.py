@@ -74,6 +74,11 @@ MINIMUM_SALARY_SCALE: dict[str, dict[int, int]] = {
         5: 2_667_947, 6: 2_874_436, 7: 3_080_921, 8: 3_287_409, 9: 3_303_774,
         10: 3_634_153,
     },
+    "2026-27": {
+        0: 1_357_763, 1: 2_185_116, 2: 2_449_421, 3: 2_537_526, 4: 2_625_627,
+        5: 2_845_883, 6: 3_066_143, 7: 3_286_399, 8: 3_506_659, 9: 3_524_115,
+        10: 3_876_529,
+    },
 }
 
 
@@ -115,6 +120,12 @@ class CapEnvironment:
     cash_limit: int
     #: Non-taxpayer mid-level exception — referenced only by the buyout rule.
     non_taxpayer_mle: int
+    #: The remaining signing exceptions, as *first-year* amounts. How long each
+    #: may run and what raise it permits are rules rather than money, so they
+    #: live in ``rules/signing.py``.
+    taxpayer_mle: int = 0
+    room_exception: int = 0
+    bi_annual_exception: int = 0
 
     @property
     def start_year(self) -> int:
@@ -134,6 +145,9 @@ _ENVIRONMENTS: dict[str, CapEnvironment] = {
         apron_match_pct=110,
         cash_limit=7_005_000,
         non_taxpayer_mle=12_405_000,
+        taxpayer_mle=5_000_000,
+        room_exception=7_723_000,
+        bi_annual_exception=4_516_000,
     ),
     "2024-25": CapEnvironment(
         season="2024-25",
@@ -146,6 +160,9 @@ _ENVIRONMENTS: dict[str, CapEnvironment] = {
         apron_match_pct=100,
         cash_limit=7_240_000,
         non_taxpayer_mle=12_822_000,
+        taxpayer_mle=5_168_000,
+        room_exception=7_983_000,
+        bi_annual_exception=4_667_000,
     ),
     "2025-26": CapEnvironment(
         season="2025-26",
@@ -158,6 +175,9 @@ _ENVIRONMENTS: dict[str, CapEnvironment] = {
         apron_match_pct=100,
         cash_limit=7_964_000,
         non_taxpayer_mle=14_104_000,
+        taxpayer_mle=5_685_000,
+        room_exception=8_781_000,
+        bi_annual_exception=5_134_000,
     ),
     "2026-27": CapEnvironment(
         season="2026-27",
@@ -170,6 +190,9 @@ _ENVIRONMENTS: dict[str, CapEnvironment] = {
         apron_match_pct=100,
         cash_limit=8_497_000,
         non_taxpayer_mle=15_044_000,
+        taxpayer_mle=6_064_000,
+        room_exception=9_366_000,
+        bi_annual_exception=5_477_000,
     ),
 }
 
@@ -214,11 +237,39 @@ PROVENANCE: dict[str, tuple[Confidence, str]] = {
         "does not, and every figure was wrong by $250K-$600K.",
     ),
     "minimum_salary_scale": (
+        "derived",
+        "2023-24, 2024-25 and 2025-26 come from Hoops Rumors annual "
+        "minimum-salary tables, scraped in full rather than summarised. "
+        "2026-27 is DERIVED: each season's scale is the previous season's "
+        "scaled by the cap ratio. That is not an approximation - applied to "
+        "2023-24 it reproduces 2024-25 exactly, and applied to 2024-25 it "
+        "reproduces 2025-26 exactly, at all eleven service tiers, to the "
+        "dollar. Cross-checked against two real 2026-27 contracts: the 10+ "
+        "tier lands on $3,876,529, which is LeBron James's actual "
+        "Philadelphia salary, and the 2-year tier on $2,449,421, which is "
+        "Charles Bassey's actual Golden State salary. Hoops Rumors "
+        "independently describes the 2026-27 veteran minimum as 'nearly "
+        "$3.88MM' and the rookie minimum as 'about $1.36MM' (derived: "
+        "$1,357,763).",
+    ),
+    "taxpayer_mle": (
         "verified",
-        "Hoops Rumors annual minimum-salary tables, scraped in full rather "
-        "than summarised: 2023-24, 2024-25 and 2025-26. No 2026-27 scale is "
-        "recorded, so minimum_salary() raises for that season rather than "
-        "extrapolating.",
+        "2026-27 ($6,064,000) from Hoops Rumors, 'Values Of 2026/27 Mid-Level, "
+        "Bi-Annual Exceptions', retrieved 2026-07-31. Earlier seasons carry the "
+        "published figures; all four land on 3.676% of the cap to within "
+        "0.0002 percentage points, which is the cross-check.",
+    ),
+    "room_exception": (
+        "verified",
+        "2026-27 ($9,366,000) from the same Hoops Rumors table, retrieved "
+        "2026-07-31, which also states the 5.678%-of-cap relationship. All four "
+        "seasons land on 5.678% to within 0.0006 points.",
+    ),
+    "bi_annual_exception": (
+        "verified",
+        "2026-27 ($5,477,000) from the same Hoops Rumors table, retrieved "
+        "2026-07-31, which states the 3.32%-of-cap relationship. All four "
+        "seasons land on 3.320% to within 0.0006 points.",
     ),
     "non_taxpayer_mle": (
         "verified",
