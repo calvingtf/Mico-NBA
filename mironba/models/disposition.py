@@ -8,12 +8,17 @@ it and no way to check it.
 So it comes from the standings, computed from dated game results. A team's
 record on a given date is a filter over ``game_logs.csv``, not an inference.
 
-**The 10.5-win threshold applies here too.** A team twelve games out of a
-playoff place is distinguishable from a contender; two teams a game apart are
-not. Disposition is therefore a *band*, not a ranking, and the band boundaries
-are set from the measured delta error rather than chosen. Teams that fall
-between bands come back ``AMBIGUOUS`` — which is a real answer, and one a
-deadline simulation should act on by doing less rather than by guessing.
+**The value model is deliberately not consulted.** Disposition depends on
+record and games back on the freeze date, which are completed facts. The
+earlier version applied the value model's 10.5-win threshold here, and that was
+the wrong error bar: 10.5 is uncertainty on a counterfactual roster delta, not
+on an observed standing. It sent 23 of 30 teams to AMBIGUOUS and, because only
+buyers and sellers acted, made the simulation miss every deal between middling
+teams. ``test_disposition_never_consults_the_value_model`` keeps it out.
+
+The bands are measured instead — see ``SELLER_GAMES_BACK``. Teams still land in
+AMBIGUOUS when the direction is genuinely open, but ambiguous is not a synonym
+for inactive: those teams consolidate, move expiring salary and take flyers.
 """
 
 from __future__ import annotations
@@ -29,19 +34,46 @@ BUYER = "buyer"
 SELLER = "seller"
 AMBIGUOUS = "ambiguous"
 
+#: What an ambiguous team does. It is NOT "nothing": a team that cannot tell
+#: whether it is buying still consolidates, moves expiring salary, and takes
+#: flyers on players others have given up on. Standing pat was an artifact of
+#: the old gate, not a behaviour anyone chose.
+AMBIGUOUS_ACTS = True
+
 #: Games out of a playoff place beyond which a team is a clear seller.
 #:
-#: Derived, not chosen. ``models/delta_error.py`` measured the win-delta error
-#: at 7.4 and the separation threshold at 10.5 wins over a full season. A
-#: deadline sits at roughly 75% of the schedule, so the remaining quarter can
-#: move a team by about a quarter of that — call it 2.6 games — and a gap has
-#: to exceed the full-season threshold to be a distinction the model supports.
-#: 10.5 games back is used directly, rounded to 10.
-SELLER_GAMES_BACK = 10.0
+#: **Measured from observed standings, not from the value model.** The earlier
+#: version used the 10.5-win separation threshold, and that was the wrong error
+#: bar entirely: 10.5 is uncertainty on a *counterfactual roster delta*, while
+#: disposition depends on record and games back on the freeze date, which are
+#: completed facts with no projection in them. Applying projection uncertainty
+#: to an observed quantity sent 23 of 30 teams to AMBIGUOUS and, since only
+#: buyers and sellers acted, made the simulation miss every deal between
+#: middling teams.
+#:
+#: Measured over 90 team-seasons across the 2023, 2024 and 2025 deadlines —
+#: games back at the deadline against whether the team finished top ten in its
+#: conference:
+#:
+#:     8+ games clear    20 teams   100% made it
+#:     4-8 clear         17 teams   100%
+#:     0-4 clear         20 teams    85%
+#:     0-3 back          15 teams    40%
+#:     3-6 back           4 teams      0%
+#:     6+ back           14 teams      0%
+#:
+#: The edges are clean: nobody 4+ games clear missed, nobody 3+ back made it.
+#: Those are the bands, and they are much tighter than 10 because an observed
+#: standing is a far better-determined quantity than a projected win delta.
+SELLER_GAMES_BACK = 3.0
+BUYER_GAMES_AHEAD = 4.0
 
-#: Inside a playoff place by this much and a team is a clear buyer. Same
-#: reasoning, same number, other direction.
-BUYER_GAMES_AHEAD = 10.0
+#: Where the empirical bands came from, so the numbers are not mistaken for
+#: taste. Recomputable with ``python -m mironba.models.disposition --calibrate``.
+BAND_PROVENANCE = (
+    "measured, 90 team-seasons over three deadlines; 37/37 of teams 4+ games "
+    "clear made the top ten and 18/18 of teams 3+ back did not"
+)
 
 #: Playoff places per conference, including the play-in.
 PLAYOFF_PLACES = 10
@@ -167,8 +199,8 @@ def disposition(
             side = AMBIGUOUS
             reason = (
                 f"{abs(back):.1f} games {'out' if back > 0 else 'clear'} — "
-                f"inside the {SELLER_GAMES_BACK:.0f}-game band the value model "
-                "cannot resolve"
+                "inside the band where historically 40-85% of teams made the "
+                "playoffs, so the direction is genuinely open"
             )
         out[team] = Disposition(team, side, back, standing, reason)
     return out

@@ -62,6 +62,84 @@ FREEZE = date(2025, 2, 5)
 #: market rather than every buyer bidding on every seller's roster.
 SHORTLIST = 6
 
+#: Prior-season value is what a deadline buyer actually reasons about, and it
+#: is fully pre-freeze at any in-season date - the season being played has not
+#: finished, so last season's totals leak nothing.
+VALUE_SEASON = {"2024-25": "2023-24", "2023-24": "2022-23", "2025-26": "2024-25"}
+
+
+#: Median prior-season box_pm36 among valued players (1.04 in 2023-24). Above
+#: it is a rotation piece a team in the race keeps; below it is the fringe.
+FRINGE_VALUE = 1.04
+
+
+def _will_part_with(player_id: str, seller_side: str, values: dict) -> bool:
+    """Whether a team on ``seller_side`` would actually give this player up.
+
+    The value gate constrains only the acquiring side, and value here is close
+    to zero-sum, so without this a supplier hands over anyone: the first run
+    with values proposed Stephen Curry to Atlanta and Joel Embiid to Atlanta on
+    the same tick. Both were legal. Neither is a trade.
+
+    A seller parts with anyone - that is what selling is, and the cap relief
+    and picks it gets back are real consideration this codebase does not price.
+    A team still in the race parts only with a fringe player: a flyer or a
+    salary filler, not a rotation piece. That asymmetry is the whole difference
+    between a deadline market and a list of legal permutations.
+    """
+    if seller_side == SELLER:
+        return True
+    return values.get(player_id, 0.0) < FRINGE_VALUE
+
+
+def player_values(season: str) -> dict:
+    """Prior-season box_pm36 per Basketball-Reference id.
+
+    The planner had no notion of value at all, so it ordered targets by cost
+    and proposed Jayson Tatum and Payton Pritchard for Zion Williamson - legal,
+    and absurd. This is the smallest honest fix: the value model fitted on
+    seasons before the prior one, applied to the prior season's box score,
+    matched to contract ids by normalised name.
+
+    Nothing here touches the season being simulated. Using current-season
+    totals would leak games played after the freeze, which is why the planner
+    was given no value model in the first place.
+    """
+    import re
+    import unicodedata
+
+    prior = VALUE_SEASON.get(season)
+    if prior is None:
+        return {}
+    try:
+        from mironba.models.value import fit_value_model, load_player_seasons
+        from mironba.models.win_delta import prior_seasons
+    except Exception:  # noqa: BLE001
+        return {}
+
+    def norm(name):
+        text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+        return re.sub(r"[^a-z]", "", text.lower())
+
+    try:
+        players = load_player_seasons()
+    except FileNotFoundError:
+        return {}
+    all_seasons = sorted({p.season for p in players})
+    train = tuple(prior_seasons(prior, all_seasons))
+    if len(train) < 3:
+        return {}
+    model = fit_value_model(players, train)
+    by_name = {
+        norm(p.name): model.box_pm36(p)
+        for p in players if p.season == prior and p.minutes > 0
+    }
+    names = _rows(SNAPSHOTS / f"bbref-{season}" / "players.csv")
+    return {
+        r["player_id"]: by_name[norm(r["name"])]
+        for r in names if norm(r["name"]) in by_name
+    }
+
 
 def _rows(path: Path) -> list[dict]:
     with path.open(encoding="utf-8", newline="") as handle:
@@ -130,18 +208,24 @@ class DeadlineResult:
     scanned: int = 0
 
 
-def run(freeze: date = FREEZE, season: str = SEASON) -> DeadlineResult:
-    """Every buyer looks at every seller's roster and takes what is legal.
+def run(freeze: date | None = None, season: str = SEASON) -> DeadlineResult:
+    """Every acquirer looks at every supplier's roster and takes what is legal.
 
     Deterministic, like the offseason planner and for the same reason: what is
     being scored is the solver against reality, and an LLM in the loop would
     make a miss unattributable.
 
-    Only buyers acquire and only sellers send. That is the one place a
-    disposition is allowed to drive behaviour, and it is why AMBIGUOUS teams do
-    nothing — 23 of 30 here. A model that made them act would be inventing a
-    preference from a standings gap the value model cannot resolve.
+    Buyers and ambiguous teams acquire; sellers and ambiguous teams supply. An
+    ambiguous team parts only with a below-median player — see
+    ``_will_part_with``, which is what stops a supplier handing over anyone.
+
+    ``freeze`` defaults to the deadline **of the season asked for**. It used to
+    default to a fixed 2025-02-05 regardless, so ``run(season="2025-26")``
+    silently planned an offseason 365 days from its own deadline and returned
+    nothing. Any freeze date may still be passed explicitly.
     """
+    if freeze is None:
+        freeze = calendar_for(season).deadline
     env = environment_for(season)
     world = DeadlineState.load(season)
     result = DeadlineResult()
@@ -155,12 +239,38 @@ def run(freeze: date = FREEZE, season: str = SEASON) -> DeadlineResult:
     result.notes.append(
         f"{len(buyers)} buyers, {len(sellers)} sellers, "
         f"{sum(1 for d in result.dispositions.values() if d.side == AMBIGUOUS)} "
-        "ambiguous (which act on neither side)"
+        "ambiguous (which act on both sides)"
     )
 
-    for buyer in sorted(buyers):
+    values = player_values(season)
+    result.notes.append(
+        f"{len(values)} players valued from {VALUE_SEASON.get(season)} "
+        "(prior completed season, fully pre-freeze)"
+    )
+
+    def value_of(pids):
+        return sum(values.get(p, 0.0) for p in pids)
+
+    # AMBIGUOUS teams act. They are not "teams that cannot decide" - they are
+    # teams whose playoff direction is open, and those teams still consolidate
+    # and take flyers. Standing pat was an artifact of the old value-model gate.
+    ambiguous = sorted(
+        t for t, d in result.dispositions.items() if d.side == AMBIGUOUS
+    )
+    acquirers = sorted(buyers + ambiguous)
+    suppliers = sorted(sellers + ambiguous)
+    result.notes.append(
+        f"{len(acquirers)} acquiring ({len(buyers)} buyers + {len(ambiguous)} "
+        f"ambiguous), {len(suppliers)} supplying ({len(sellers)} sellers + the "
+        "same ambiguous teams, fringe players only)"
+    )
+
+    for buyer in acquirers:
         own = world.assets(buyer)
-        for seller in sorted(sellers):
+        for seller in suppliers:
+            if seller == buyer:
+                continue
+            seller_side = result.dispositions[seller].side
             theirs = world.assets(seller)
             if not own or not theirs:
                 continue
@@ -172,10 +282,12 @@ def run(freeze: date = FREEZE, season: str = SEASON) -> DeadlineResult:
             result.scanned += 1
             if not scan.any_feasible:
                 continue
-            # Most expensive acquirable player first: a buyer at a deadline is
-            # looking for the best player it can legally absorb, and "best" is
-            # not available, so cost is the only ordering the data supports.
-            for target in scan.targets[:SHORTLIST]:
+            # Best acquirable player first, by prior-season value rather than
+            # by cost. Ordering by cost is what produced Tatum-for-Zion.
+            ranked = sorted(
+                scan.targets, key=lambda t: -values.get(t.player_id, 0.0)
+            )
+            for target in ranked[:SHORTLIST]:
                 solved = solve(
                     TradeIntent(
                         target_player_ids=(target.player_id,),
@@ -187,10 +299,21 @@ def run(freeze: date = FREEZE, season: str = SEASON) -> DeadlineResult:
                 )
                 if not solved.satisfiable:
                     continue
-                package = solved.packages[0]
+                # Take the legal package that gains the most value, and only
+                # if it gains any. A swap that sends out more than it brings
+                # back is not a deadline move, however legal it is.
+                gains = [
+                    (value_of(pkg.receive_player_ids) - value_of(pkg.send_player_ids), pkg)
+                    for pkg in solved.packages
+                    if _will_part_with(target.player_id, seller_side, values)
+                ]
+                gains = [g for g in gains if g[0] > 0]
+                if not gains:
+                    continue
+                best = max(gains, key=lambda g: g[0])[1]
                 result.proposals.append(
-                    ProposedTrade(buyer, seller, package.send_player_ids,
-                                  package.receive_player_ids)
+                    ProposedTrade(buyer, seller, best.send_player_ids,
+                                  best.receive_player_ids)
                 )
                 break
     return result
@@ -303,10 +426,12 @@ def leakage_audit(freeze: date = FREEZE, season: str = SEASON) -> list[str]:
     stats = SNAPSHOTS / "nba-stats" / "player_seasons.csv"
     if stats.is_file():
         lines.append(
-            "player season totals: FULL-SEASON figures, so any use of them "
-            "in-season leaks games after the freeze. The deadline planner uses "
-            "contracts and standings only, never these — the value model is "
-            "not consulted here at all."
+            f"player season totals: FULL-SEASON figures, so the {season} rows "
+            "would leak games after the freeze. The planner reads only the "
+            f"{VALUE_SEASON.get(season)} rows — a season that finished before "
+            "the freeze, so complete by construction. The current season's "
+            "totals are never touched, and disposition uses dated game logs "
+            "rather than either."
         )
     contracts = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
     if contracts.is_file():

@@ -344,3 +344,102 @@ times slower than the one before it.
 
 The cost is a smaller sample in one cell, stated wherever that cell is quoted.
 The alternative was a full sample that was quietly wrong.
+
+---
+
+## 13. Deadline disposition, measured instead of borrowed (M8)
+
+**The defect.** `models/disposition.py` set its buyer/seller bands from
+`MEASURED_DELTA_SD` — the value model's win-delta error. Two tests asserted
+this was correct, one of them demanding that a *majority* of teams come back
+`AMBIGUOUS`, and both ran green for a whole milestone.
+
+It is the wrong error bar. 10.5 wins is uncertainty on a **counterfactual
+roster delta**. Disposition depends on record and games back **on the freeze
+date** — completed facts with no projection in them. Borrowing a projection's
+spread to threshold an observed quantity is a category error, and it cost:
+23 of 30 teams landed `AMBIGUOUS`, ambiguous teams acted on neither side, so
+the simulation proposed nothing between any two middling teams.
+
+**Measured.** 90 team-seasons across the 2023, 2024 and 2025 deadlines —
+games back at the deadline against finishing top ten in conference:
+
+| games back at deadline | n | made top 10 |
+|---|---|---|
+| 8+ clear | 20 | 100% |
+| 4–8 clear | 17 | 100% |
+| 0–4 clear | 20 | 85% |
+| 0–3 back | 15 | 40% |
+| 3–6 back | 4 | 0% |
+| 6+ back | 14 | 0% |
+
+The edges are clean: **37/37** of teams 4+ games clear made it, **18/18** of
+teams 3+ back did not. `SELLER_GAMES_BACK = 3.0`, `BUYER_GAMES_AHEAD = 4.0` —
+far tighter than 10.5, because an observed standing is far better determined
+than a projected delta. At the 2025 deadline: 12 buyers, 6 sellers, 12
+ambiguous, against 4/3/23 before.
+
+`test_disposition_never_consults_the_value_model` parses the module's imports
+and fails on any path to `value`, `win_delta`, `compare` or `delta_error`.
+Asserted on the source, not by monkeypatching: a spy passes for a module that
+imports a projection and merely happens not to call it on the tested input.
+
+## 14. The trade denominator cannot be raised without multi-team support
+
+A coverage pass on why the deadline backtest scores against so few real trades.
+Every trade row in a 14-day window before each deadline:
+
+| season | rows | 1 team | 2 teams | 3+ teams | parsed | priceable |
+|---|---|---|---|---|---|---|
+| 2023-24 | 20 | 16 | 2 | 2 | 1 | 0 |
+| 2024-25 | 19 | 13 | 1 | 4 | 1 | 1 |
+| 2025-26 | 28 | 19 | 4 | 5 | 4 | 3 |
+
+**Pooled denominator: 4.** Single digits, as feared, and the diagnosis is not
+the one expected. The loss is *not* at the pricing stage — nothing in-window
+was dropped for a missing salary. Every single-team row is a picks/cash/
+trade-exception addendum carrying no players at all:
+
+```
+teams='BOS' players=''
+   The traded FROM_TRADE to the Boston Celtics . 2027 2nd-rd pick is least
+   favorable 2030 2nd-rd pick is BOS own ... Boston received a trade exception
+```
+
+The binding constraint is the **two-team restriction**. Real deadline business
+is multi-team: on 2025-02-06 there were 13 trades and not one was a two-team
+deal with players moving both ways. Extending the contract ingest — the fix
+this pass was expected to produce — would have recovered nothing.
+
+**So no precision claim is made from this denominator.** Four is not a sample.
+Recall of 1/4 is reported as a count, not a rate.
+
+## 15. What the deadline planner actually gets wrong: precision
+
+The number that does survive, because its denominator is *proposals*:
+
+| | 2023-24 | 2024-25 | 2025-26 | pooled |
+|---|---|---|---|---|
+| proposed | 213 | 208 | 0 | **421** |
+| real two-team trades | 0 | 1 | 3 | 4 |
+| counterparty pairs matched | 0 | 1 | 0 | **1** |
+| solver legality on real trades | — | 1/1 | 3/3 | **4/4** |
+
+**421 proposals against roughly fifteen real deadline trades.** The planner
+enumerates legal permutations; it does not model a market. Adding prior-season
+value fixed the worst of it — ordering targets by cost had produced Jayson
+Tatum and Payton Pritchard for Zion Williamson — but the first run *with*
+values still sent Stephen Curry and Joel Embiid to Atlanta on the same tick,
+because the value gate constrains only the acquiring side and value is close to
+zero-sum. `_will_part_with` closes it: a seller parts with anyone, a team still
+in the race parts only with a below-median player. Proposals fell from 380 to
+208 and the absurdities went with them. It is still two orders of magnitude too
+many, and that is the honest headline.
+
+**Two defects found while running this.** `run(freeze=FREEZE, season=SEASON)`
+defaulted the freeze to a fixed date regardless of the season asked for, so
+`run(season="2025-26")` planned an offseason 365 days from its own deadline and
+returned zero proposals — invalidating two rows of the first pooled table
+computed here. And the game-log ingest does not cover 2025-26, so that season
+has no standings, no dispositions, and no proposals at all. The first is fixed;
+the second is a data limit, stated rather than filled in.

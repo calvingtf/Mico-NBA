@@ -115,25 +115,46 @@ because at $181.1M Philadelphia was genuinely under the apron and the mid-level
 was really available. Cap mechanics alone do not force that contract — the only
 evidence for it is a statement dated after the freeze.
 
-**The deadline backtest predicts nothing, and the reasons are structural.** The
-2025 deadline, frozen the day before: 12 proposals, 0 counterparty pairs
-matched, precision and recall both 0%. Three separable causes, none of them
-"the model was wrong":
+**The deadline backtest still predicts nothing, and two of the three reasons
+turned out to be fixable.** All three deadlines, each frozen on the day:
 
-1. **The validator cannot represent the trades that happened.** Of 13 deals on
-   2025-02-06, *not one* was a two-team trade with players on both sides —
-   every one was multi-team or picks-only. Widening to a 14-day window yields
-   exactly one scoreable trade.
-2. **The one scoreable trade was between two AMBIGUOUS teams**, and the planner
-   only lets buyers and sellers act. That gate is honest about the value
-   model's 10.5-win limit, and it also guarantees missing every deal between
-   middling teams — which is most deals.
-3. **The planner has no notion of player value.** The value model is excluded
-   here deliberately: its inputs are full-season totals, which in-season would
-   leak games after the freeze. Without it the planner maximises incoming
-   salary and proposes Jayson Tatum for Zion Williamson.
+| | 2023-24 | 2024-25 | 2025-26 | pooled |
+| --- | --- | --- | --- | --- |
+| proposed | 213 | 208 | 0 | **421** |
+| real two-team trades | 0 | 1 | 3 | **4** |
+| counterparty pairs matched | 0 | 1 | 0 | **1** |
+| solver legality on real trades | — | 1/1 | 3/3 | **4/4** |
 
-The one number that did work: the solver found the real trade **legal, 1 of 1**.
+1. **The disposition gate was wrong, and two green tests said it was right.**
+   It thresholded games back with the *value model's* 10.5-win error bar. That
+   is uncertainty on a counterfactual roster delta; games back on the freeze
+   date is a completed fact. It sent 23 of 30 teams to `AMBIGUOUS`, and since
+   ambiguous teams acted on neither side, the sim missed every deal between
+   middling teams. Measured properly over 90 team-seasons — 37/37 of teams 4+
+   games clear of the cut made the top ten, 18/18 of teams 3+ back did not —
+   the bands are 3.0 and 4.0, giving 12 buyers, 6 sellers, 12 ambiguous. The
+   ambiguous teams now act.
+2. **The planner now has a notion of value**, taken from the *previous
+   completed* season, which is fully pre-freeze by construction and leaks
+   nothing. Ordering targets by cost had produced Jayson Tatum and Payton
+   Pritchard for Zion Williamson. Value alone was not enough: it constrains
+   only the acquiring side, and the first run with it sent Stephen Curry and
+   Joel Embiid to Atlanta on the same tick. A supplier-side gate — a seller
+   parts with anyone, a team still in the race parts only with a below-median
+   player — cut proposals from 380 to 208 and took the absurdities with them.
+3. **The two-team restriction is not fixable and is now a stated limit.** A
+   coverage pass found the denominator is *not* lost to missing salaries, as
+   expected: nothing in-window was dropped for pricing. It is lost because real
+   deadline business is multi-team. Of 19 trade rows in the 2025 window, 13
+   carry no players at all (picks, cash and trade exceptions) and 5 involve
+   three or more teams. Pooled across three deadlines, **4** real trades are
+   scoreable. That is not a sample, so no precision claim is made from it.
+
+**What the numbers say now:** the solver is 4 of 4 on the legality of real
+trades, and the planner's precision is 1 in 421. It enumerates legal
+permutations; it does not model a market. Two of three named causes are gone
+and the headline did not move — which is the useful result, and the reason
+the limitation above is stated in proposals rather than in matches.
 
 ## What is honest about it
 
@@ -160,21 +181,32 @@ The one number that did work: the solver found the real trade **legal, 1 of 1**.
 
 ## Limitations, in order of how much they matter
 
-1. **The GM planner in the backtest is deterministic, not an LLM.** The LLM path
+1. **The deadline planner has terrible precision: 421 proposals, 1 match.** It
+   enumerates legal permutations rather than modelling a market. Value gating
+   both sides cut it roughly in half and removed the absurdities (it had been
+   proposing Curry and Embiid to Atlanta on the same tick), but two orders of
+   magnitude too many is the honest headline, not a rounding error.
+2. **Trades are two-team only, and real deadline business is not.** On
+   2025-02-06 there were 13 trades and not one was a two-team deal with players
+   moving both ways. That leaves a pooled denominator of **4** real trades
+   across three deadlines, so no precision claim is made from it and recall is
+   reported as a count. Multi-team trades and draft-pick valuation are the two
+   named things this project does not do; the denominator is the direct cost.
+3. **The GM planner in the backtest is deterministic, not an LLM.** The LLM path
    is measured separately, in the A/B tables above. Mixing them would make a
    failure unattributable — but it means the backtest scores the *rules*, not
    the model's judgement.
-2. **Availability is ignored.** Games played is not games available. A roster
+4. **Availability is ignored.** Games played is not games available. A roster
    model blind to injuries misprices teams, and roughly a third of the measured
    delta error is availability rather than model error.
-3. **Ground truth cannot separate a signing from a trade** for unsourced
+5. **Ground truth cannot separate a signing from a trade** for unsourced
    arrivals. Nine of seventeen are labelled `unknown` rather than guessed.
-4. **A counterfactual branch has no ground truth and never will.** Reported as
+6. **A counterfactual branch has no ground truth and never will.** Reported as
    unfalsifiable and not scored.
-5. **Contested resolution is thin.** Roster tier, offer, and reported
+7. **Contested resolution is thin.** Roster tier, offer, and reported
    commitments. There is no player-agency model, which is why the simulation
    puts LeBron on Philadelphia's mid-level rather than the minimum he took.
-6. **One model, one quantization, one machine.** Throughput and latency figures
+8. **One model, one quantization, one machine.** Throughput and latency figures
    describe an RTX 3090 running `qwen3.6:27b` at Q4_K_M.
 
 ## Reading further

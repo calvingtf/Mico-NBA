@@ -155,9 +155,21 @@ class TestDisposition:
         assert result["OKC"].games_back < 0
         assert result["WAS"].games_back > 0
 
-    def test_most_teams_at_a_deadline_are_ambiguous(self):
-        """The honest outcome. A band narrower than the measured error would
-        manufacture a decision the value model cannot support."""
+    def test_most_teams_at_a_deadline_are_not_ambiguous(self):
+        """Reversed from what this test asserted when it was written.
+
+        It used to demand that a *majority* of teams come back AMBIGUOUS, on
+        the reasoning that a narrower band "would manufacture a decision the
+        value model cannot support". The reasoning was wrong, and the test
+        locked the error in: disposition is not a value-model question. It is
+        record and games back on the freeze date — completed facts. Applying a
+        projection's error bar to an observed quantity sent 23 of 30 teams to
+        AMBIGUOUS and made the deadline sim miss every deal between middling
+        teams.
+
+        Measured over 90 team-seasons, nobody 4+ games clear of the cut missed
+        the top ten and nobody 3+ back made it. Those edges are the bands.
+        """
         from datetime import date as d
 
         from mironba.models.disposition import AMBIGUOUS, disposition
@@ -168,13 +180,26 @@ class TestDisposition:
 
             _pytest.skip("game logs not ingested")
         ambiguous = sum(1 for v in result.values() if v.side == AMBIGUOUS)
-        assert ambiguous > len(result) / 2
+        assert ambiguous < len(result) / 2
 
-    def test_the_band_is_at_least_the_measured_threshold(self):
+    def test_the_band_is_not_the_measured_delta_threshold(self):
+        """The two numbers measure different things and must not be tied.
+
+        ``MEASURED_DELTA_SD`` is the spread of our error on a counterfactual
+        win delta. Games back at a deadline is observed. This test exists
+        because the codebase once used the first as the threshold for the
+        second, and the assertion ran green while doing it.
+        """
         from mironba.models.compare import MEASURED_DELTA_SD
-        from mironba.models.disposition import SELLER_GAMES_BACK
+        from mironba.models.disposition import (
+            BAND_PROVENANCE,
+            BUYER_GAMES_AHEAD,
+            SELLER_GAMES_BACK,
+        )
 
-        assert SELLER_GAMES_BACK >= MEASURED_DELTA_SD
+        assert SELLER_GAMES_BACK < MEASURED_DELTA_SD
+        assert BUYER_GAMES_AHEAD < MEASURED_DELTA_SD
+        assert "measured" in BAND_PROVENANCE
 
     def test_standings_are_as_of_the_date_not_end_of_season(self):
         from datetime import date as d
