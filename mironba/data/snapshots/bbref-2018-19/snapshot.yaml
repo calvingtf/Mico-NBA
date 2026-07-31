@@ -1,0 +1,24 @@
+snapshot_id: bbref-2018-19
+as_of_date: "2026-07-31"
+season: "2018-19"
+source: basketball-reference.com
+notes: >
+  Ingested by mironba.data.ingest.build. Per-player salaries come from each
+  team's season page (the 'salaries2' table); transactions from the season
+  transaction log. Per-table source URLs and retrieval dates are in
+  sources.csv.
+
+  Known limits, which matter for how this data may be used:
+
+  re_sign_status is 'unknown' for every player — Basketball-Reference does not
+  publish whether a contract was a re-signing using Bird rights. The validator
+  therefore returns UNDETERMINED for base-year compensation on any trade built
+  from this snapshot. That is correct, not a defect: the information genuinely
+  is not here, and it must be supplied by hand before a fixture derived from
+  this data can be marked verified.
+
+  Salaries are season cap hits, not cap hits as of a particular date, and a
+  player traded mid-season is listed by both teams. The contracts table keeps
+  the higher figure per player-season. Summed team payroll is therefore an
+  approximation of apron salary and excludes dead money and cap holds — see
+  team_salary_estimate() in mironba/data/candidates.py.

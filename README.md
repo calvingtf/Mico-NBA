@@ -78,54 +78,57 @@ subset. Three options at 44.2, 42.9 and 41.4 come back as one tier.
 ### The deadline planner does not beat a random proposer
 
 The only place the trade solver is scored *predictively*, and the result is
-negative in a way that took a null baseline to see.
-
-Three-team trades are now parsed and scored, which doubled the scoreable
-denominator (5 → 10 real trades validated, 4 → 13 in the deadline windows):
+negative in a way that took a null baseline to see. All three seasons now have
+standings coverage, so the planner runs everywhere:
 
 | | 2023-24 | 2024-25 | 2025-26 | pooled |
 | --- | --- | --- | --- | --- |
-| proposed | 213 | 208 | 0 | **421** |
+| proposed | 213 | 208 | 252 | **673** |
+| distinct pairs covered (of 435) | 212 | 206 | 244 | — |
+| % of the pair space | 48.7% | 47.4% | 56.1% | — |
 | real trades in window | 2 | 3 | 8 | **13** |
-| matched | 2 | 3 | 0 | **5** |
-| solver legality on real trades | — | 2/3 | 3/5 | **5/8** |
+| matched | 2 | 3 | 6 | **11** |
+| recall | 100% | 100% | 75% | **85%** |
 
-**Counterparty matching read 5 of 5, and it is an artifact.** There are
-C(30,2) = 435 team pairs and the proposals cover **48.7% of them** — roughly
-one proposal per distinct pair, half the league. A three-team trade is matched
-by any of its three constituent pairs, so each real trade gets three chances.
+**Read the third row before the last one.** The proposals cover about half of
+all 435 team pairs, and a two-team proposal counts against a three-team trade,
+so each real trade has three chances to be hit:
 
-| | value |
-| --- | --- |
-| P(all 5 matched by chance at this coverage) | **0.260** |
-| Monte Carlo null mean (20,000 trials) | **3.92 of 5** |
-| P(null ≥ observed) | **0.261** |
-| Random proposer's expected precision | **2.99%** |
-| **Observed precision** | **2.14%** |
-
-**Observed precision is below chance.** The pair metric measures how much of
-the pair space 421 proposals cover, not the planner's ability to identify who
-trades with whom, and it is labelled that way from here on.
-
-**Recall must be split, not pooled.** 8 of the 13 real trades are in 2025-26,
-where the planner proposed *nothing* — that season has no game-log ingest, so
-`standings_on()` returns empty and no team gets a disposition.
-
-| seasons | real trades | matched | recall |
+| | observed | null | |
 | --- | --- | --- | --- |
-| 2023-24, 2024-25 (planner ran) | 5 | 5 | 100% |
-| 2025-26 (planner never ran) | 8 | 0 | 0% |
-| pooled | 13 | 5 | 38% |
+| counterparty matches | 11 of 13 | **10.18 expected** | P(null ≥ observed) = **0.426** |
+| precision | **2.97%** | **6.67%** random proposer | below chance |
 
-Neither number is quotable alone: the 100% is a null-level result on five
-trades, and the 38% is that same result diluted by a missing input.
+**Precision is below what a random proposer scores.** The counterparty metric
+is indistinguishable from chance. Both are labelled as measures of proposal
+volume, not of identifying who trades with whom.
 
 Two named causes were fixed before this — the disposition gate and the absence
-of any player value — and precision did not move. Applying the supplier-side
-gate symmetrically moved proposals 421 → 415 and precision not at all.
+of any player value — and precision did not move. A third refinement moved
+proposals 421 → 415 and precision not at all.
 
-**The planner enumerates legal permutations; it does not model a market.** That
-was the honest reading before the null and it is the confirmed one after it.
+**The planner enumerates legal permutations; it does not model a market.**
+
+### The validator's legality rate is a false-rejection rate
+
+The README used to say "5 of 5 on real trades". Every real trade in that set is
+legal — the league approved them — so **a validator that approves everything
+scores 100%**, and that is the null. Nothing here can reward catching an
+illegal trade, because the set contains none.
+
+| verdict on real trades | n |
+| --- | --- |
+| APPROVED | **0** |
+| UNDETERMINED | 7 |
+| REJECTED | 3 |
+
+Ours scores **70%** against a 100% null: a **30% false-rejection rate**. And the
+70% counts `UNDETERMINED` as legal — with those excluded it is **0 of 3**, because
+no real trade is ever approved outright. Every non-rejection is an undetermined,
+usually base-year compensation needing a re-sign status the ingest lacks.
+
+That the validator *rejects* illegal trades is shown by the M0 synthetic
+coverage matrix, which contains illegal ones. The two are no longer conflated.
 
 ---
 
@@ -239,6 +242,11 @@ rather than a confabulation.
   correction and not a rescue.
 - **A figure in the brief was checked and corrected.** The cash limit was given
   as one number; the sourced 2024-25 figure was another, and the source won.
+- **No metric is reported without its null.** A charter rule, added after three
+  headline numbers turned out to be artifacts of how they were computed: a 200%
+  recall, a legality rate that counted UNDETERMINED as legal, and a counterparty
+  match that a random proposer beats. `docs/measurements.md` entry 20 audits
+  every number in this README against it; three of nine fail and are relabelled.
 - **Provenance or absence.** Every league constant carries a source and a
   confidence rating. Contract structure could not be sourced for historical
   seasons, so it is absent for them rather than recalled.
@@ -261,10 +269,11 @@ rather than a confabulation.
 3. **Draft picks are not valued.** Every pick is worth zero, which makes the most
    common deadline currency invisible. Most trade rows in a deadline window carry
    no players at all — picks, cash and trade exceptions.
-4. **Trade coverage is ~15%.** Of 33 two-team trades with players on both sides
-   across three seasons, only **5 can be priced at all**; the rest hit players
-   with no salary row (20) or moved draft rights rather than contracts (8). The
-   validator is 5 of 5 on what it can see, and it can see 15%.
+4. **Trade coverage is thin and the validator errs on what it sees.** Three-team
+   parsing doubled the scoreable set to 10; the rest still hit players with no
+   salary row or moved draft rights rather than contracts. On those 10 the
+   validator rejects 3 that the league approved — a 30% false-rejection rate
+   against a 100% approve-everything null.
 5. **The GM planner in the backtest is deterministic, not an LLM.** The LLM path
    is measured separately, in the A/B above. Mixing them would make a failure
    unattributable — but the backtest scores the *rules*, not the model.

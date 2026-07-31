@@ -12,9 +12,18 @@ compressed timeline, and produce a scored, reproducible report.
 2. **Every run is reproducible.** Every simulation writes a manifest recording
    model id, quantization, temperature, seed, prompt-template hash, and data
    snapshot date. No manifest, no result.
-3. **The eval harness is the product.** Agent chatter is easy and ungradeable.
+3. **No metric without its null.** Every reported number states what a
+   do-nothing or random system would score on the same data, next to it. Three
+   metrics in this project were artifacts caught only by asking: a 200% recall
+   (numerator counted proposals, denominator counted trades), a 5-of-5 legality
+   rate (counted UNDETERMINED as legal), and a 5-of-5 counterparty match
+   (proposals covered half the pair space, so chance scores 3.92 of 5). A
+   number with no null is not a result and is labelled uninterpretable until it
+   has one.
+
+4. **The eval harness is the product.** Agent chatter is easy and ungradeable.
    `eval/` is what makes this defensible — build it early, not last.
-4. **Model-agnostic by construction.** No provider-specific code outside
+5. **Model-agnostic by construction.** No provider-specific code outside
    `llm/providers/`. The rest of the codebase sees one interface.
 
 ## Architecture

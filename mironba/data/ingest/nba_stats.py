@@ -43,6 +43,7 @@ SNAPSHOT_ROOT = Path(__file__).resolve().parents[1] / "snapshots"
 DEFAULT_SEASONS = (
     "2014-15", "2015-16", "2016-17", "2017-18", "2018-19",
     "2019-20", "2020-21", "2021-22", "2022-23", "2023-24", "2024-25",
+    "2025-26",
 )
 
 #: stats.nba.com will hang rather than 429 under load. One request per season
@@ -160,8 +161,25 @@ def fetch_game_log(season: str, *, timeout: int = 120) -> list[dict]:
 
 
 def write_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
+    """Write game logs, **merging** with seasons already on disk.
+
+    This used to open the file "w" with only the seasons just fetched, so
+    ``--games --seasons 2025-26`` silently destroyed the other three. That is a
+    bad failure: the file still parses, the sim still runs, and standings for
+    every earlier season quietly become empty. Seasons in ``logs`` replace
+    their stored version; seasons absent from it are carried through untouched.
+    """
     directory = root / "nba-stats"
     directory.mkdir(parents=True, exist_ok=True)
+    existing = directory / "game_logs.csv"
+    merged: dict[str, list[dict]] = {}
+    if existing.is_file():
+        with existing.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                merged.setdefault(row["season"], []).append(row)
+    merged.update(logs)
+    logs = merged
+
     with (directory / "game_logs.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(("season", *GAME_FIELDS))

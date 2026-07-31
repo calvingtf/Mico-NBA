@@ -591,3 +591,59 @@ was missing. **The pooled number is reported with the split beside it, always.**
 Fixing 2025-26 needs one thing: the `nba_stats` game-log ingest extended to
 that season. Every other input for it is already present — contracts,
 transactions and 8 scoreable real trades are sitting there unused.
+
+---
+
+## 19. The legality rate had no null either, and it is worse than one
+
+The README carried "validator legality on real trades: 5 of 5". Asked the
+standing question — *what would a system that does nothing score?* — it falls
+apart in two separate ways.
+
+**Every real trade in the test set is legal.** The league approved them. So a
+validator that approves everything unconditionally scores **100%**. That is the
+null, and it is the ceiling: this test set cannot reward catching an illegal
+trade, because it contains none.
+
+**Against that null, ours scores 70%** (7 of 10 not rejected). It is *below* the
+do-nothing baseline, which is the only direction possible on a set of known-legal
+trades. What the figure actually measures is a **false-rejection rate of 30%**.
+
+**And the 70% is itself inflated**, because it counts `UNDETERMINED` as legal:
+
+| verdict | n |
+|---|---|
+| APPROVED | **0** |
+| UNDETERMINED | 7 |
+| REJECTED | 3 |
+
+**Zero real trades are approved outright.** Every non-rejection is an
+undetermined — base-year compensation that needs a re-sign status the ingest
+does not carry, or a pre-2023 figure that was never sourced. With
+`UNDETERMINED` excluded the rate is **0 of 3**.
+
+**What changed.** The metric is relabelled as a false-rejection rate, which is
+what it measures, and the 5-of-5 phrasing is gone. Demonstrating that the
+validator *catches* illegal trades needs a test set containing illegal trades —
+the synthetic coverage matrix from M0 does that job, and the two are no longer
+conflated. Note also that the rate was 5 of 5 on two-team trades and 7 of 10 once
+three-team trades were parsed: the new denominator brought in the first cases that
+exercise second-apron aggregation, and the validator got some of them wrong.
+
+## 20. The null audit
+
+Every number in the README, against the standing rule.
+
+| metric | value | null | verdict |
+|---|---|---|---|
+| LLM legal trade proposals | 0 of 12 | ~0 by chance | **holds** — the claim is negative and the null agrees |
+| Three-arm A/B, unreachable targets | 65.5% → 0% | each arm is the others' control; stand-pat 19.4/19.4/20.7% | **holds** — controlled comparison |
+| Value model MAE | 7.49 | 7.99 (regress to .500) | **holds**, and reported as not beating it (p=0.159) |
+| Win-delta error sd | 10.48 | 11.99 (always predict 0) | **holds** — carries signal, r=+0.49 |
+| Scheduler wake savings | 74% | polling every agent, the thing measured against | **holds** |
+| Deadline precision | 2.97% | 6.67% random proposer | **fails** — below chance |
+| Deadline counterparty match | 11 of 13 | 10.18 expected, P(null≥obs)=0.426 | **fails** — indistinguishable |
+| Validator legality | 70% | 100% approve-everything | **fails** — below chance; see entry 19 |
+| Signing backtest precision | 14.3% | ~2.1% drawing from the 522-player pool | **holds, weakly** — beats a naive null ~7x, but the pool is generous to us; a tighter null over only the real free-agent pool would be higher and has not been computed |
+
+Three of nine fail. All three were headline numbers.
