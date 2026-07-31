@@ -511,3 +511,83 @@ localises the limit to value resolution, which is a different project.
   reported, never scored.
 
 ---
+
+---
+
+## 17. The pair metric was measuring proposal volume, not skill
+
+Counterparty matching read **5 of 5** at the deadline, which looks like the one
+thing the planner does well. It is not a result. It had never been tested
+against a null, and the null destroys it.
+
+**Coverage first.** There are C(30,2) = 435 team pairs. The planner's proposals
+cover:
+
+| season | proposals | distinct pairs | % of pair space |
+|---|---|---|---|
+| 2023-24 | 213 | 212 | **48.7%** |
+| 2024-25 | 208 | 206 | **47.4%** |
+| 2025-26 | 0 | 0 | 0% |
+| pooled | 421 | 302 | 69.4% |
+
+Essentially one proposal per distinct pair, covering half the league. And a
+three-team trade is matched by any of its C(3,2)=3 constituent pairs, so each
+real trade has three chances rather than one.
+
+**Exact null.** Drawing the same number of distinct pairs uniformly at random:
+
+| trade | qualifying pairs | P(hit by chance) | observed |
+|---|---|---|---|
+| IND/PHI/SAS | 3 | 0.866 | HIT |
+| BKN/PHX/MEM | 3 | 0.866 | HIT |
+| LAC/UTA | 1 | 0.474 | HIT |
+| CHI/SAC/SAS | 3 | 0.855 | HIT |
+| MEM/SAC/WAS | 3 | 0.855 | HIT |
+
+**P(all five matched by chance) = 0.260.**
+
+**Monte Carlo, 20,000 trials**, same proposal counts, pairs drawn at random:
+
+```
+matches   0      1      2       3       4       5
+share   0.0%   0.5%   4.7%   22.5%   46.1%   26.1%
+```
+
+Null mean **3.92 of 5**; observed 5. **P(null >= observed) = 0.261.**
+
+**Precision is worse than that.** Only 13 of 435 pairs would count as a hit at
+all, so a random proposer's expected precision is **2.99%**. The planner's
+observed precision is **2.14%** — *below* chance.
+
+**What changed.** The counterparty-match figure is relabelled everywhere it
+appears. It measures how much of the pair space 421 proposals cover, which is
+half of it, and not the planner's ability to identify who trades with whom. A
+metric that a random proposer beats is not evidence about a planner.
+
+This is the third time a number in this project looked like a result and turned
+out to be an artifact of how it was computed — after the 200% recall and the
+5-of-5 legality rate that counted UNDETERMINED as legal. The pattern is
+specific: **a numerator and a denominator that were never asked what they would
+do if the system did nothing.**
+
+## 18. Recall, split by whether the planner could run at all
+
+Pooled recall of 5 of 13 (38%) averages two incomparable things.
+
+| seasons | real trades | matched | recall | why |
+|---|---|---|---|---|
+| 2023-24, 2024-25 | 5 | 5 | **100%** | planner ran |
+| 2025-26 | 8 | 0 | **0%** | planner proposed nothing |
+| pooled | 13 | 5 | 38% | — |
+
+2025-26 has no game-log ingest, so `standings_on()` returns empty, every team
+comes back with no disposition, and no team acts. Zero proposals is not a
+failure to identify trades — it is the planner never running.
+
+So neither figure is quotable alone. 100% is a null-level result on five
+trades (entry 17). 38% is that same result diluted by a season where the input
+was missing. **The pooled number is reported with the split beside it, always.**
+
+Fixing 2025-26 needs one thing: the `nba_stats` game-log ingest extended to
+that season. Every other input for it is already present — contracts,
+transactions and 8 scoreable real trades are sitting there unused.

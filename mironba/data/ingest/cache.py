@@ -26,6 +26,24 @@ from pathlib import Path
 #: return 429 and then block outright. 3.5s keeps us under that with headroom.
 #: Seconds between requests to the same host.
 #:
+#: **Anyone running the backfill from this repo will hit this wall.**
+#: Basketball-Reference allows roughly 20 requests per minute and answers a
+#: violation with HTTP 429 for about an hour - not a per-request rejection, a
+#: block on everything from that address. A seven-season backfill is ~217 page
+#: fetches, so it runs for a quarter of an hour with no margin for anything
+#: else touching the site at the same time.
+#:
+#: Two rules follow, learned by breaking both:
+#:
+#: 1. Do not fetch anything by hand while a backfill is running. The backfill
+#:    alone at 3.5s is ~17/min, inside the limit; a few manual verification
+#:    fetches alongside it are what actually tripped the ban, two thirds of the
+#:    way through the first season.
+#: 2. A 429 is not retried. The cache raises FetchError and the season is
+#:    reported as incomplete rather than partially loaded, because a snapshot
+#:    missing an unknown subset of teams produces payrolls that are wrong in a
+#:    direction nothing downstream can detect.
+#:
 #: Raised from 3.5s after a seven-season backfill was cut off by an HTTP 429.
 #: Basketball-Reference allows roughly 20 requests a minute and bans for about
 #: an hour on violation; 3.5s is ~17/min, close enough to the line that a few

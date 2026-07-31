@@ -75,98 +75,57 @@ refuses to rank inside its own error bar: two projections must differ by
 **10.5 wins** to be called apart, which is `z·sd·√2` on the *favourable* 7.40
 subset. Three options at 44.2, 42.9 and 41.4 come back as one tier.
 
-### The deadline planner's precision is 1 in 421
+### The deadline planner does not beat a random proposer
 
-The only place the trade solver is scored *predictively*. Three deadlines, each
-frozen on the day:
+The only place the trade solver is scored *predictively*, and the result is
+negative in a way that took a null baseline to see.
+
+Three-team trades are now parsed and scored, which doubled the scoreable
+denominator (5 → 10 real trades validated, 4 → 13 in the deadline windows):
 
 | | 2023-24 | 2024-25 | 2025-26 | pooled |
 | --- | --- | --- | --- | --- |
 | proposed | 213 | 208 | 0 | **421** |
-| real two-team trades | 0 | 1 | 3 | **4** |
-| counterparty pairs matched | 0 | 1 | 0 | **1** |
-| solver legality on real trades | — | 1/1 | 3/3 | **4/4** |
+| real trades in window | 2 | 3 | 8 | **13** |
+| matched | 2 | 3 | 0 | **5** |
+| solver legality on real trades | — | 2/3 | 3/5 | **5/8** |
 
-Three causes were named. **Two were fixed and the headline did not move**:
+**Counterparty matching read 5 of 5, and it is an artifact.** There are
+C(30,2) = 435 team pairs and the proposals cover **48.7% of them** — roughly
+one proposal per distinct pair, half the league. A three-team trade is matched
+by any of its three constituent pairs, so each real trade gets three chances.
 
-1. *The disposition gate was wrong, and two green tests had pinned it there.*
-   It thresholded games back with the value model's win-delta error — a
-   projection's spread applied to a completed fact. 23 of 30 teams came back
-   `AMBIGUOUS` and acted on neither side, so the sim missed every deal between
-   middling teams. Measured over 90 team-seasons (37/37 of teams 4+ games clear
-   made the top ten; 18/18 of teams 3+ back did not), the bands are 3.0 and 4.0,
-   giving 12 buyers / 6 sellers / 12 ambiguous. Ambiguous teams now act.
-2. *The planner had no notion of value.* It ordered targets by cost and proposed
-   Jayson Tatum and Payton Pritchard for Zion Williamson. It now uses the
-   **previous completed season**, pre-freeze by construction. That alone was not
-   enough — value gates only the acquiring side and is near zero-sum, so the
-   first run with it sent Curry *and* Embiid to Atlanta on the same tick. A
-   supplier-side gate cut proposals 380 → 208 and took the absurdities with it.
-3. *The two-team restriction is not fixable here*, and is a stated limit below.
+| | value |
+| --- | --- |
+| P(all 5 matched by chance at this coverage) | **0.260** |
+| Monte Carlo null mean (20,000 trials) | **3.92 of 5** |
+| P(null ≥ observed) | **0.261** |
+| Random proposer's expected precision | **2.99%** |
+| **Observed precision** | **2.14%** |
 
-Applying that gate symmetrically — the proposing team's outgoing package must
-also survive its own disposition — moved proposals 421 → 415 and precision not
-at all. Left off by default, and recorded as measured rather than assumed.
+**Observed precision is below chance.** The pair metric measures how much of
+the pair space 421 proposals cover, not the planner's ability to identify who
+trades with whom, and it is labelled that way from here on.
 
-**The planner enumerates legal permutations; it does not model a market.** Two
-of three causes are gone and it is still two orders of magnitude too eager.
-That is the honest headline.
+**Recall must be split, not pooled.** 8 of the 13 real trades are in 2025-26,
+where the planner proposed *nothing* — that season has no game-log ingest, so
+`standings_on()` returns empty and no team gets a disposition.
 
----
+| seasons | real trades | matched | recall |
+| --- | --- | --- | --- |
+| 2023-24, 2024-25 (planner ran) | 5 | 5 | 100% |
+| 2025-26 (planner never ran) | 8 | 0 | 0% |
+| pooled | 13 | 5 | 38% |
 
-## Run it
+Neither number is quotable alone: the 100% is a null-level result on five
+trades, and the 38% is that same result diluted by a missing input.
 
-```bash
-python -m mironba.eval.backtest      # the whole LeBron 2026 backtest, scored
-```
+Two named causes were fixed before this — the disposition gate and the absence
+of any player value — and precision did not move. Applying the supplier-side
+gate symmetrically moved proposals 421 → 415 and precision not at all.
 
-One command, no arguments. Recorded output, so you never have to run it:
-
-```
-  BRANCHES
-
-  signs_elsewhere  [ACTUAL]
-    GSW  Kentavious Caldwell-Pope, Seth Curry, DeMar DeRozan
-    MIA  Keshad Johnson, Maxi Kleber, Jonas Valančiūnas, Jahmir Young
-    PHI  LeBron James, Emoni Bates, Kyle Lowry, Cameron Payne, Anfernee Simons
-    8 contested, 0 resolved arbitrarily
-    scheduler: 17 wakes vs 65 polled (74% saved)
-
-  signs_with_blocker  [COUNTERFACTUAL]
-    GSW  LeBron James, Kentavious Caldwell-Pope, Seth Curry
-    PHI  Emoni Bates, Kyle Lowry, Cameron Payne, Anfernee Simons
-    8 contested, 1 resolved arbitrarily
-
-  SCORED - signs_elsewhere only. The counterfactual has no ground
-  truth and never will, so it is not scored.
-
-  signings only (headline)     recall  50.0%   precision   7.1%   (hits 1 of 2)
-  all post-freeze arrivals     recall  18.2%   precision  14.3%   (hits 2 of 11)
-  contested-player accuracy    0 of 1 resolvable (0%)
-
-  LeBron's destination is the branch premise, not a prediction.
-  Predictive recall on non-stipulated signings is 0 of 1.
-
-  LEAKAGE AUDIT
-  OK  evidence file (PRE partition)     16 checked  20 POST items withheld
-  OK  conditional commitments            4 checked  2 POST commitments withheld
-  OK  transaction log (2025-26)       1131 checked  2 post-freeze row(s) excluded
-  OK  player performance ingest         11 checked  seasons 2014-15..2024-25
-  OK  contract snapshot (GSW roster)    12 checked  5 post-freeze signing(s) excluded
-```
-
-Read the last block first. **Predictive recall on non-stipulated signings is 0
-of 1** — the one headline hit is LeBron to Philadelphia, which is the branch
-*premise*, not a prediction. The simulation does get closer than it did:
-correcting Philadelphia's freeze state to include Jaylen Brown's $57.1M moved
-its offer from $40.9M of cap space to the $15,044,000 mid-level. It does not
-reach the $3,876,529 minimum he actually took, because at $181.1M Philadelphia
-was genuinely under the apron and the mid-level really was available. Cap
-mechanics alone do not force that contract.
-
-Needs the data snapshots rebuilt first — see [Reproducing the data
-snapshot](docs/milestones.md#reproducing-the-data-snapshot). Salary tables are
-not redistributed; the ingest that fetches them is.
+**The planner enumerates legal permutations; it does not model a market.** That
+was the honest reading before the null and it is the confirmed one after it.
 
 ---
 
@@ -286,17 +245,19 @@ rather than a confabulation.
 
 ## Limitations, in order of how much they cost
 
-1. **There is no market model.** The planner enumerates legal permutations and
-   proposes 421 of them where roughly fifteen trades happened. Fixing it needs
+1. **There is no market model, and the planner does not beat a random one.**
+   It proposes 421 legal permutations covering half the 435-pair space, and its
+   precision (2.14%) is *below* a random proposer's (2.99%). Fixing it needs
    value resolution finer than the evaluation layer has — the measured delta
-   error is 10.48 wins and deadline trades turn on differences far smaller than
-   that. This is measured, not assumed: two named causes were fixed and
+   error is 10.48 wins and deadline trades turn on far less. Measured, not
+   assumed: two named causes were fixed, a third refinement tried, and
    precision did not move.
-2. **Trades are two-team only, and real deadline business is not.** On
-   2025-02-06 there were 13 trades and *not one* was a two-team deal with players
-   moving both ways. Pooled across three deadlines that leaves **4** scoreable
-   trades, so no precision claim is made from that denominator and recall is
-   reported as a count.
+2. **The scoreable denominator is 13, and 8 of those are unreachable.** Adding
+   three-team trades doubled it (5 → 10 validated, 4 → 13 in deadline windows),
+   but 2025-26 has no game-log ingest, so the planner never ran there. Recall
+   is always reported split by whether the planner could run at all. Extending
+   the ingest backwards is blocked on a Basketball-Reference rate limit, not on
+   anything in this repo.
 3. **Draft picks are not valued.** Every pick is worth zero, which makes the most
    common deadline currency invisible. Most trade rows in a deadline window carry
    no players at all — picks, cash and trade exceptions.
