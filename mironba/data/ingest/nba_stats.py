@@ -131,6 +131,46 @@ def fetch_season(season: str, *, timeout: int = 120) -> SeasonPull:
     )
 
 
+GAME_FIELDS = (
+    "TEAM_ID", "TEAM_ABBREVIATION", "GAME_ID", "GAME_DATE", "MATCHUP", "WL",
+    "PTS", "PLUS_MINUS",
+)
+
+
+def fetch_game_log(season: str, *, timeout: int = 120) -> list[dict]:
+    """Every regular-season game, dated, one row per team.
+
+    This is what makes an in-season scenario possible at all: with it, a team's
+    record on any given date is a filter rather than a guess. Without it the
+    only available standings are end-of-season, which is the answer the
+    simulation is supposed to be predicting.
+    """
+    from nba_api.stats.endpoints import leaguegamelog
+
+    _throttle()
+    try:
+        frame = leaguegamelog.LeagueGameLog(
+            season=season, season_type_all_star="Regular Season", timeout=timeout
+        ).get_data_frames()[0]
+    except Exception as exc:  # noqa: BLE001
+        raise StatsFetchError(f"{season} games: {type(exc).__name__}: {exc}") from exc
+    if len(frame) < 1000:
+        raise StatsFetchError(f"{season}: only {len(frame)} game rows")
+    return frame[list(GAME_FIELDS)].to_dict("records")
+
+
+def write_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
+    directory = root / "nba-stats"
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / "game_logs.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(("season", *GAME_FIELDS))
+        for season, rows in sorted(logs.items()):
+            for row in rows:
+                writer.writerow((season, *(row.get(f) for f in GAME_FIELDS)))
+    return directory
+
+
 def write_snapshot(pulls: list[SeasonPull], root: Path = SNAPSHOT_ROOT) -> Path:
     directory = root / "nba-stats"
     directory.mkdir(parents=True, exist_ok=True)
@@ -203,7 +243,26 @@ notes: >
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest NBA box-score seasons.")
     parser.add_argument("--seasons", nargs="+", default=list(DEFAULT_SEASONS))
+    parser.add_argument("--games", action="store_true",
+                        help="fetch dated game logs instead of season totals")
     args = parser.parse_args(argv)
+
+    if args.games:
+        logs, failures = {}, []
+        for season in args.seasons:
+            try:
+                logs[season] = fetch_game_log(season)
+            except StatsFetchError as exc:
+                failures.append(str(exc))
+                print(f"  ! {exc}", flush=True)
+                continue
+            dates = [r["GAME_DATE"] for r in logs[season]]
+            print(f"  {season}: {len(logs[season])} team-games, "
+                  f"{min(dates)} -> {max(dates)}", flush=True)
+        if not logs:
+            return 1
+        print(f"\nOK  {len(logs)} season(s) -> {write_game_logs(logs)}")
+        return 0 if not failures else 1
 
     pulls: list[SeasonPull] = []
     failures: list[str] = []

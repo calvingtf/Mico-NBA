@@ -1,0 +1,63 @@
+{
+  "unlock": {
+    "arm": "unlock",
+    "trials": 12,
+    "completed": 5,
+    "incomplete": 0,
+    "calls": 15,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 102.97,
+    "median_latency_s": 89.25,
+    "p90_latency_s": 171.44,
+    "intents": 5,
+    "intent_satisfiable_first": 1.0,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 0,
+    "revisions_that_became_satisfiable": 0,
+    "revision_rescue_rate": null,
+    "mean_packages_per_satisfiable_intent": 4.4,
+    "declined_all_count": 1,
+    "decline_reasons": [
+      "None of the proposed packages provide clear basketball merit or financial flexibility aligned with a 3-year competitive window. The Bulls already have sufficient guard depth (White, Giddey, Jones, Dos"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 4e-05,
+    "scan_solve_p50_s": 0.0208,
+    "scan_solve_worst_s": 0.0217,
+    "mean_feasible_targets": 13.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 5,
+    "off_list_rate": 0.0,
+    "selection_indices": {
+      "1": 3,
+      "2": 1
+    },
+    "solver_p50_s": 0.0002,
+    "solver_worst_s": 0.0008,
+    "binding_constraints": {},
+    "verdicts_first": {
+      "approved": 4
+    },
+    "verdicts_final": {
+      "approved": 4
+    },
+    "outcomes": {
+      "traded": 4,
+      "declined_all": 1,
+      "server_error": 1
+    },
+    "trials_that_retried": 0,
+    "run_ids": [
+      "mid-flexibility-bulls-20260731T185652Z-1e9388bc",
+      "mid-flexibility-bulls-20260731T190038Z-0ffda06f",
+      "mid-flexibility-bulls-20260731T190501Z-6cbeaff6",
+      "mid-flexibility-bulls-20260731T190949Z-9eacda19",
+      "mid-flexibility-bulls-20260731T191427Z-5c920427"
+    ]
+  }
+}

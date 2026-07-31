@@ -1,0 +1,71 @@
+{
+  "unlock": {
+    "arm": "unlock",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 24,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 70.21,
+    "median_latency_s": 73.28,
+    "p90_latency_s": 85.32,
+    "intents": 6,
+    "intent_satisfiable_first": 1.0,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 0,
+    "revisions_that_became_satisfiable": 0,
+    "revision_rescue_rate": null,
+    "mean_packages_per_satisfiable_intent": 2.0,
+    "declined_all_count": 3,
+    "decline_reasons": [
+      "High asset hoarding parameter (0.8) combined with a young roster and available cap space makes trading assets like Sasser or Duren for a veteran role player like Richardson unattractive. Low risk tole",
+      "With a high asset-hoarding preference (0.8) and low risk tolerance (0.3), swapping veterans for Collin Sexton offers no clear competitive advantage for a 2-year win-now horizon. The proposed packages ",
+      "With a risk tolerance of 0.3 and asset hoarding of 0.8, trading a known veteran like Tobias Harris for John Collins (who carries injury risk) is too risky and unnecessary given the short win-now horiz"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 4e-05,
+    "scan_solve_p50_s": 0.0035,
+    "scan_solve_worst_s": 0.0037,
+    "mean_feasible_targets": 11.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 6,
+    "off_list_rate": 0.0,
+    "selection_indices": {
+      "0": 3
+    },
+    "solver_p50_s": 0.0002,
+    "solver_worst_s": 0.0003,
+    "binding_constraints": {},
+    "verdicts_first": {
+      "undetermined": 3
+    },
+    "verdicts_final": {
+      "undetermined": 3
+    },
+    "outcomes": {
+      "declined_all": 3,
+      "stood_pat": 6,
+      "traded": 3
+    },
+    "trials_that_retried": 0,
+    "run_ids": [
+      "undetermined-byc-20260731T182553Z-fc92a93c",
+      "undetermined-byc-20260731T182942Z-750f96c0",
+      "undetermined-byc-20260731T183100Z-521a6c1f",
+      "undetermined-byc-20260731T183227Z-b4e00f70",
+      "undetermined-byc-20260731T183654Z-f90b85b2",
+      "undetermined-byc-20260731T183819Z-1c6bea24",
+      "undetermined-byc-20260731T184144Z-97deb213",
+      "undetermined-byc-20260731T184702Z-a48117da",
+      "undetermined-byc-20260731T184819Z-73ad7bd6",
+      "undetermined-byc-20260731T184958Z-12e3424a",
+      "undetermined-byc-20260731T185308Z-b2f4c2b7",
+      "undetermined-byc-20260731T185550Z-0089532e"
+    ]
+  }
+}

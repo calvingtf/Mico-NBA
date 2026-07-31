@@ -1,0 +1,18 @@
+#!/bin/sh
+# Run the suite before every commit.
+#
+# Written after a commit went in while the tests were still running, and the
+# suite turned out to be red: moving the coverage matrix out of README.md had
+# broken the M0 gate. The commit was clean-looking and wrong, and nothing
+# stopped it.
+#
+# Skip deliberately with `git commit --no-verify` when you mean to.
+set -e
+echo "pre-commit: running the test suite..."
+if ! python -m pytest -q --no-header -x; then
+    echo
+    echo "pre-commit: tests failed. Commit refused."
+    echo "  Fix them, or use --no-verify if you know why you are committing red."
+    exit 1
+fi
+echo "pre-commit: green."

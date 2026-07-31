@@ -81,7 +81,19 @@ comparison layer refuses to rank them.
 
 **Multi-team backtest, scored on signings only:** recall 50% (1 of 2), precision
 7.1%. The one hit is LeBron to Philadelphia, *which is the branch premise rather
-than a prediction*. Predictive recall on non-stipulated signings is **0 of 1**.
+than a prediction*.
+
+| named metric | value |
+| --- | --- |
+| **Predictive recall on non-stipulated signings** | **0 of 1** |
+
+That is the number to watch, and it is currently zero. The sim does get closer
+than it did: correcting Philadelphia's freeze state to include Jaylen Brown's
+$57.1M moved its LeBron offer from $40.9M of cap space to the $15,044,000
+mid-level. But it does not reach the $3,876,529 minimum he actually took,
+because at $181.1M Philadelphia was genuinely under the apron and the mid-level
+was really available. Cap mechanics alone do not force that contract — the only
+evidence for it is a statement dated after the freeze.
 
 ## What is honest about it
 
