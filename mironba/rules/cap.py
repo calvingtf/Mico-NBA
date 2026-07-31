@@ -139,7 +139,20 @@ def _self_consistent_tier(
     tier (or lower). This resolves the circularity between "how much can you
     take back" and "which tier are you in afterwards".
     """
-    for tier in (ApronTier.UNDER_CAP, ApronTier.FIRST_APRON, ApronTier.SECOND_APRON):
+    # Every tier, most permissive first. OVER_CAP was missing here, and its
+    # absence was not a cosmetic gap: a team over the cap but below the first
+    # apron — the most common situation in the league — fell through to the
+    # FIRST_APRON branch and got flat 100% apron matching instead of the
+    # bracket table. At $20M outgoing that is $20M back rather than $27.75M,
+    # so the validator rejected trades the CBA plainly allows. Found by the
+    # solver, which could not construct a legal package for an ordinary
+    # over-cap team and made the discrepancy impossible to miss.
+    for tier in (
+        ApronTier.UNDER_CAP,
+        ApronTier.OVER_CAP,
+        ApronTier.FIRST_APRON,
+        ApronTier.SECOND_APRON,
+    ):
         limit = max_incoming_salary(
             outgoing, team_salary_before, env, post_trade_tier=tier
         )

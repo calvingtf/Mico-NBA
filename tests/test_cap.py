@@ -10,6 +10,7 @@ import pytest
 
 from mironba.rules.cap import (
     ApronTier,
+    _self_consistent_tier,
     can_fit_without_aggregating,
     exception_match_limit,
     max_incoming_salary,
@@ -220,3 +221,54 @@ def test_a_team_at_the_cap_can_always_absorb_the_cushion(season):
     env = environment_for(season)
     limit = max_incoming_salary(0, env.salary_cap, env, post_trade_tier=ApronTier.UNDER_CAP)
     assert limit == 250_000
+
+
+class TestSelfConsistentTierCoversEveryTier:
+    """Regression: OVER_CAP was missing from the tier search.
+
+    `_self_consistent_tier` resolves the circularity between "how much can this
+    team take back" and "which tier does that leave it in". It iterated
+    UNDER_CAP, FIRST_APRON, SECOND_APRON and skipped OVER_CAP, so a team over
+    the cap but below the first apron — most of the league, most of the time —
+    fell through to the apron branch and received flat 100% matching instead of
+    the bracket table.
+
+    The M0 coverage matrix was 16/16 green throughout, because every FORMULA
+    fixture either sat under the cap or passed `post_trade_tier` explicitly.
+    The gap was in the *resolution* of the tier, not in any bracket. Found only
+    when the solver could not build a legal package for an ordinary over-cap
+    team and the arithmetic had to be reconciled by hand.
+    """
+
+    def test_every_tier_is_reachable(self):
+        env = environment_for("2024-25")
+        reached = {
+            _self_consistent_tier(20_000_000, salary, env)
+            for salary in (
+                env.salary_cap - 30_000_000,
+                env.salary_cap + 10_000_000,
+                env.first_apron + 2_000_000,
+                env.second_apron + 8_000_000,
+            )
+        }
+        assert ApronTier.OVER_CAP in reached, (
+            "OVER_CAP is unreachable — the tier search is skipping it again"
+        )
+
+    def test_an_over_cap_team_gets_the_bracket_table_not_apron_matching(self):
+        env = environment_for("2024-25")
+        salary = env.salary_cap + 10_000_000       # over cap, far below apron
+        assert _self_consistent_tier(20_000_000, salary, env) is ApronTier.OVER_CAP
+        allowed = max_incoming_salary(20_000_000, salary, env)
+        assert allowed == exception_match_limit(20_000_000, env)
+        assert allowed > pct_of(20_000_000, env.apron_match_pct), (
+            "an over-cap team is being held to apron matching"
+        )
+
+    def test_an_apron_team_still_gets_apron_matching(self):
+        """The fix must not have loosened the tiers that should be strict."""
+        env = environment_for("2024-25")
+        salary = env.first_apron + 2_000_000
+        assert max_incoming_salary(20_000_000, salary, env) == pct_of(
+            20_000_000, env.apron_match_pct
+        )
