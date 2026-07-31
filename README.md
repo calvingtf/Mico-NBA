@@ -97,6 +97,15 @@ than a prediction*.
 | named metric | value |
 | --- | --- |
 | **Predictive recall on non-stipulated signings** | **0 of 1** |
+| **Validator legality on real trades** | **5 of 5** (100%), n=5 |
+
+The second caps everything downstream: a validator that rejects real trades
+would make every simulated market wrong in the same direction. It was 4 of 6
+before service years were sourced and draft-rights trades were separated out
+from contract trades. But the denominator is the story — of 33 two-team trades
+with players on both sides across three seasons, only **5 can be priced at
+all**. The rest hit players with no salary row (20) or were trades of draft
+rights rather than contracts (8). 100% of what it can see, and it can see 15%.
 
 That is the number to watch, and it is currently zero. The sim does get closer
 than it did: correcting Philadelphia's freeze state to include Jaylen Brown's

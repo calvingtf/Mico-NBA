@@ -58,6 +58,78 @@ SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 #: legality rate rather than counted against the validator.
 ROSTER_UNKNOWN = 14
 
+
+def _service_years(season: str) -> dict[str, int]:
+    """Years of NBA service per Basketball-Reference id, as of ``season``.
+
+    From ``careers.csv`` (stats.nba.com FROM_YEAR), matched to contract ids by
+    normalised name. This is what the minimum-salary scale keys on, and nothing
+    in the Basketball-Reference ingest carries it. Without it every player fell
+    to the zero-experience minimum, which refuses the minimum-salary exception
+    to players who qualify and rejects trades the league allowed.
+    """
+    import unicodedata
+
+    careers = SNAPSHOTS / "nba-stats" / "careers.csv"
+    if not careers.is_file():
+        return {}
+
+    def norm(name: str) -> str:
+        text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+        return re.sub(r"[^a-z]", "", text.lower())
+
+    from_year: dict[str, int] = {}
+    with careers.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            try:
+                from_year[norm(row["DISPLAY_FIRST_LAST"])] = int(row["FROM_YEAR"])
+            except (TypeError, ValueError):
+                continue
+
+    start = int(season[:4])
+    out: dict[str, int] = {}
+    players = SNAPSHOTS / f"bbref-{season}" / "players.csv"
+    if not players.is_file():
+        return {}
+    with players.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            debut = from_year.get(norm(row["name"]))
+            if debut is None:
+                continue
+            out[row["player_id"]] = max(0, start - debut)
+    return out
+
+
+def _season_ids(season: str) -> set[str]:
+    path = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
+    if not path.is_file():
+        return set()
+    with path.open(encoding="utf-8", newline="") as handle:
+        return {r["player_id"] for r in csv.DictReader(handle)}
+
+
+def _draft_rights(season: str) -> set[str]:
+    """Players whose rights, not contracts, were being traded.
+
+    A player with no contract in the season being priced but one in an
+    adjacent season had rights rather than salary at the time. Matching does
+    not apply to him, so validating such a trade measures a category error
+    rather than the validator - both first-run rejections were draft-night
+    deals of exactly this kind.
+
+    Checked in both directions because the transaction log for a season runs
+    from the previous June to the following June, so it contains draft nights
+    at both ends: incoming rookies at the start and the next class at the end.
+    """
+    start = int(season[:4])
+    previous = f"{start - 1}-{str(start % 100).zfill(2)}"
+    following = f"{start + 1}-{str((start + 2) % 100).zfill(2)}"
+    now = _season_ids(season)
+    return (
+        (now - _season_ids(previous))
+        | (_season_ids(following) - now)
+    )
+
 #: "The <A> traded <out> to the <B> for <in>." Both halves carry {{id}} marks.
 _TWO_TEAM = re.compile(
     r"^The (?P<a>.+?) traded (?P<out>.+?) to the (?P<b>.+?) for (?P<back>.+?)\.?$"
@@ -143,6 +215,7 @@ class TradeCheck:
     verdict: Verdict | None
     errors: tuple[str, ...]
     missing: tuple[str, ...]
+    skip_reason: str = "no salary"
 
     @property
     def scored(self) -> bool:
@@ -156,7 +229,7 @@ class TradeCheck:
         if not self.scored:
             return (
                 f"  SKIP {self.trade.when} {self.trade.team_a}/{self.trade.team_b}"
-                f"  no salary for {', '.join(self.missing[:3])}"
+                f"  {self.skip_reason}: {', '.join(self.missing[:3])}"
             )
         mark = {"approved": "OK  ", "undetermined": "?   "}.get(
             self.verdict.value, "NO  "
@@ -175,7 +248,17 @@ def check(trade: RealTrade) -> TradeCheck:
     everyone = trade.a_sends + trade.b_sends
     missing = tuple(p for p in everyone if p not in salary)
     if missing:
-        return TradeCheck(trade, None, (), missing)
+        return TradeCheck(trade, None, (), missing, skip_reason="no salary")
+
+    # Draft-rights trades are not contract trades: a player with no contract
+    # in the season being priced has rights rather than salary, and matching
+    # does not apply to him. Both first-run rejections were draft-night deals
+    # of exactly this kind.
+    rights = _draft_rights(trade.season) & set(everyone)
+    if rights:
+        return TradeCheck(
+            trade, None, (), tuple(sorted(rights)), skip_reason="draft rights",
+        )
 
     # Roster count on the trade date is not in the ingest either - the
     # contracts table is a season total and counts everyone who appeared. Both
@@ -184,11 +267,13 @@ def check(trade: RealTrade) -> TradeCheck:
     # Roster-limit rejections are reported separately for the same reason.
     a = TeamTradeState(trade.team_a, payroll.get(trade.team_a, 0), ROSTER_UNKNOWN)
     b = TeamTradeState(trade.team_b, payroll.get(trade.team_b, 0), ROSTER_UNKNOWN)
+    service = _service_years(trade.season)
     players = tuple(
         PlayerAsset(
             player_id=pid, name=pid, salary=salary[pid],
             from_team=trade.team_a, to_team=trade.team_b,
             re_sign_status=ReSignStatus.UNKNOWN,
+            years_of_service=service.get(pid),
         )
         for pid in trade.a_sends
     ) + tuple(
@@ -196,6 +281,7 @@ def check(trade: RealTrade) -> TradeCheck:
             player_id=pid, name=pid, salary=salary[pid],
             from_team=trade.team_b, to_team=trade.team_a,
             re_sign_status=ReSignStatus.UNKNOWN,
+            years_of_service=service.get(pid),
         )
         for pid in trade.b_sends
     )

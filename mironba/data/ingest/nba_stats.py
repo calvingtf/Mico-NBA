@@ -171,6 +171,43 @@ def write_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
     return directory
 
 
+CAREER_FIELDS = ("PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR")
+
+
+def fetch_careers(season: str = "2024-25", *, timeout: int = 120) -> list[dict]:
+    """First and last season for every player in league history.
+
+    Service years are what the minimum-salary scale keys on, and nothing in the
+    Basketball-Reference ingest carries them. Without this the validator falls
+    back to the zero-experience minimum for everyone, which refuses the
+    minimum-salary exception to players who qualify for it and rejects real
+    trades. One call returns every player who has ever appeared.
+    """
+    from nba_api.stats.endpoints import commonallplayers
+
+    _throttle()
+    try:
+        frame = commonallplayers.CommonAllPlayers(
+            is_only_current_season=0, season=season, timeout=timeout
+        ).get_data_frames()[0]
+    except Exception as exc:  # noqa: BLE001
+        raise StatsFetchError(f"careers: {type(exc).__name__}: {exc}") from exc
+    if len(frame) < 4000:
+        raise StatsFetchError(f"careers: only {len(frame)} players")
+    return frame[list(CAREER_FIELDS)].to_dict("records")
+
+
+def write_careers(rows: list[dict], root: Path = SNAPSHOT_ROOT) -> Path:
+    directory = root / "nba-stats"
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / "careers.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(CAREER_FIELDS)
+        for row in rows:
+            writer.writerow([row.get(f) for f in CAREER_FIELDS])
+    return directory
+
+
 def write_snapshot(pulls: list[SeasonPull], root: Path = SNAPSHOT_ROOT) -> Path:
     directory = root / "nba-stats"
     directory.mkdir(parents=True, exist_ok=True)
@@ -245,7 +282,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seasons", nargs="+", default=list(DEFAULT_SEASONS))
     parser.add_argument("--games", action="store_true",
                         help="fetch dated game logs instead of season totals")
+    parser.add_argument("--careers", action="store_true",
+                        help="fetch first/last season per player (service years)")
     args = parser.parse_args(argv)
+
+    if args.careers:
+        rows = fetch_careers()
+        print(f"  {len(rows)} players")
+        print(f"OK  careers -> {write_careers(rows)}")
+        return 0
 
     if args.games:
         logs, failures = {}, []
