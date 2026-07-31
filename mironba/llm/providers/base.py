@@ -33,6 +33,11 @@ class SamplingParams:
     max_tokens: int = 1024
     context_length: int | None = None
     stop: tuple[str, ...] = ()
+    #: How many transformer layers to place on the GPU. None lets the server
+    #: decide, which is usually right and was observably wrong here: with
+    #: 22.9 GiB free the scheduler put a 21.5 GiB model entirely on the CPU and
+    #: stayed there. Generic name; each provider translates it, or ignores it.
+    gpu_layers: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +61,40 @@ class RawCompletion:
         on our side, not a capability finding about the model.
         """
         return self.finish_reason in {"length", "max_tokens"}
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeInfo:
+    """How the model is actually resident right now.
+
+    A latency number is meaningless without this. The same model at the same
+    quantization ran roughly six times slower in one M1 batch than another
+    because part of it had spilled to system RAM, and nothing in the manifest
+    said so — which would have made an M5 latency comparison silently invalid.
+
+    ``size_vram`` of zero with a non-zero ``size`` means pure CPU inference.
+    Both unknown (None) is honest for a server that does not publish it.
+    """
+
+    size_bytes: int | None = None
+    size_vram_bytes: int | None = None
+
+    @property
+    def gpu_fraction(self) -> float | None:
+        if not self.size_bytes:
+            return None
+        return round((self.size_vram_bytes or 0) / self.size_bytes, 4)
+
+    @property
+    def fully_resident(self) -> bool | None:
+        """Whether the whole model sits in VRAM.
+
+        Derived, not reported: servers disagree on how to say it, and a
+        threshold in one place beats the same arithmetic at every call site.
+        A 1% tolerance covers rounding between the two figures.
+        """
+        fraction = self.gpu_fraction
+        return None if fraction is None else fraction >= 0.99
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +125,14 @@ class Provider(Protocol):
 
     def list_models(self, base_url: str, timeout: float = 10.0) -> list[ModelInfo]:
         """Models the server can serve now, for preflight."""
+        ...
+
+    def runtime_info(self, base_url: str, model: str, timeout: float = 10.0) -> RuntimeInfo:
+        """What is loaded right now, and how much of it is on the GPU.
+
+        Returns an empty RuntimeInfo when the server does not publish it or the
+        model is not loaded. Never guesses.
+        """
         ...
 
     def enforces_schema(self) -> bool:

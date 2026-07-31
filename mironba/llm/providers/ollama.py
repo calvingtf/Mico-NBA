@@ -17,6 +17,7 @@ from typing import Any
 
 from mironba.llm.providers.base import (
     ModelInfo,
+    RuntimeInfo,
     ProviderError,
     RawCompletion,
     SamplingParams,
@@ -76,6 +77,8 @@ class OllamaProvider:
             options["seed"] = params.seed
         if params.context_length:
             options["num_ctx"] = params.context_length
+        if params.gpu_layers is not None:
+            options["num_gpu"] = params.gpu_layers
         if params.stop:
             options["stop"] = list(params.stop)
 
@@ -130,3 +133,23 @@ class OllamaProvider:
                 )
             )
         return models
+
+    def runtime_info(
+        self, base_url: str, model: str, timeout: float = 10.0
+    ) -> RuntimeInfo:
+        """Read the offload split from /api/ps.
+
+        Only meaningful once the model is loaded — Ollama lists nothing until
+        then, which is why the caller warms it before minting the manifest.
+        """
+        try:
+            data = get_json(f"{self._root(base_url)}/api/ps", timeout=timeout)
+        except ProviderError:
+            return RuntimeInfo()
+        for entry in data.get("models", []):
+            if entry.get("name") == model or entry.get("model") == model:
+                return RuntimeInfo(
+                    size_bytes=entry.get("size"),
+                    size_vram_bytes=entry.get("size_vram"),
+                )
+        return RuntimeInfo()

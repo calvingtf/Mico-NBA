@@ -17,6 +17,7 @@ from typing import Any
 
 from mironba.llm.providers.base import (
     ModelInfo,
+    RuntimeInfo,
     ProviderError,
     RawCompletion,
     SamplingParams,
@@ -104,3 +105,15 @@ class OpenAICompatibleProvider:
             ModelInfo(model_id=entry.get("id", ""))
             for entry in data.get("data", [])
         ]
+
+    def runtime_info(
+        self, base_url: str, model: str, timeout: float = 10.0
+    ) -> RuntimeInfo:
+        """Unknown, and said so.
+
+        The OpenAI API has no notion of an offload split, and vLLM does not
+        expose one over this surface. Returning a fabricated 100%-resident
+        would be worse than admitting the gap: it would make a CPU-bound run
+        look GPU-bound in the manifest.
+        """
+        return RuntimeInfo()

@@ -5,16 +5,17 @@
 Prints the proposal, the verdict, the retry if there was one, and the manifest.
 Writes everything under ``runs/<run_id>/``.
 
-The control flow is the point of M1, so it is written flat enough to read:
+The control flow is the point, so it is written flat enough to read:
 
-    choose action -> propose -> assemble -> judge
-                                              |
-                        rejected -> hand the reason back -> revise -> judge again
+    choose action -> state intent -> SOLVE -> select by index -> judge
+                                       |
+                     unsatisfiable -> hand back the binding constraint
+                                      -> revise intent -> SOLVE again
 
-Exactly one retry. A second rejection stands. Looping until the model stumbles
-into something legal would turn the validator into a search oracle and make the
-illegal-proposal rate meaningless — the number would measure how many attempts
-we allowed, not how well the model understands the CBA.
+The solver is the only thing that builds a package, so every option the model
+sees is legal before it sees it. The retry is worth something now: the old one
+returned a rejection of a guess and asked for another guess, while this one
+returns the shape of the constraint and asks for a different *want*.
 """
 
 from __future__ import annotations
@@ -33,11 +34,14 @@ from mironba.llm.client import (
     load_config,
     preflight,
     probe_model,
+    probe_runtime,
     resolve_profile,
 )
+from mironba.llm.probe import observed_enforcement
 from mironba.llm.providers import ProviderError
-from mironba.rules.trade_validator import Verdict, summarize
-from mironba.sim.boundary import MalformedProposal, assemble, judge, rejection_reason
+from mironba.rules.trade_validator import TeamTradeState, Verdict, summarize
+from mironba.rules.solver import Asset, TradeIntent, build_trade, constraint_explanation, solve
+from mironba.sim.boundary import judge, rejection_reason
 from mironba.sim.scenario import load_scenario, stage
 from mironba.world.events import EventLog, EventType, Visibility
 from mironba.world.manifest import Run, build_manifest, template_hash
@@ -50,6 +54,14 @@ class TickResult:
         self.retried: bool = False
         self.stood_pat: bool = False
         self.schema_failed: bool = False
+        #: Did the first intent have any legal package at all?
+        self.first_intent_satisfiable: bool | None = None
+        self.final_intent_satisfiable: bool | None = None
+        self.packages_offered: int = 0
+        self.declined_all: bool = False
+        self.decline_reason: str = ""
+        self.solver_seconds: list[float] = []
+        self.binding_constraints: list[str] = []
 
     @property
     def final_verdict(self) -> Verdict | None:
@@ -98,6 +110,10 @@ def run_tick(
     # stale when someone pulls a different build of the same tag.
     info = probe_model(cfg)
 
+    # Residency before the manifest, which means loading the model first: the
+    # server reports nothing about an offload split until it has one.
+    runtime = probe_runtime(cfg)
+
     # Manifest before the first token. A run that dies mid-call still knows
     # what it was.
     manifest = build_manifest(
@@ -119,9 +135,17 @@ def run_tick(
         persona=scenario.persona.to_dict(),
         snapshot=scenario.snapshot,
         server_context_length=info.context_length,
+        model_size_bytes=runtime.size_bytes,
+        model_size_vram_bytes=runtime.size_vram_bytes,
+        gpu_fraction=runtime.gpu_fraction,
+        fully_resident=runtime.fully_resident,
     )
     run = Run.start(manifest, runs_dir=runs_dir)
-    client = LLMClient(run, config=config)
+    # Measured once per process and cached: whether this server actually
+    # constrains decoding, rather than whether we asked it to.
+    client = LLMClient(
+        run, config=config, schema_enforcement=observed_enforcement(cfg)
+    )
 
     log = EventLog(run)
     log.emit(
@@ -162,85 +186,157 @@ def run_tick(
         _finish(run, log, client, result, quiet=quiet)
         return result, run, client
 
-    proposal = decision.proposal
-    say("ACTION: propose trade")
+    intent_form = decision.intent
+    say("ACTION: pursue a trade")
     say(f"  reason: {decision.reason}")
-    _print_proposal(say, proposal, staged)
 
+    own_assets = {
+        entry.player_id: Asset(entry.player_id, entry.name, entry.salary)
+        for entry in staged.context.own_roster
+    }
+    partner_assets = {
+        entry.player_id: Asset(entry.player_id, entry.name, entry.salary)
+        for entry in staged.context.partner_roster
+    }
+    own_team = TeamTradeState(
+        team_id=staged.context.team_id,
+        team_salary=staged.context.team_salary,
+        roster_count=staged.context.roster_count,
+    )
+    partner_state = TeamTradeState(
+        team_id=staged.context.partner_team,
+        team_salary=staged.partner_salary,
+        roster_count=scenario.roster_count,
+    )
+
+    solved = None
     for attempt in (1, 2):
-        try:
-            trade = assemble(
-                proposal,
-                staged.context,
-                scenario.persona,
-                trade_date=scenario.trade_date,
-                partner_salary=staged.partner_salary,
-                partner_roster_count=scenario.roster_count,
-                byc=scenario.byc,
-            )
-        except MalformedProposal as exc:
-            result.malformed += 1
-            log.emit(
-                EventType.PROPOSAL_MALFORMED,
-                actor=scenario.team,
-                attempt=attempt,
-                reasons=exc.reasons,
-            )
-            say(f"\nMALFORMED (attempt {attempt}):")
-            for reason in exc.reasons:
-                say(f"  - {reason}")
-            if attempt == 2:
-                break
-            result.retried = True
-            try:
-                proposal = agent.revise(
-                    staged.context, proposal, "\n".join(f"- {r}" for r in exc.reasons)
-                )
-            except SchemaFailure as exc2:
-                result.schema_failed = True
-                say(f"SCHEMA FAILURE on retry: {exc2}")
-                break
-            say("\nREVISED PROPOSAL:")
-            _print_proposal(say, proposal, staged)
-            continue
+        intent = TradeIntent(
+            target_player_ids=tuple(intent_form.target_player_ids),
+            tradeable_asset_ids=tuple(intent_form.tradeable_asset_ids),
+            excluded_player_ids=tuple(intent_form.excluded_player_ids),
+            priority=tuple(intent_form.priority),
+            rationale=intent_form.reason,
+        )
+        say(f"\nINTENT (attempt {attempt}):")
+        say(f"  want:     {', '.join(intent.target_player_ids) or '-'}")
+        say(f"  offering: {', '.join(intent.tradeable_asset_ids) or '-'}")
+        if intent.excluded_player_ids:
+            say(f"  excluded: {', '.join(intent.excluded_player_ids)}")
+        say(f"  reason:   {intent_form.reason}")
+
+        solved = solve(
+            intent,
+            own=own_assets,
+            theirs=partner_assets,
+            own_team=own_team,
+            partner_team=partner_state,
+            season=scenario.season,
+            trade_date=scenario.trade_date,
+            re_sign_status=scenario.byc.status,
+            max_assets_out=scenario.persona.max_assets_out,
+        )
+        result.solver_seconds.append(solved.elapsed_s)
+        if attempt == 1:
+            result.first_intent_satisfiable = solved.satisfiable
+        result.final_intent_satisfiable = solved.satisfiable
 
         log.emit(
-            EventType.PROPOSAL_ASSEMBLED,
-            actor=scenario.team,
+            EventType.SOLVER_RESULT,
+            actor="solver",
             attempt=attempt,
-            players=[
-                {"id": p.player_id, "salary": p.salary, "from": p.from_team}
-                for p in trade.players
-            ],
+            satisfiable=solved.satisfiable,
+            packages=len(solved.packages),
+            feasible_found=solved.feasible_found,
+            examined=solved.examined,
+            elapsed_s=round(solved.elapsed_s, 4),
+            binding_constraint=solved.binding_constraint,
         )
+        say(f"  solver:   {solved.explain()}")
 
-        validation = judge(trade)
-        result.verdicts.append(validation.verdict)
-        log.emit(
-            EventType.VERDICT,
-            actor="rules",
-            visibility=Visibility.PUBLIC,
-            attempt=attempt,
-            verdict=validation.verdict.value,
-            findings=[str(f) for f in validation.findings],
-        )
-
-        say(f"\nVERDICT (attempt {attempt}): {validation.verdict.value.upper()}")
-        say(summarize(validation))
-
-        if validation.verdict is Verdict.APPROVED or attempt == 2:
+        if solved.satisfiable or attempt == 2:
             break
 
-        reason = rejection_reason(validation)
+        result.binding_constraints.append(solved.binding_constraint or "UNKNOWN")
+        explanation = constraint_explanation(solved)
+        say(f"\n  {explanation.splitlines()[0]}")
         result.retried = True
         try:
-            proposal = agent.revise(staged.context, proposal, reason)
+            intent_form = agent.revise_intent(staged.context, intent_form, explanation)
         except SchemaFailure as exc:
             result.schema_failed = True
-            say(f"SCHEMA FAILURE on retry: {exc}")
-            break
-        say("\nREVISED PROPOSAL:")
-        _print_proposal(say, proposal, staged)
+            say(f"SCHEMA FAILURE on revised intent: {exc}")
+            _finish(run, log, client, result, quiet=quiet)
+            return result, run, client
+
+    if not solved.satisfiable:
+        result.binding_constraints.append(solved.binding_constraint or "UNKNOWN")
+        say(f"\nNO LEGAL PACKAGE. Binding: {solved.binding_constraint}")
+        _finish(run, log, client, result, quiet=quiet)
+        return result, run, client
+
+    result.packages_offered = len(solved.packages)
+    options = "\n".join(
+        f"  [{i}] {pkg.describe(own_assets, partner_assets)}"
+        for i, pkg in enumerate(solved.packages)
+    )
+    say("\nLEGAL PACKAGES:")
+    say(options)
+
+    try:
+        choice = agent.select_package(staged.context, options, len(solved.packages))
+    except SchemaFailure as exc:
+        result.schema_failed = True
+        say(f"SCHEMA FAILURE on selection: {exc}")
+        _finish(run, log, client, result, quiet=quiet)
+        return result, run, client
+
+    if choice.declined:
+        result.declined_all = True
+        result.decline_reason = choice.reason
+        say(f"\nDECLINED ALL {len(solved.packages)} legal package(s)")
+        say(f"  reason: {choice.reason}")
+        _finish(run, log, client, result, quiet=quiet)
+        return result, run, client
+
+    package = solved.packages[choice.selection]
+    say(f"\nSELECTED [{choice.selection}]: {package.describe(own_assets, partner_assets)}")
+    say(f"  reason: {choice.reason}")
+
+    trade = build_trade(
+        package.send_player_ids,
+        package.receive_player_ids,
+        own=own_assets,
+        theirs=partner_assets,
+        own_team=own_team,
+        partner_team=partner_state,
+        season=scenario.season,
+        trade_date=scenario.trade_date,
+        re_sign_status=scenario.byc.status,
+    )
+    log.emit(
+        EventType.PROPOSAL_ASSEMBLED,
+        actor=scenario.team,
+        players=[
+            {"id": p.player_id, "salary": p.salary, "from": p.from_team}
+            for p in trade.players
+        ],
+    )
+
+    # Judged again even though the solver already validated it. Cheap, and it
+    # means the event log records a verdict produced by the same call any
+    # reader would make, rather than one inherited from a search.
+    validation = judge(trade)
+    result.verdicts.append(validation.verdict)
+    log.emit(
+        EventType.VERDICT,
+        actor="rules",
+        visibility=Visibility.PUBLIC,
+        verdict=validation.verdict.value,
+        findings=[str(f) for f in validation.findings],
+    )
+    say(f"\nVERDICT: {validation.verdict.value.upper()}")
+    say(summarize(validation))
 
     _finish(run, log, client, result, quiet=quiet)
     return result, run, client
@@ -283,6 +379,13 @@ def _finish(
         retried=result.retried,
         stood_pat=result.stood_pat,
         schema_failed=result.schema_failed,
+        first_intent_satisfiable=result.first_intent_satisfiable,
+        final_intent_satisfiable=result.final_intent_satisfiable,
+        packages_offered=result.packages_offered,
+        declined_all=result.declined_all,
+        decline_reason=result.decline_reason,
+        solver_seconds=result.solver_seconds,
+        binding_constraints=result.binding_constraints,
     )
     run.write_json("stats.json", client.stats.to_dict())
     if quiet:

@@ -43,7 +43,7 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from mironba.llm.providers import ProviderError, SamplingParams, provider_for
-from mironba.llm.providers.base import ModelInfo, RawCompletion
+from mironba.llm.providers.base import ModelInfo, RawCompletion, RuntimeInfo
 from mironba.world.manifest import ManifestError, Run
 
 T = TypeVar("T", bound=BaseModel)
@@ -89,6 +89,7 @@ class ProfileConfig:
     thinking: bool = False
     max_tokens: int = 1024
     context_length: int | None = None
+    gpu_layers: int | None = None
     request_timeout_s: float = 300.0
 
     def sampling(self) -> SamplingParams:
@@ -99,6 +100,7 @@ class ProfileConfig:
             thinking=self.thinking,
             max_tokens=self.max_tokens,
             context_length=self.context_length,
+            gpu_layers=self.gpu_layers,
         )
 
 
@@ -233,6 +235,37 @@ def probe_model(cfg: ProfileConfig) -> ModelInfo:
     return ModelInfo(model_id=cfg.model)
 
 
+def probe_runtime(cfg: ProfileConfig, *, warm: bool = True) -> RuntimeInfo:
+    """How much of the model is on the GPU, warming it first if needed.
+
+    Ollama lists nothing under /api/ps until a model is loaded, so probing
+    before the first real call would always record "unknown" — and the manifest
+    is written before the first real call by design. The fix is to load the
+    model deliberately with a one-token request, then probe, then mint the
+    manifest. On an already-warm server the warm-up returns immediately.
+
+    A failure here is never fatal: an unknown offload split is recorded as
+    unknown. Refusing to run because we could not measure residency would be a
+    worse trade than running with the gap declared.
+    """
+    provider = provider_for(cfg.server)
+    info = provider.runtime_info(cfg.base_url, cfg.model)
+    if info.size_bytes or not warm:
+        return info
+    try:
+        provider.chat(
+            base_url=cfg.base_url,
+            model=cfg.model,
+            messages=[{"role": "user", "content": "ok"}],
+            schema=None,
+            params=SamplingParams(temperature=0.0, max_tokens=1),
+            timeout=cfg.request_timeout_s,
+        )
+    except ProviderError:
+        return RuntimeInfo()
+    return provider.runtime_info(cfg.base_url, cfg.model)
+
+
 def preflight(cfg: ProfileConfig) -> list[str]:
     """Check the configured model is actually servable. Returns problems.
 
@@ -278,6 +311,7 @@ class LLMClient:
         run: Run,
         config: dict[str, Any] | None = None,
         config_path: Path | str = DEFAULT_CONFIG,
+        schema_enforcement: bool | None = None,
     ) -> None:
         if not isinstance(run, Run):
             raise ManifestError(
@@ -288,6 +322,12 @@ class LLMClient:
         self.config = config if config is not None else load_config(config_path)
         self.stats = CallStats()
         self._seq = 0
+        #: Whether the server was *observed* to constrain decoding, measured by
+        #: llm/probe.py before the run. None means it could not be measured.
+        #: Never inferred from the fact that we sent a schema — that is exactly
+        #: the mistake M1 made, and it made the failure rate describe a defence
+        #: that was not running.
+        self.schema_enforcement = schema_enforcement
 
     # -- configuration ----------------------------------------------------
 
@@ -334,7 +374,7 @@ class LLMClient:
         # absent, a model that has never seen the schema is guessing field
         # names. That is what produced `{"trade": {"sent_ids": [...]}}` on the
         # first live run: a reasonable shape, and not the one we asked for.
-        schema_in_prompt = json_schema is not None and not provider.enforces_schema()
+        schema_in_prompt = json_schema is not None and self.schema_enforcement is not True
         if schema_in_prompt:
             conversation = self._with_schema_in_prompt(conversation, json_schema)
 
@@ -462,7 +502,8 @@ class LLMClient:
                 "model": completion.model,
                 "server": cfg.server,
                 "schema_sent_to_server": schema_name != "text",
-                "schema_enforcement_verified": provider.enforces_schema(),
+                # Observed, not requested. None = not measured this run.
+                "schema_enforcement_observed": self.schema_enforcement,
                 "schema_in_prompt": schema_in_prompt,
                 "temperature": cfg.temperature,
                 "top_p": cfg.top_p,

@@ -111,6 +111,16 @@ class RunManifest:
     git_commit_sha: str
     git_dirty: bool
 
+    #: How the model was actually resident. Latency is uninterpretable without
+    #: it: the same model at the same quantization ran ~6x slower in one M1
+    #: batch than another because part of it had spilled to system RAM, and
+    #: nothing recorded that. Backfill is impossible, so it lands before any
+    #: further measurement. None means the server does not publish it.
+    model_size_bytes: int | None = None
+    model_size_vram_bytes: int | None = None
+    gpu_fraction: float | None = None
+    fully_resident: bool | None = None
+
     scenario_id: str = ""
     profile: str = ""
     notes: str = ""
@@ -159,6 +169,15 @@ class RunManifest:
             and (self.seed is not None or self.temperature == 0)
         )
 
+    def _residency(self) -> str:
+        if self.gpu_fraction is None:
+            return "unknown (server does not publish an offload split)"
+        gib = (self.model_size_bytes or 0) / 2**30
+        return (
+            f"{self.gpu_fraction:.1%} on GPU of {gib:.1f} GiB"
+            + ("" if self.fully_resident else "   [PARTIAL OFFLOAD — latency not comparable]")
+        )
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["reproducible"] = self.reproducible
@@ -175,6 +194,7 @@ class RunManifest:
             f"seed={seed} thinking={self.thinking}\n"
             f"  prompts    template={self.prompt_template_hash} "
             f"schema_v={self.schema_version}\n"
+            f"  residency  {self._residency()}\n"
             f"  inputs     snapshot={self.snapshot_date} scenario={self.scenario_id or '-'}\n"
             f"  code       {self.git_commit_sha[:12]}"
             f"{' (dirty)' if self.git_dirty else ''}\n"
@@ -277,6 +297,10 @@ def build_manifest(
     scenario_id: str = "",
     profile: str = "",
     notes: str = "",
+    model_size_bytes: int | None = None,
+    model_size_vram_bytes: int | None = None,
+    gpu_fraction: float | None = None,
+    fully_resident: bool | None = None,
     run_id: str | None = None,
     **extra: Any,
 ) -> RunManifest:
@@ -301,6 +325,10 @@ def build_manifest(
         scenario_id=scenario_id,
         profile=profile,
         notes=notes,
+        model_size_bytes=model_size_bytes,
+        model_size_vram_bytes=model_size_vram_bytes,
+        gpu_fraction=gpu_fraction,
+        fully_resident=fully_resident,
         extra=dict(extra) if extra else {},
     )
 

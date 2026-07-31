@@ -183,6 +183,43 @@ class TestArtifactsRequireARun:
             "Artifact writing belongs on Run, which requires a manifest."
         )
 
+    def test_the_package_contains_no_way_to_delete_a_run(self):
+        """runs/ is append-only. Cleanup is a manual act, outside the code.
+
+        Written after deleting a completed benchmark's artifacts during M1 —
+        the only complete measurement then in existence — to tidy up before a
+        replacement run that then failed. The aggregate numbers survived in a
+        transcript; the manifests that made them auditable did not.
+
+        A codebase whose stated rule is "no manifest, no result" should not
+        ship a convenient way to destroy manifests. `shutil.rmtree` and
+        `Path.unlink` are banned package-wide, not merely in world/, because
+        the tempting place to add cleanup is a bench harness at 2am, not here.
+        """
+        root = Path(__file__).resolve().parents[1] / "mironba"
+        banned = ("rmtree", ".unlink(", "os.remove", "os.rmdir")
+        offenders = []
+        for path in root.rglob("*.py"):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                code = line.split("#")[0]
+                if any(token in code for token in banned):
+                    offenders.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
+        assert not offenders, (
+            "deletion helpers in the package — runs/ is append-only:\n"
+            + "\n".join(offenders)
+        )
+
+    def test_run_start_never_clears_an_existing_directory(self, manifest, tmp_path):
+        """Re-starting a run id must not silently discard what is there."""
+        run = Run.start(manifest, runs_dir=tmp_path)
+        run.append_jsonl("events.jsonl", {"type": "first"})
+        again = Run.start(manifest, runs_dir=tmp_path)
+        again.append_jsonl("events.jsonl", {"type": "second"})
+        rows = read_events(again.dir / "events.jsonl")
+        assert [r["type"] for r in rows] == ["first", "second"]
+
     @pytest.mark.parametrize("bad", [None, "run-1", 42, {"run_id": "x"}])
     def test_run_rejects_anything_that_is_not_a_manifest(self, bad):
         with pytest.raises(ManifestError, match="RunManifest"):
