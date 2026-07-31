@@ -230,11 +230,110 @@ notes: >
     return directory
 
 
+def ingest_contracts(*, force: bool = False) -> tuple[list[bbref.ContractYear], list[list[str]], list[str]]:
+    """Every contract currently on the books, league-wide.
+
+    Separate from ``ingest_season`` because it is a separate *kind* of source.
+    A team-season page is an archive and will report 2024-25 forever; the
+    contracts page is a live view, rewritten each year with no history behind
+    it. Folding the two together would let a caller write "end year" onto a
+    2024-25 snapshot, where it would be a guess wearing a provenance record.
+    """
+    rows: list[bbref.ContractYear] = []
+    sources: list[list[str]] = []
+    failures: list[str] = []
+    for code in bbref.BBREF_CODES:
+        url = bbref.team_contracts_url(code)
+        try:
+            page = fetch(url, CACHE_DIR, force=force)
+        except FetchError as exc:
+            failures.append(str(exc))
+            continue
+        parsed = bbref.parse_team_contracts(page.text, code)
+        if not parsed:
+            failures.append(f"{url} -> no contracts table found")
+            continue
+        rows.extend(parsed)
+        sources.append(["contract_years", bbref.TEAM_CODE[code], url, page.retrieved_date])
+    return rows, sources, failures
+
+
+def write_contract_snapshot(
+    rows: list[bbref.ContractYear], sources: list[list[str]]
+) -> Path:
+    """Write the contract-structure snapshot, keyed by the season it starts in."""
+    first_season = min(r.season for r in rows)
+    directory = SNAPSHOT_ROOT / f"bbref-contracts-{first_season}"
+    directory.mkdir(parents=True, exist_ok=True)
+
+    ends = bbref.contract_end_years(rows)
+    _write_csv(
+        directory / "contract_years.csv",
+        ["player_id", "team_id", "season", "salary", "fully_guaranteed", "option",
+         "final_season"],
+        [
+            [r.player_id, r.team_id, r.season, r.salary, int(r.fully_guaranteed),
+             r.option, ends[(r.player_id, r.team_id)]]
+            for r in sorted(rows, key=lambda r: (r.team_id, r.player_id, r.season))
+        ],
+    )
+    _write_csv(
+        directory / "sources.csv",
+        ["table", "scope", "source_url", "retrieved_date"],
+        sources,
+    )
+    retrieved = {row[3] for row in sources}
+    seasons = sorted({r.season for r in rows})
+    (directory / "snapshot.yaml").write_text(
+        f"""snapshot_id: bbref-contracts-{first_season}
+as_of_date: "{max(retrieved)}"
+season: "{first_season}"
+seasons_covered: {seasons}
+source: basketball-reference.com
+notes: >
+  Contract structure: end year, per-year guarantee status, and player/team
+  option flags, from each team's /contracts/ page.
+
+  THIS SOURCE HAS NO HISTORY. Unlike a team-season page, which is an archive,
+  /contracts/LAL.html is a live view of the contracts on the books at the
+  moment it was retrieved. It was fetched on {max(retrieved)} and covers
+  {first_season} onward. It cannot be backfilled onto the 2023-24, 2024-25 or
+  2025-26 snapshots: an end year for those seasons would have to be recalled
+  rather than sourced, and this project does not do that.
+
+  Guarantee status is a flag, not an amount. Basketball-Reference italicises a
+  salary that is "not fully guaranteed" without publishing how much of it is,
+  so fully_guaranteed=0 means "partially guaranteed, amount unknown" and must
+  not be read as zero.
+
+  Option flags mark the season the option applies to, not the season it is
+  exercised in.
+""",
+        encoding="utf-8",
+    )
+    return directory
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest real NBA data.")
+    parser.add_argument("--contracts", action="store_true",
+                        help="ingest current contract structure instead of seasons")
     parser.add_argument("--seasons", nargs="+", default=list(DEFAULT_SEASONS))
     parser.add_argument("--force", action="store_true", help="bypass the disk cache")
     args = parser.parse_args(argv)
+
+    if args.contracts:
+        rows, sources, failures = ingest_contracts(force=args.force)
+        for failure in failures[:6]:
+            print(f"  ! {failure}")
+        if len(sources) < 30:
+            print(f"SKIPPED contracts: {len(sources)}/30 teams retrieved")
+            return 1
+        directory = write_contract_snapshot(rows, sources)
+        players = len({(r.player_id, r.team_id) for r in rows})
+        print(f"OK      contracts: {len(sources)}/30 teams, {players} contracts, "
+              f"{len(rows)} player-seasons -> {directory}")
+        return 0
 
     results = [ingest_season(s, force=args.force) for s in args.seasons]
 

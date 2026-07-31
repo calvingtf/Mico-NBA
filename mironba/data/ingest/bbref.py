@@ -191,3 +191,121 @@ def parse_transactions(html: str, season: str) -> list[Transaction]:
                 )
             )
     return out
+
+
+# --------------------------------------------------------------------------
+# Contract structure
+#
+# A different page from the salary table, and a different *kind* of source.
+# /teams/LAL/2025.html is a season archive: it will say what LAL paid in
+# 2024-25 forever. /contracts/LAL.html is a live view of the contracts on the
+# books right now, rewritten every year with no archive behind it.
+#
+# So contract structure can only ever be sourced for the current league year.
+# It cannot be backfilled onto the 2023-24, 2024-25 or 2025-26 snapshots, and
+# nothing here pretends otherwise — `end_year` for a historical season would
+# have to be recalled rather than sourced, which is the one thing the charter
+# rules out. See README, "Contract structure: what can and cannot be sourced".
+# --------------------------------------------------------------------------
+
+
+def team_contracts_url(bbref_code: str) -> str:
+    return f"{BASE}/contracts/{bbref_code}.html"
+
+
+#: Cell class -> what the annotation means. Basketball-Reference marks options
+#: with a CSS class and non-guaranteed money with italics; there is no data
+#: attribute for either, so the markup *is* the schema here.
+OPTION_CLASS = {
+    "salary-pl": "player_option",
+    "salary-tm": "team_option",
+    "salary-et": "early_termination",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ContractYear:
+    """One player-season of a contract currently on the books."""
+
+    player_id: str
+    name: str
+    team_id: str
+    season: str
+    salary: int
+    #: False when Basketball-Reference italicises the amount. Their legend
+    #: reads "amount not fully guaranteed", so this is not the same as "$0
+    #: guaranteed" and is deliberately not stored as a dollar figure.
+    fully_guaranteed: bool
+    #: "player_option" | "team_option" | "early_termination" | "" .
+    option: str
+
+
+_CONTRACT_TABLE = re.compile(r'<table[^>]*id="contracts".*?</table>', re.S)
+_YEAR_HEADER = re.compile(
+    r'data-stat="(y\d)"[^>]*data-over-header="Salary"[^>]*>(\d{4}-\d{2})<'
+)
+_YEAR_CELL = re.compile(
+    r'<td class="([^"]*)" data-stat="(y\d)"(?: csk="(\d+)")?\s*>(.*?)</td>', re.S
+)
+_GTD_CELL = re.compile(r'data-stat="remain_gtd"(?: csk="(\d+)")?')
+
+
+def parse_team_contracts(html: str, bbref_code: str) -> list[ContractYear]:
+    """Every future player-season on this team's books, with its annotations.
+
+    Returns an empty list when the table is absent, which the caller must treat
+    as a missing source rather than a team with no contracts.
+    """
+    body = unwrap(html)
+    table = _CONTRACT_TABLE.search(body)
+    if not table:
+        return []
+
+    seasons = dict(_YEAR_HEADER.findall(body))
+    if not seasons:
+        return []
+
+    out: list[ContractYear] = []
+    for row in _ROW.findall(table.group(0)):
+        pid = _PLAYER_ID.search(row)
+        name = _PLAYER_NAME.search(row)
+        if not (pid and name):
+            continue
+        for classes, column, csk, cell in _YEAR_CELL.findall(row):
+            season = seasons.get(column)
+            # "iz" is Basketball-Reference's empty-cell class: no salary that
+            # year, which is what makes the last populated column the end year.
+            if season is None or csk is None or not csk or "iz" in classes.split():
+                continue
+            option = next(
+                (OPTION_CLASS[c] for c in classes.split() if c in OPTION_CLASS), ""
+            )
+            out.append(
+                ContractYear(
+                    player_id=pid.group(1),
+                    name=name.group(1).strip(),
+                    team_id=TEAM_CODE[bbref_code],
+                    season=season,
+                    salary=int(csk),
+                    fully_guaranteed="<em>" not in cell,
+                    option=option,
+                )
+            )
+    return out
+
+
+def contract_end_years(rows: list[ContractYear]) -> dict[tuple[str, str], str]:
+    """``(player_id, team_id) -> last season with salary on the books``.
+
+    Derived rather than parsed: Basketball-Reference publishes the years, not
+    the end year, and computing it here keeps the one definition in one place.
+    A player option in the final year still counts — the contract *can* run
+    that long, and whether it does is exactly the uncertainty the option field
+    is there to carry.
+    """
+    end: dict[tuple[str, str], str] = {}
+    for row in rows:
+        key = (row.player_id, row.team_id)
+        if key not in end or row.season > end[key]:
+            end[key] = row.season
+    return end

@@ -1,0 +1,23 @@
+snapshot_id: bbref-contracts-2026-27
+as_of_date: "2026-07-31"
+season: "2026-27"
+seasons_covered: ['2026-27', '2027-28', '2028-29', '2029-30', '2030-31', '2031-32']
+source: basketball-reference.com
+notes: >
+  Contract structure: end year, per-year guarantee status, and player/team
+  option flags, from each team's /contracts/ page.
+
+  THIS SOURCE HAS NO HISTORY. Unlike a team-season page, which is an archive,
+  /contracts/LAL.html is a live view of the contracts on the books at the
+  moment it was retrieved. It was fetched on 2026-07-31 and covers
+  2026-27 onward. It cannot be backfilled onto the 2023-24, 2024-25 or
+  2025-26 snapshots: an end year for those seasons would have to be recalled
+  rather than sourced, and this project does not do that.
+
+  Guarantee status is a flag, not an amount. Basketball-Reference italicises a
+  salary that is "not fully guaranteed" without publishing how much of it is,
+  so fully_guaranteed=0 means "partially guaranteed, amount unknown" and must
+  not be read as zero.
+
+  Option flags mark the season the option applies to, not the season it is
+  exercised in.
