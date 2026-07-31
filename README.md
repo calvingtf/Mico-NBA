@@ -6,6 +6,28 @@ project charter; this file records what actually exists.
 Part of the MiroFish/MiroShark family. Package, charter, and repo folder all
 read `MiroNBA`/`mironba`.
 
+## Status: M2 — a value model that beats the baselines
+
+A deliberately simple, three-stage linear model from box scores to projected
+wins, validated out of sample against two baselines that are harder to beat
+than they look.
+
+| held-out season | v0 | previous-season wins | regressed to .500 |
+| --- | --- | --- | --- |
+| 2021-22 | **7.46** | 8.17 | 7.87 |
+| 2022-23 | **6.40** | 8.07 | 6.55 |
+| 2023-24 | **7.50** | 8.47 | 9.13 |
+| 2024-25 | 8.58 | 9.13 | **8.41** |
+| **pooled MAE** | **7.49** | 8.46 | 7.99 |
+
+**The stop rule fired.** v0 beats both baselines in 3 of 4 held-out seasons and
+on pooled MAE, so the hierarchical model stays unbuilt. See
+[M2 measurements](#m2-a-value-model-and-what-it-can-and-cannot-tell-you).
+
+Also here: a throughput canary in every manifest, because `gpu_fraction: 1.0`
+was true through a 3x slowdown; and player performance data from the NBA's own
+API, which unlike the salary tables **is** committed.
+
 ## Status: M1.6 — feasibility computed before the model is asked
 
 M1.5 made illegal packages unrepresentable and satisfiability still measured
@@ -1188,3 +1210,219 @@ of a tick. Nothing here constrains M3.
   budget artifact, not a form-filling failure.
 - **Step 3 still chooses from short lists** — 1.0 to 1.6 packages per
   satisfiable intent. "Which of six" has not been tested live.
+
+## M2: a value model, and what it can and cannot tell you
+
+### The throughput canary
+
+`gpu_fraction: 1.0` was true — the weights really were entirely in VRAM — while
+throughput sat at 12 tok/s instead of 36, because background processes had taken
+the card to 23.5 of 24.6 GiB and left no headroom for compute buffers. The
+manifest looked correct, the run completed, and only the latency column was
+wrong.
+
+That is the third time a measurement has been trusted as a guarantee it never
+made:
+
+| milestone | the claim | what it actually meant |
+| --- | --- | --- |
+| M1 | `schema_enforced_by_server: true` | we *sent* a schema |
+| M1.5 | `enforces_schema()` returns a constant | a claim about all versions |
+| M2 | `gpu_fraction: 1.0` | where the weights are, not whether they can run |
+
+`llm/canary.py` measures instead of inferring: one fixed prompt, greedy, no
+schema, run before the manifest is minted, recorded next to `gpu_fraction`. A
+bench aborts when it drifts more than 15% from a stored baseline, in **either**
+direction — slower is the case that motivated it, faster means the baseline no
+longer describes the machine and every earlier comparison was against the wrong
+number.
+
+It keys on the server's own `eval_count / eval_duration` rather than wall clock,
+because a cold model load is legitimately slow and would fire the alarm. Wall
+time is recorded anyway as an **overhead ratio**: under memory pressure this
+machine showed 42s of wall for 13.7s of generation, and a ratio of 3x says the
+time went somewhere other than generating.
+
+```
+qwen3.6:27b on ollama: 36.02 tok/s (171 tokens, wall 49.49s, overhead 10.4x)
+```
+
+Baseline in `configs/throughput_baseline.json`, per `(server, model)`.
+
+### Player performance ingest
+
+`stats.nba.com` via `nba_api` — the league's own endpoints. Unlike every
+Basketball-Reference table in this repo, **these are committed**: there is no
+redistribution restriction, and committing them is what lets the value model be
+refit from a clone.
+
+11 seasons, two endpoints, one request each:
+
+| | |
+| --- | --- |
+| Seasons | 2014-15 … 2024-25 |
+| Player-seasons | 5,878 |
+| Team-seasons | 330 |
+| Missing values | **none** in any field |
+| Zero-minute rows | none |
+| Duplicate player-seasons | none |
+
+Coverage is complete because the endpoint aggregates rather than samples. Two
+properties of the source that matter downstream, both verified rather than
+assumed:
+
+- **A traded player is assigned to one team** — his final one — with his whole
+  season's minutes. There is no `TOT` row. Summed team minutes therefore run
+  about 4% high (Boston 2023-24: 20,696 against 5x19,830). Working in minute
+  *shares* rather than totals makes the model invariant to it.
+- **Player minutes sum to exactly 5x team minutes**, because team `MIN` counts
+  game-minutes and five players are on the court. Checked every season; the
+  ratio is 5.000 throughout, which is what confirms no rows are missing.
+
+Train/test split: fit on all seasons strictly before the held-out one, which
+gives 8 training seasons for 2023-24 and 2024-25. **2019-20 and 2020-21 are
+excluded** — one was suspended and resumed in a bubble, the other was 72 games
+without crowds, and their win totals do not mean the same thing. They are
+ingested anyway so the exclusion lives in the model, visible and reversible,
+rather than being hidden by absence.
+
+### The model, and why each choice
+
+Three stages, each fit on training seasons only.
+
+**1. Player rate** (`models/value.py`). Ridge regression from per-minute
+box-score rates to per-minute plus/minus, output as a per-36 number.
+
+*Why plus/minus as the target when it is a bad metric.* Raw plus/minus is
+heavily team-dependent and would be indefensible as an output. It is used as a
+regression **target**, not a result: what comes out is the part of plus/minus
+that box-score production explains, which is the part that travels with a player
+to another team. The team-context noise is what the regression discards. This is
+Box Plus/Minus arrived at with less care — BPM regresses against *adjusted*
+plus/minus and adds team terms; this does neither, so it inherits some team
+quality. Stated as a known bias rather than corrected, because correcting it is
+the hierarchical model's job.
+
+*Why ridge.* Box-score rates are strongly collinear — FGA with PTS, REB with
+DREB — and OLS on collinear features gives large offsetting coefficients that
+swing between seasons. The penalty is chosen by 5-fold cross-validation on the
+training set (it lands on alpha=1000) and recorded in the fit.
+
+*Why counting rates and not efficiency ratios.* A ratio hides volume, and volume
+is most of what separates a starter from a bench player.
+
+*Why a 500-minute floor.* A 40-minute season has a per-minute plus/minus that is
+noise, and including it lets garbage time set coefficients. Excluded from
+*fitting*; assigned replacement level when *predicting*, which is the honest
+treatment — we do not know they are bad, we know we cannot tell.
+
+*Replacement level* is read off the 20th percentile of the fitted distribution,
+so it moves with the model instead of becoming a stale constant. It lands at
+about -1.6 per 36.
+
+**2. Team strength** (`models/win_delta.py`). Minutes-share-weighted mean of
+player quality over a roster. Shares rather than totals: it makes strength a
+rate, and it absorbs the traded-player inflation above.
+
+**3. Wins.** Least squares from season-centred strength to 82-game-normalised
+wins.
+
+### The bias that centring fixed
+
+The first validation lost to both baselines *and* over-predicted every team by
+about **+7.8 wins**. That is a calibration defect on its own terms — a model
+systematically 7.8 wins high is broken whatever the baselines do — so it was
+diagnosed rather than tuned around.
+
+League-mean strength was drifting with the era:
+
+| season | prior seasons available | mean strength | minute share priced |
+| --- | --- | --- | --- |
+| 2015-16 | 1 | -0.72 | 89.9% |
+| 2017-18 | 3 | -0.41 | 85.1% |
+| 2022-23 | 6 | +0.54 | 89.5% |
+| 2023-24 | 7 | +0.73 | 88.8% |
+
+Coverage is flat, so it is not a data-availability artifact. The cause is that
+the metric is not era-neutral: its largest fitted weight is on made
+three-pointers, and three-point volume grew steadily across these seasons. A win
+model fitted on pooled seasons reads that drift as teams getting better.
+
+**Wins are zero-sum** — thirty teams share 1,230 of them and the league mean is
+41 every year by construction — so the only part of strength that can predict
+wins is the part that varies *within* a season. Centring each season on its own
+league mean discards the rest without needing to know what the era trend was.
+Bias went to -0.00 and stayed there in all four held-out seasons.
+
+To be explicit about the order of events: this change was made **after** seeing
+v0 lose. It was motivated by the bias term, which is visible without reference
+to any baseline, and it is a correction rather than a tuning knob — there is no
+free parameter in it.
+
+### Validation
+
+Everything is fit on training seasons and evaluated on a season the fit never
+saw: the ridge penalty, the win-model coefficients, and the shrink factor of the
+regressed baseline. The shrink factor is **fitted, not assumed** (it lands at
+k = 0.53-0.68), because a baseline you tuned is not a baseline.
+
+| held-out | v0 MAE | previous-season wins | regressed to .500 | v0 bias |
+| --- | --- | --- | --- | --- |
+| 2021-22 | **7.46** | 8.17 | 7.87 | +0.00 |
+| 2022-23 | **6.40** | 8.07 | 6.55 | -0.00 |
+| 2023-24 | **7.50** | 8.47 | 9.13 | -0.00 |
+| 2024-25 | 8.58 | 9.13 | **8.41** | -0.00 |
+| **pooled** | **7.49** | 8.46 | 7.99 | |
+
+**v0 beats both baselines in 3 of 4 held-out seasons and on pooled MAE.** The
+stop rule fires: the hierarchical model is a later optimisation, not this
+round's work.
+
+The one loss is worth stating plainly rather than averaging away. In 2024-25 v0
+trails the regressed baseline by **0.17 wins** on 30 teams, which is well inside
+the noise of a sample that size. It is a loss, not a rounding error, and it is
+why the headline says "3 of 4" rather than "beats the baselines".
+
+What is *not* out of sample is roster membership: projecting 2023-24 requires
+knowing who was on each team in 2023-24. That is the point of a trade simulator
+and it is not leakage of the outcome — the two things that would matter, player
+quality and minute allocation, both come only from prior seasons.
+
+### What cannot be validated, ever
+
+**Counterfactual trade deltas have no ground truth.** There is no world in which
+a team both did and did not make a trade, so a projected win delta is never
+observed — not at M4, not later, not with more data. What *can* be bounded is
+how much of it is model error, and that is all `WinDelta` claims: a point
+estimate that is the difference of two projections, and an interval inherited
+from the win model's residual spread on held-out seasons (about 8.5 wins).
+
+```
++3.2 wins  [-8.8, +15.2] at 1 sd  (41.0 -> 44.2)
+```
+
+Those intervals are wide, and they should be. Reporting a trade as "+3.2 wins"
+would imply a precision the construction cannot have. The interval is an upper
+bound on the spread: the two projections come from the same model so their
+errors are correlated, and differencing cancels the shared part, but quantifying
+that cancellation needs the hierarchical model.
+
+### Known limitations, not solved in v0
+
+- **Availability is ignored.** `GP` is games played, not games available.
+  Nothing distinguishes rested from injured from benched, so a team whose star
+  misses fifty games is mispriced, and so is the team that acquires him. This is
+  a property of the source as much as of the model, and it is the single largest
+  known error term. Not solved here.
+- **Minute allocation comes from prior seasons.** Using the target season's
+  minutes would leak exactly the injury and breakout information that makes a
+  season surprising. The cost is that a breakout player is priced at last year's
+  role, or at replacement level if he has no last year.
+- **Defence is thin.** The only defensive inputs are DREB, STL and BLK. A great
+  defender who does not accumulate those is invisible to this model.
+- **Rookies are unpriced.** There is no college or draft input, so a first-year
+  player gets replacement level and a bench-sized share. Across a league that is
+  roughly 104 of 570 players and about 11% of minutes.
+- **Era bias is removed by centring, not by fixing the metric.** The underlying
+  weights still favour a three-point-heavy era; centring makes that harmless for
+  within-season comparison but it would resurface in any cross-era claim.

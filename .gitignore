@@ -56,3 +56,4 @@ runs/
 bench-*.log
 bench-*.marker
 ollama-serve.log
+bench-*.pid
