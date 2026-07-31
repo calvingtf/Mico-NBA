@@ -37,6 +37,26 @@ import numpy as np
 #: it makes it confident about things it cannot see.
 DEFAULT_Z = 1.0
 
+#: Measured error of a win delta, in wins. NOT a theoretical propagation.
+#:
+#: M4 offered two figures for this and both were assumptions: 12.05 from
+#: differencing whole-team projections (assumes branch errors are independent)
+#: and 2.00 from propagating only the changed players' quality (assumes
+#: everything team-level cancels). ``models/delta_error.py`` measured it
+#: instead, against 180 real team-season transitions:
+#:
+#:     all transitions          sd 10.48   MAE 8.20   r=+0.49
+#:     low-disruption subset    sd  7.40   MAE 7.03   (n=30)
+#:
+#: 7.40 is used here — the low-disruption subset, which strips out the largest
+#: confound the model is not responsible for. It is still an upper bound, since
+#: development, coaching and luck remain in it.
+#:
+#: The result is that the wide theoretical bound was nearly right and the
+#: narrow one was not. Options a few wins apart are not separable, and the
+#: honest output is a single tier.
+MEASURED_DELTA_SD = 7.40
+
 
 @dataclass(frozen=True, slots=True)
 class Option:

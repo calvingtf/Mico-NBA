@@ -20,6 +20,13 @@ than they look.
 | 2024-25 | 8.58 | 9.13 | **8.41** |
 | **pooled MAE** | **7.49** | 8.46 | 7.99 |
 
+> **M4.5 correction.** The win-delta interval quoted below as ~8.5 wins, and
+> M4's claim that a changed-players interval narrowed it to ~2.0, were both
+> theoretical. `models/delta_error.py` measured it against 180 real
+> team-season transitions: **sd 10.48 wins overall, 7.40 on the low-disruption
+> subset**. The wide bound was nearly right; the narrow one was not. See
+> [Measuring the delta error](#measuring-the-delta-error).
+
 **v0 has the lower pooled MAE, but the advantage does not clear noise.** On 120
 paired team-seasons the gap is −0.97 wins against previous-season wins
 (p=0.053) and −0.50 against the regressed baseline (p=0.159). The honest
@@ -1487,3 +1494,70 @@ that cancellation needs the hierarchical model.
 - **Era bias is removed by centring, not by fixing the metric.** The underlying
   weights still favour a three-point-heavy era; centring makes that harmless for
   within-season comparison but it would resurface in any cross-era claim.
+
+
+## Measuring the delta error
+
+M4 shipped two intervals for the same quantity and neither was measured:
+**12.05 wins** from differencing whole-team projections (which assumes the two
+branches' errors are independent — they are not) and **2.00 wins** from
+propagating only the changed players' quality (which assumes everything
+team-level cancels exactly — it does not). They disagree about the only
+question anyone asks: at 12 nothing realistic ranks, at 2 a three-win gap does.
+
+Every consecutive team-season pair in the performance ingest is a natural
+experiment. Predict the win delta from the roster change, compare against what
+actually happened, 180 observations across nine usable seasons. Everything is
+fitted on seasons strictly before the transition being scored.
+
+| sample | n | bias | **sd** | MAE | p90 | r |
+| --- | --- | --- | --- | --- | --- | --- |
+| all transitions | 180 | −1.48 | **10.48** | 8.20 | 16.56 | +0.49 |
+| low disruption | 30 | −3.98 | **7.40** | 7.03 | 12.36 | +0.24 |
+| high disruption | 150 | −0.98 | 10.94 | 8.43 | 17.35 | +0.50 |
+| *null: always predict 0* | 180 | — | 11.99 | 9.17 | — | — |
+
+**The measured error is far closer to the wide theoretical bound than to the
+narrow one.** M4's claim that the changed-players interval made realistic
+options rankable does not survive measurement, and is withdrawn.
+
+The model does carry real signal: MAE 8.20 against 9.17 for a model that always
+predicts no change, and a correlation of +0.49 between predicted and actual win
+deltas. It is directionally useful and quantitatively loose.
+
+**This is an upper bound, and a loaded one.** The actual win change contains
+everything the model cannot see — injuries, development, decline, coaching
+changes, schedule strength, luck — and all of it lands in the residual without
+being the delta model's fault. Splitting on availability shows how much: teams
+whose minutes came mostly from players appearing in 60+ games have sd 7.40
+against 10.94 for the rest. That gap is roughly a third of the variance and it
+is not the model's error.
+
+The low-disruption subset is only 30 of 180 team-seasons, so 7.40 itself is
+imprecise, and its bias is *larger* (−3.98) than the full sample's. Both facts
+argue against treating it as a clean estimate of model-only error.
+
+`disruption` is measured as the minute share held by players appearing in fewer
+than 60 games. The ingest publishes games played, not games available, so this
+cannot separate injury from rest from being benched. It is a proxy, and it is
+used to split the sample rather than to correct anything.
+
+### What it does to rankability
+
+The threshold is set from the low-disruption sd, which is the tightest defensible
+reading:
+
+```
+sd 7.40  ->  separation threshold 10.5 wins at z=1
+```
+
+Three realistic swap options projected at 44.2, 42.9 and 41.4 wins come back as
+**one tier**: *"the projection cannot rank them — choose on basketball
+grounds."* Only a genuine blockbuster, seventeen wins clear of a marginal move,
+separates.
+
+So the noise-aware comparison stays as conservative as it was at M3, and the
+reason has changed from an assumption to a measurement. A hierarchical model is
+still justified for coherent difference uncertainty — but the gap it needs to
+close is now known to be real rather than possibly an artifact of propagating
+the wrong variance.

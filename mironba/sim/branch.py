@@ -188,15 +188,29 @@ def gsw_freeze_state() -> tuple[TeamCapState, list[FreeAgent], dict[str, int]]:
                 break
         return years
 
+    # The candidate pool is wider than the five who re-signed, or precision
+    # would be 1.0 by construction: a planner that can only pick players who
+    # actually signed cannot propose a move that did not happen. Golden State's
+    # own 2025-26 players with no 2026-27 deal anywhere are genuine free agents
+    # it could have kept, and four of them exist — Gary Payton II among them,
+    # whom the reporting expected back and who never appears on the books.
+    under_contract_2627 = set()
+    with contracts.open(encoding="utf-8", newline="") as handle:
+        under_contract_2627 = {r["player_id"] for r in csv.DictReader(handle)}
+    unsigned_own = {
+        pid for pid, team in team_2526.items()
+        if team == "GSW" and pid not in under_contract_2627
+    }
+
     agents = [
         FreeAgent(
             player_id=pid,
             name=_name(pid),
-            years_of_service=SERVICE_YEARS.get(pid, 0),
+            years_of_service=SERVICE_YEARS.get(pid, MINIMUM_CAP_HIT_TIER),
             prior_salary=prior.get(pid, 0),
             years_with_team=years_with(pid),
         )
-        for pid in sorted(post_freeze)
+        for pid in sorted(post_freeze | unsigned_own)
     ]
     return state, agents, prior
 
@@ -214,6 +228,13 @@ _NAMES = {
 def _name(pid: str) -> str:
     return _NAMES.get(pid, pid)
 
+
+#: Veteran-minimum contracts hit the cap at the two-year tier regardless of how
+#: long the player has actually served — the league reimburses the difference.
+#: So a pool member whose service is not separately sourced is priced at this
+#: tier, which is a convention about cap accounting rather than a claim about
+#: his career.
+MINIMUM_CAP_HIT_TIER = 2
 
 #: Service years, hand-supplied and flagged. The performance ingest starts at
 #: 2014-15 so it cannot count a career that began earlier, and Basketball-
@@ -237,19 +258,33 @@ def plan_branch(
     state: TeamCapState,
     agents: list[FreeAgent],
     env,
+    *,
+    budget: int | None = None,
 ) -> BranchResult:
     """Plan Golden State's offseason under one outcome.
 
-    Deterministic in this build: the GM re-signs its own free agents in
-    descending order of what the solver says it may pay them, subject to the
-    roster limit and to whatever the block reserved. That is a placeholder for
-    an LLM agent and it is honest about being one — what is being tested here
-    is the branch machinery and the solver, not the model's judgement, and
-    mixing the two would make a failure unattributable.
+    Deterministic in this build. That is a placeholder for an LLM agent and it
+    is honest about being one: what is being tested here is the branch
+    machinery and the solver, not a model's judgement, and mixing the two would
+    make a failure unattributable.
+
+    **The budget is what makes this a decision rather than an inventory.**
+    Without a ceiling the planner re-signs everyone it can afford and
+    "retention" is near-tautological — it would have to fail on cap grounds to
+    miss anyone, and Bird rights mean it almost never does. The default ceiling
+    is the second apron, which is a real cliff rather than a taste: crossing it
+    freezes a team's first-round pick seven years out, bans salary aggregation
+    in trades, and removes the taxpayer mid-level. Teams observably behave as
+    though it binds.
+
+    With a ceiling the planner must drop somebody, and which somebody is a
+    choice the result can be scored on.
     """
     result = BranchResult(branch=branch)
     committed = state.committed_salary
     roster = state.roster_count
+    ceiling = env.second_apron if budget is None else budget
+    result.notes.append(f"budget ceiling ${ceiling:,} (second apron)")
 
     won = any(b.capacity_used for b in branch.blocks if b.team == "GSW")
     if won:
@@ -287,10 +322,33 @@ def plan_branch(
             "GSW", SEASON, committed_salary=committed, roster_count=roster
         )
         routes = signing_routes(team_now, agent, env)
-        best = routes.best()
-        if best is None:
-            result.notes.append(f"no route for {agent.name}: {routes.explain()[:80]}")
+        if not routes.any_route:
+            result.notes.append(f"no route for {agent.name}: {routes.explain()[:70]}")
             continue
+        # The most the team could pay him by any route that still fits under
+        # the ceiling.
+        #
+        # Not the cheapest: routing every player to the minimum put Draymond
+        # Green on $3.88M, which is not a plan, it is an artifact of asking the
+        # wrong question. This model has no player-demand side, so it cannot
+        # know what a player would accept — what it can say is which route the
+        # team commits and what that route permits. Budgeting against the
+        # maximum makes the ceiling bind conservatively, which is what forces a
+        # genuine drop rather than a universal downgrade.
+        affordable = [
+            r for r in routes.routes
+            if committed + r.max_first_year <= ceiling
+        ]
+        if not affordable:
+            cheapest = min(routes.routes, key=lambda r: r.max_first_year)
+            result.notes.append(
+                f"dropped {agent.name}: cheapest route is "
+                f"{cheapest.route} at ${cheapest.max_first_year:,}, which would "
+                f"put the team ${committed + cheapest.max_first_year - ceiling:,} "
+                "over the ceiling"
+            )
+            continue
+        best = max(affordable, key=lambda r: r.max_first_year)
         result.moves.append(
             PlannedMove(agent.player_id, agent.name, best.route,
                         best.max_first_year, best.max_years, best.hard_cap)
@@ -428,16 +486,29 @@ def main(argv: list[str] | None = None) -> int:
     print("\n" + "=" * 74)
     print("  SCORING — signs_elsewhere is what happened")
     print("=" * 74)
-    from mironba.eval.branch_score import score_moves
+    from mironba.eval.branch_score import ACTUAL_ROUTES, Tally, score_moves
 
     scores = score_moves(
         {m.player_id for m in actual_branch.moves}, state, agents, env
     )
     for score in scores:
         print(score.line())
-    print(f"\n  retained {sum(s.retained_sim for s in scores)}/{len(scores)}   "
-          f"route {sum(s.route_hit for s in scores)}/{len(scores)}   "
-          f"terms within max {sum(s.within_max for s in scores)}/{len(scores)}")
+    exact = [s for s in scores if s.admits_exact_check]
+    ceiling_only = [s for s in scores if not s.admits_exact_check]
+    print(f"\n  route {sum(s.route_hit for s in scores)}/{len(scores)}")
+    print(f"  exact-figure checks   {sum(1 for s in exact if s.exact_hit)}/{len(exact)}"
+          f"   ({', '.join(s.player for s in exact) or 'none'})")
+    print(f"  ceiling-only checks   {sum(1 for s in ceiling_only if s.within_max)}"
+          f"/{len(ceiling_only)}   ({', '.join(s.player for s in ceiling_only)})")
+
+    tally = Tally(
+        proposed=[m.player_id for m in actual_branch.moves],
+        actual=list(ACTUAL_ROUTES),
+    )
+    print("\n  PRECISION AND RECALL")
+    print(tally.render(name=_name))
+    print("\n  Retention is no longer near-tautological: the planner works to a")
+    print("  second-apron ceiling and had to drop players to stay under it.")
 
     counterfactual = next(r for r in results if r.branch.outcome_key != "signs_elsewhere")
     print(f"\n  BRANCH {counterfactual.label} IS NOT SCORED.")

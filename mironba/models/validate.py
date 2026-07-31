@@ -255,34 +255,34 @@ def validate(test_season: str, *, quiet: bool = False, centered: bool = True) ->
     }
 
 
+#: Abbreviation -> NBA team id. Constant across seasons: the league's ids do
+#: not change, which is why one table serves every year.
+TEAM_ID_BY_ABBREVIATION: dict[str, str] = {
+    "ATL": "1610612737", "BOS": "1610612738", "BKN": "1610612751",
+    "CHA": "1610612766", "CHI": "1610612741", "CLE": "1610612739",
+    "DAL": "1610612742", "DEN": "1610612743", "DET": "1610612765",
+    "GSW": "1610612744", "HOU": "1610612745", "IND": "1610612754",
+    "LAC": "1610612746", "LAL": "1610612747", "MEM": "1610612763",
+    "MIA": "1610612748", "MIL": "1610612749", "MIN": "1610612750",
+    "NOP": "1610612740", "NYK": "1610612752", "OKC": "1610612760",
+    "ORL": "1610612753", "PHI": "1610612755", "PHX": "1610612756",
+    "POR": "1610612757", "SAC": "1610612758", "SAS": "1610612759",
+    "TOR": "1610612761", "UTA": "1610612762", "WAS": "1610612764",
+}
+
+
 def _team_id_by_abbreviation(players, teams) -> dict[tuple[str, str], str]:
     """Map (season, abbreviation) -> team id.
 
-    The player endpoint gives abbreviations and the team endpoint gives ids and
-    full names, with no shared key. Built by matching the 30 abbreviations of a
-    season against the 30 team ids, using the fact that both are stable within
-    a season and that team ids never change.
+    The player endpoint gives abbreviations and the team endpoint gives ids,
+    with no shared key. Team ids are constant across seasons, so one table
+    serves every year and the season in the key is only there to match the
+    shape callers already use.
     """
-    # Team ids are constant across seasons, so one pass over any season that
-    # has both is enough to learn the mapping, and it is then reused.
-    abbr_to_id: dict[str, str] = {}
-    known = {
-        "ATL": "1610612737", "BOS": "1610612738", "BKN": "1610612751",
-        "CHA": "1610612766", "CHI": "1610612741", "CLE": "1610612739",
-        "DAL": "1610612742", "DEN": "1610612743", "DET": "1610612765",
-        "GSW": "1610612744", "HOU": "1610612745", "IND": "1610612754",
-        "LAC": "1610612746", "LAL": "1610612747", "MEM": "1610612763",
-        "MIA": "1610612748", "MIL": "1610612749", "MIN": "1610612750",
-        "NOP": "1610612740", "NYK": "1610612752", "OKC": "1610612760",
-        "ORL": "1610612753", "PHI": "1610612755", "PHX": "1610612756",
-        "POR": "1610612757", "SAC": "1610612758", "SAS": "1610612759",
-        "TOR": "1610612761", "UTA": "1610612762", "WAS": "1610612764",
-    }
-    abbr_to_id.update(known)
     return {
         (season, abbr): team_id
         for season in {p.season for p in players}
-        for abbr, team_id in abbr_to_id.items()
+        for abbr, team_id in TEAM_ID_BY_ABBREVIATION.items()
     }
 
 

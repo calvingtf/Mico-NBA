@@ -87,6 +87,39 @@ def actual_salaries(
     return found
 
 
+#: Routes whose first-year figure is fully determined by the mechanism, so the
+#: prediction can be checked exactly rather than against a ceiling.
+#:
+#: Only the minimum. Non-Bird was in this list and the data removed it:
+#: Porzingis re-signed at $19,512,195 against a Non-Bird ceiling of $36,878,048,
+#: which is 120% of his prior salary. So "120% of prior" is a *limit a team
+#: negotiates under*, not a figure the rule dictates — Horford landing exactly
+#: on his was him taking the maximum, not the mechanism forcing it.
+#:
+#: That distinction is the whole value of splitting exact from ceiling checks.
+#: Reporting Non-Bird as an exact test would have scored two correct route
+#: assignments as term failures.
+#:
+#: The minimum is genuinely determined, but only given the player's service
+#: tier — and service is the one input in this branch that is recalled rather
+#: than sourced. A minimum mismatch is therefore evidence about the service
+#: figure, not about the solver, and is labelled that way.
+EXACT_ROUTES = (MINIMUM,)
+
+
+def exact_figure(route: str, agent, env) -> int | None:
+    """The figure this route determines, or None if it only sets a ceiling."""
+    from mironba.rules.cap import minimum_salary
+    from mironba.rules.signing import NON_BIRD_RAISE_PCT
+
+    if route == MINIMUM:
+        try:
+            return minimum_salary(env.season, agent.years_of_service)
+        except KeyError:
+            return None
+    return None
+
+
 @dataclass
 class MoveScore:
     player: str
@@ -98,6 +131,19 @@ class MoveScore:
     salary_actual: int
     max_sim: int
     within_max: bool
+    #: Set when the route determines an exact figure. None means the route only
+    #: sets a ceiling and no tighter test is available.
+    exact_expected: int | None = None
+
+    @property
+    def admits_exact_check(self) -> bool:
+        return self.exact_expected is not None
+
+    @property
+    def exact_hit(self) -> bool | None:
+        if self.exact_expected is None:
+            return None
+        return self.exact_expected == self.salary_actual
 
     @property
     def route_hit(self) -> bool:
@@ -110,12 +156,19 @@ class MoveScore:
     def line(self) -> str:
         def mark(ok: bool) -> str:
             return "HIT " if ok else "MISS"
+        if self.exact_expected is None:
+            terms = f"terms {mark(self.within_max)} (<= ${self.max_sim:,}, ceiling only)"
+        elif self.exact_hit:
+            terms = f"terms HIT  (EXACT: ${self.salary_actual:,})"
+        else:
+            terms = (
+                f"terms MISS (EXACT: expected ${self.exact_expected:,}, "
+                f"actual ${self.salary_actual:,} — service tier unsourced)"
+            )
         return (
             f"  {self.player:<22} retain {mark(self.retain_hit)}  "
             f"route {mark(self.route_hit)} "
-            f"({self.route_sim or '-'} vs {self.route_actual})  "
-            f"terms {mark(self.within_max)} "
-            f"(${self.salary_actual:,} vs max ${self.max_sim:,})"
+            f"({self.route_sim or '-'} vs {self.route_actual})  {terms}"
         )
 
 
@@ -150,8 +203,58 @@ def score_moves(planned_ids: set[str], state, agents, env) -> list[MoveScore]:
                 salary_actual=salary,
                 max_sim=check.max_first_year,
                 within_max=check.within_maximum,
+                exact_expected=exact_figure(route, agent, env),
             )
         )
         committed += salary
         roster += 1
     return scores
+
+
+@dataclass
+class Tally:
+    """Recall, precision, and the proposal list that is their denominator."""
+
+    proposed: list[str]
+    actual: list[str]
+
+    @property
+    def hits(self) -> list[str]:
+        return [p for p in self.proposed if p in set(self.actual)]
+
+    @property
+    def false_positives(self) -> list[str]:
+        return [p for p in self.proposed if p not in set(self.actual)]
+
+    @property
+    def missed(self) -> list[str]:
+        return [a for a in self.actual if a not in set(self.proposed)]
+
+    @property
+    def recall(self) -> float:
+        return len(self.hits) / len(self.actual) if self.actual else 0.0
+
+    @property
+    def precision(self) -> float:
+        return len(self.hits) / len(self.proposed) if self.proposed else 0.0
+
+    def render(self, name=lambda pid: pid) -> str:
+        lines = [
+            f"  proposed {len(self.proposed)}, actual {len(self.actual)}, "
+            f"overlap {len(self.hits)}",
+            f"  recall    {self.recall:6.1%}  "
+            f"({len(self.hits)}/{len(self.actual)} actual moves reproduced)",
+            f"  precision {self.precision:6.1%}  "
+            f"({len(self.hits)}/{len(self.proposed)} proposed moves happened)",
+            "",
+            "  full proposal list (the precision denominator):",
+        ]
+        for pid in self.proposed:
+            mark = "happened" if pid in set(self.actual) else "DID NOT HAPPEN"
+            lines.append(f"    {name(pid):<24} {mark}")
+        if self.missed:
+            lines.append("  actual moves the sim did not make:")
+            for pid in self.missed:
+                lines.append(f"    {name(pid):<24} MISSED")
+        return "\n".join(lines)
+
