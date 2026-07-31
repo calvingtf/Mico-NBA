@@ -1,0 +1,44 @@
+{
+  "trials": 30,
+  "completed": 13,
+  "incomplete": 17,
+  "calls": 31,
+  "schema_failure_rate_first_attempt": 0.0645,
+  "first_attempt_failures": 2,
+  "repairs_succeeded": 1,
+  "unrecovered_schema_failures": 1,
+  "unrecovered_rate": 0.0323,
+  "truncations": 2,
+  "mean_latency_s": 49.71,
+  "median_latency_s": 29.46,
+  "p90_latency_s": 81.81,
+  "illegal_proposal_rate_before_retry": 1.0,
+  "illegal_proposal_rate_after_retry": 1.0,
+  "verdicts_first": {
+    "rejected": 9
+  },
+  "verdicts_final": {
+    "rejected": 9
+  },
+  "outcomes": {
+    "stood_pat": 4,
+    "proposed": 8,
+    "schema_failed": 1
+  },
+  "trials_that_retried": 9,
+  "run_ids": [
+    "curry-to-lakers-20260730T215718Z-04bb3777",
+    "curry-to-lakers-20260730T215727Z-82a7b9da",
+    "curry-to-lakers-20260730T215746Z-ed25c756",
+    "curry-to-lakers-20260730T220611Z-8d584f62",
+    "curry-to-lakers-20260730T221119Z-ccd23c68",
+    "curry-to-lakers-20260730T221320Z-2c82c650",
+    "curry-to-lakers-20260730T221839Z-103fa920",
+    "curry-to-lakers-20260730T221957Z-4b8c9376",
+    "curry-to-lakers-20260730T222524Z-b29f3279",
+    "curry-to-lakers-20260730T222841Z-b86a2ee7",
+    "curry-to-lakers-20260730T223031Z-44ddc7b9",
+    "curry-to-lakers-20260730T223109Z-e0d6725c",
+    "curry-to-lakers-20260730T223215Z-eec5cf8a"
+  ]
+}

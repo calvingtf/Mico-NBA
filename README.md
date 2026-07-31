@@ -6,6 +6,36 @@ project charter; this file records what actually exists.
 Part of the MiroFish/MiroShark family. Package, charter, and repo folder all
 read `MiroNBA`/`mironba`.
 
+## Status: M1 — one agent, one tick, first LLM code
+
+M0 is complete and tagged `v0.1.0-m0`; its record is below and unchanged. M1
+adds the first LLM code in the project: a single GM agent that proposes one
+trade, which `rules/` accepts, rejects, or refuses to decide. No scheduler, no
+second agent, no world loop.
+
+```
+mironba/
+  world/       manifest.py, events.py          ← run provenance, one event log
+  llm/         client.py, schemas.py
+    providers/ ollama.py, openai_compat.py     ← the only files naming a server
+  agents/      base.py, gm.py                  ← structured personas, two-step
+  sim/         boundary.py, scenario.py, tick.py, bench.py
+configs/       models.yaml, scenario/*.yaml
+```
+
+One command runs it end to end:
+
+```bash
+python -m mironba.sim.tick --scenario configs/scenario/curry-to-lakers.yaml
+```
+
+It prints the proposal, the verdict, the retry if there was one, and the
+manifest, and writes every artifact under `runs/<run_id>/`.
+
+See [M1: what the live model actually did](#m1-what-the-live-model-actually-did)
+for the measured numbers, including four bugs the measurement exposed
+that no unit test would have caught.
+
 ## Status: M0 complete — `v0.1.0-m0`
 
 M0 is "no LLM at all": load data into SQLite, and encode 2023-CBA trade
@@ -29,11 +59,12 @@ mironba/
   data/        schema.sql, db.py, loader.py, candidates.py
     ingest/    cache.py, bbref.py, build.py               ← real data, cached
     snapshots/ bbref-2023-24, bbref-2024-25, bbref-2025-26
-tests/         245 tests, all passing
+tests/         245 tests, all passing at the v0.1.0-m0 tag
 ```
 
-Nothing in `models/`, `world/`, `llm/`, `agents/`, `sim/`, `eval/`, or `api/`
-yet. That is deliberate. **M1 is open.**
+At that tag nothing existed in `models/`, `world/`, `llm/`, `agents/`, `sim/`,
+`eval/`, or `api/`. M1 has since added `world/`, `llm/`, `agents/` and `sim/`;
+`models/`, `eval/` and `api/` remain empty, and deliberately so.
 
 ## Run it
 
@@ -385,3 +416,158 @@ evidence of agreement with real NBA practice beyond four unverified fixtures.
 Worth being blunt about, because "M0 complete" could otherwise be read as a
 stronger claim than it is. The rules left unimplemented on purpose are listed
 under [Not implemented](#not-implemented).
+
+## M1: what the live model actually did
+
+Measured on this machine against a live local model. Every number below comes
+from runs under `runs/`, each with its own manifest; nothing is estimated.
+
+**Setup.** `qwen3.6:35b-a3b` (36B total, ~3B active) at Q4_K_M on Ollama
+0.31.1, RTX 3090 (24 GB), 4096-token context, temperature 0.8, top_p 0.95, one
+seed per trial. Reproduce with:
+
+```bash
+python -m mironba.sim.bench --scenario configs/scenario/curry-to-lakers.yaml -n 20
+```
+
+### The numbers
+
+Two scenarios, `curry-to-lakers` (13 completed trials, 31 calls) and
+`undetermined-byc` (3 trials, 5 calls). Aggregates in `bench-curry.json` and
+`bench-byc.json`; the per-trial artifacts are under `runs/`, which is
+gitignored.
+
+| | curry-to-lakers | undetermined-byc |
+| --- | --- | --- |
+| Schema failure, first attempt | **6.5%** (2/31) | 20.0% (1/5) |
+| Unrecovered after one repair | 3.2% (1) | 0% |
+| Illegal proposal, before retry | **100%** (9/9) | 100% (1/1) |
+| Illegal proposal, after retry | **100%** (9/9) | 100% (1/1) |
+| Trials that retried | 9 | 1 |
+| Latency mean / median / p90 | 49.7s / 29.5s / 81.8s | 31.8s / 22.5s / 48.9s |
+
+Read the schema-failure rate with its cause attached. In an earlier 41-call
+batch, **all four first-attempt failures were truncations** — the model was
+filling the form correctly and ran out of `max_tokens`, which is our
+configuration defect and not a statement about the model. `max_tokens` went
+1024 -> 2048 because of it. Two of the two failures above were likewise
+truncations, so the genuine schema-*following* failure rate across everything
+measured is **0**: not one well-formed completion used the wrong shape once the
+model could actually see the schema.
+
+**The retry never rescued a proposal.** Nine rejected trades, nine rejection
+reasons handed back verbatim, nine still-rejected revisions. The model does
+respond to the feedback — it drops players, shrinks packages, tries to fix
+roster counts — but it does not solve apron salary matching. Across roughly a
+dozen live proposals it never produced a legal trade. That is the single most
+useful thing M1 measured, and it is an argument for the charter's boundary
+rather than against the model: an LLM that could be talked into legality would
+be far more dangerous than one that is simply, visibly wrong.
+
+**`UNDETERMINED` was never reached live.** It is exercised deterministically in
+`tests/test_boundary.py` end to end through the same `assemble` -> `judge`
+path, but no live trial produced it, because a definite ERROR outranks
+UNDETERMINED by design and every live proposal was illegal on the numbers
+first. The first version of `undetermined-byc.yaml` made this impossible on
+purpose without noticing: it used a second-apron team, so every proposal drew a
+salary-matching error before BYC could matter. It now uses a team with cap
+room. The path is still unobserved live.
+
+**Latency spans two machine states and should not be quoted as one number.**
+The 49.7s mean is much worse than the 5.96s mean / 4.58s median measured in an
+earlier clean batch on the same model, same quantization, same prompts. The
+difference is the GPU/CPU offload split, which changed between batches after a
+leaked runner was killed and the model reloaded. **The manifest does not record
+that split**, which is a real gap for M5: comparing two models on latency is
+meaningless if one of them was half on the CPU and nothing says so.
+`/api/ps` exposes `size_vram` against `size`; that belongs in the manifest
+before any M5 comparison is run.
+
+### Structured output: what actually happened
+
+The charter's first defence is to constrain decoding at the server rather than
+ask nicely in the prompt. **On this setup that defence does not exist.**
+
+Ollama 0.31.1 accepted the `format` parameter carrying a full JSON schema and
+ignored it. The evidence is in the raw logs: asked for a `TradeProposal`, the
+model returned
+
+```json
+{"trade": {"sent_ids": ["reaveau01", "hachiru01"], "received_ids": ["curryst01"]}}
+```
+
+— a sensible shape, and not the one in the schema. A grammar cannot emit that.
+The legacy `format: "json"` mode was ignored too, returning free prose. Sending
+the same schema through the OpenAI-compatible endpoint as `response_format`
+crashed the runner with a CUDA launch failure.
+
+This mattered more than a missing optimisation, because the code *claimed* the
+defence was working. `OllamaProvider.enforces_schema()` returned `True`, which
+did two harmful things: it suppressed the prompt-level fallback, and it stamped
+`schema_enforced_by_server: true` into every log line. The first measured
+failure rate was therefore describing a defence that never ran, against a model
+that had never been shown the schema in any form.
+
+`enforces_schema()` now means *"we have verified this server constrains
+decoding"* and returns `False` everywhere, including for vLLM, which we have
+not tested. The schema is still always sent — and when enforcement is
+unverified, it also goes into the prompt.
+
+### Four bugs the measurement found
+
+None of these were visible from the test suite, which is the point of measuring
+against a live model rather than a mock.
+
+**1. The schema was never in the prompt.** Covered above. Fixed by defence 1b:
+when server enforcement is unverified, the field list goes into the prompt.
+
+**2. Pasting the raw JSON Schema made it worse.** The obvious first fix was to
+dump `model_json_schema()` into the prompt. The model promptly answered with
+the schema document itself — `{"description": "Step one...", "required":
+["action", "reason"]}` — because a schema document looks exactly like a JSON
+object to a model being asked for a JSON object. Replaced with a compact field
+list and a skeleton to imitate (`render_field_list`). Small models copy
+examples far more reliably than they interpret specifications.
+
+**3. `max_tokens: 1024` truncated completions mid-JSON**, and every truncation
+was counted as a schema failure — 4 of 41 calls in the first batch. The model
+was filling the form correctly and ran out of room. `RawCompletion.truncated`
+existed precisely to separate these two things and the metric was not using it.
+Now 2048, and truncations are reported alongside the failure rate rather than
+folded into it.
+
+**4. A prose-length cap was being counted as a schema failure.** `reason` had
+`max_length=400`. A verbose but perfectly well-formed rationale therefore
+failed validation and landed in the headline number as if the model could not
+fill the form. The cap is now 4000 and exists only to bound storage; brevity is
+`max_tokens`'s job, and structure is what the schema is for.
+
+After the fixes, the same scenario and seed that had failed twice completed
+with **0 schema failures**.
+
+### Runtime notes, not findings
+
+Conditions specific to this machine, recorded so the latency figures mean
+something and so the next person does not rediscover them:
+
+- The model needs ~21.5 GB of VRAM and would not load until several GB of RAM
+  and VRAM were freed. With a display attached, WDDM would not serve a
+  contiguous 12.9 GB CUDA buffer even with 22.3 GiB nominally free.
+- At an 8192-token context, `llama-server` crashed with `std::bad_alloc` while
+  saving a 102 MiB prompt-cache state on the *second* request of a session —
+  which is exactly what a two-step agent does. Dropping to 4096 avoided it.
+  `configs/models.yaml` pins 4096 for that reason, not for a modelling one.
+- Printing a roster crashed on `cp1252` the moment a name contained `č`. NBA
+  rosters are full of them. `use_utf8_console()` now reconfigures stdout, with
+  errors replaced rather than raised — losing a completed run at the display
+  step is absurd.
+
+### What M1 does not show
+
+One agent, one tick, one counterparty, two scenarios. The illegal-proposal rate
+is a property of *this prompt on this model at this temperature*, not of local
+models generally, and n is small enough that the difference between the
+before-retry and after-retry rates should be read as a direction rather than a
+measurement. `local_deep` (`qwen3.6:27b`) is declared in `configs/models.yaml`
+but not pulled, so nothing here says anything about a dense model. That
+comparison is M5's job, which is why the manifest records what it records.

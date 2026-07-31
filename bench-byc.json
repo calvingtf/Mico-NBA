@@ -1,0 +1,33 @@
+{
+  "trials": 3,
+  "completed": 3,
+  "incomplete": 0,
+  "calls": 5,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 31.75,
+  "median_latency_s": 22.46,
+  "p90_latency_s": 48.93,
+  "illegal_proposal_rate_before_retry": 1.0,
+  "illegal_proposal_rate_after_retry": 1.0,
+  "verdicts_first": {
+    "rejected": 1
+  },
+  "verdicts_final": {
+    "rejected": 1
+  },
+  "outcomes": {
+    "proposed": 1,
+    "stood_pat": 2
+  },
+  "trials_that_retried": 1,
+  "run_ids": [
+    "undetermined-byc-20260731T021638Z-8cffac92",
+    "undetermined-byc-20260731T021846Z-14feb8c4",
+    "undetermined-byc-20260731T021908Z-dafc22f6"
+  ]
+}
