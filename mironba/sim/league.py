@@ -63,6 +63,12 @@ from pathlib import Path
 from mironba.agents.gm import GMPersona
 from mironba.rules.constants import environment_for
 from mironba.rules.signing import FreeAgent, TeamCapState, signing_routes
+from mironba.sim.arrivals import (
+    SIGNING,
+    mechanism,
+    pre_freeze_ids,
+    signing_targets,
+)
 
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 DOCS = Path(__file__).resolve().parents[2] / "docs" / "backtests"
@@ -176,7 +182,18 @@ class Scheduler:
 # Contention
 # --------------------------------------------------------------------------
 
+#: Width of a contention tier, in projected wins.
+#:
+#: The measured separation threshold is 10.5 wins (models/delta_error.py), and
+#: a tier has to be at least that wide or the comparison inside it would be
+#: exactly the one the value model cannot make. 12 clears it with room and is
+#: stated here rather than tuned: at this width a 55-win team and a 30-win team
+#: fall two tiers apart, which is a distinction the model genuinely supports,
+#: while two 44-win teams do not.
+TIER_WIDTH_WINS = 12.0
+
 UNCONTESTED = "uncontested"
+BY_TIER = "clearly stronger roster"
 BY_OFFER = "higher offer"
 BY_COMMITMENT = "conditional commitment names this team"
 ARBITRARY = "arbitrary - nothing available separates the offers"
@@ -213,27 +230,58 @@ class Contest:
         return head + "\n      " + competing
 
 
-def resolve(player_id, offers, commitments, rng) -> Contest:
+def resolve(player_id, offers, commitments, rng, projections=None) -> Contest:
     """Decide who signs a contested player, using only defensible inputs.
 
-    Deliberately not a win-maximisation. The measured delta error is 7.4 wins
-    and the separation threshold 10.5, so the value model cannot tell two
-    plausible destinations apart. Making it choose would manufacture a
-    preference and then present it as analysis.
+    Offer-maximisation alone was falsified by the scenario it exists to model.
+    It cannot produce LeBron James choosing Philadelphia at $3,876,529 over a
+    team with cap space, and in the M5 run it handed all eight contested
+    players to whichever team had the most room. Money is a factor; it is not
+    the only one and it is not the first.
+
+    Order, most to least defensible:
+
+      1. **a conditional commitment naming this player** — evidence about what
+         was reported, which beats any inference about what should happen;
+      2. **roster tier** — the value model CAN separate a contender from a
+         rebuild, it just cannot separate two contenders. Tiers are
+         TIER_WIDTH_WINS apart precisely so every comparison made here is one
+         the measured error supports;
+      3. **the offer**, once tier and commitment are silent;
+      4. **arbitrary**, recorded as such.
+
+    Step 2 is the one that makes this different from M5, and it is bounded by
+    the same measurement that bans the naive version: a comparison inside a
+    tier is never made.
     """
     if len(offers) == 1:
         return Contest(player_id, offers, offers[0].team, UNCONTESTED)
 
     ranked = sorted(offers, key=lambda o: (-o.max_first_year, o.team))
 
-    # A reported intention naming this player outranks the money: it is
-    # evidence about what happened rather than an inference about what should.
     for commitment in commitments:
         text = f"{commitment.condition} {commitment.commitment}".lower()
         if player_id.lower() in text:
             for offer in ranked:
                 if offer.team.lower() == commitment.subject.lower():
                     return Contest(player_id, offers, offer.team, BY_COMMITMENT)
+
+    if projections:
+        tiers = {
+            o.team: int(projections.get(o.team, 0.0) // TIER_WIDTH_WINS)
+            for o in ranked
+        }
+        best_tier = max(tiers.values())
+        top = [o for o in ranked if tiers[o.team] == best_tier]
+        if len(top) < len(ranked):
+            if len(top) == 1:
+                return Contest(player_id, offers, top[0].team, BY_TIER)
+            # Several teams share the top tier: fall through to the offer,
+            # but only among them. A lower tier never wins on money alone.
+            ranked = top
+
+    if len(ranked) == 1:
+        return Contest(player_id, offers, ranked[0].team, BY_TIER)
 
     best, second = ranked[0], ranked[1]
     if best.max_first_year >= second.max_first_year * (1 + OFFER_MARGIN):
@@ -355,7 +403,13 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731):
     scheduler = Scheduler(teams=TEAMS)
     ceiling = env.second_apron
 
-    added = {t: league.arrivals(t) for t in TEAMS}
+    # Only POST-freeze arrivals are removed. The June trades - Giannis and
+    # Portis to Miami, LaMelo Ball and Josh Green to Minnesota, Jaylen Brown to
+    # Philadelphia - had already happened and are part of the world the GMs
+    # were planning in. Removing them was what gave Miami $100M of cap space
+    # that never existed and let it win all eight contests.
+    already = pre_freeze_ids()
+    added = {t: (league.arrivals(t) - already) for t in TEAMS}
     all_added = set().union(*added.values())
     states = {t: league.freeze_state(t, added[t]) for t in TEAMS}
     results = {
@@ -421,7 +475,11 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731):
                     Offer(team, pid, route.route, route.max_first_year)
                 )
 
-    contests = [resolve(pid, offers[pid], commitments, rng) for pid in sorted(offers)]
+    projections = project_wins(league, states)
+    contests = [
+        resolve(pid, offers[pid], commitments, rng, projections)
+        for pid in sorted(offers)
+    ]
 
     for contest in contests:
         team = contest.winner
@@ -458,6 +516,100 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731):
     return results, contests, scheduler
 
 
+def project_wins(league, states):
+    """Projected wins per team, for the contention tier.
+
+    Uses the value model on each team's freeze roster. Player ids are matched
+    by normalised name, because the contract tables use Basketball-Reference
+    ids and the performance ingest uses NBA ids with no shared key. Coverage is
+    roughly three quarters of a roster; unmatched players fall to replacement
+    level, which flattens the spread and therefore makes the tiers *more*
+    conservative rather than less.
+
+    Returns an empty mapping if the performance snapshot is absent, in which
+    case resolution falls back to commitments and offers alone.
+    """
+    try:
+        from mironba.models.value import fit_value_model, load_player_seasons
+        from mironba.models.win_delta import (
+            fit_win_model, player_quality, prior_seasons, team_strength,
+        )
+        from mironba.models.value import load_team_seasons
+        from mironba.models.win_delta import center_by_season
+        from mironba.models.validate import TEAM_ID_BY_ABBREVIATION
+    except Exception:  # noqa: BLE001 - projections are optional
+        return {}
+
+    import re
+    import unicodedata
+
+    def norm(name):
+        text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+        return re.sub(r"[^a-z]", "", text.lower())
+
+    try:
+        players = load_player_seasons()
+        teams = load_team_seasons()
+    except FileNotFoundError:
+        return {}
+    all_seasons = sorted({p.season for p in players})
+    train = tuple(prior_seasons("2024-25", all_seasons))
+    if len(train) < 3:
+        return {}
+    value_model = fit_value_model(players, train)
+    quality, minutes = player_quality(value_model, players, "2024-25", all_seasons)
+
+    by_name = {}
+    for player in players:
+        if player.season == "2024-25":
+            by_name[norm(player.name)] = player.player_id
+
+    strengths = {}
+    rosters = {}
+    for team in TEAMS:
+        roster = [
+            r["player_id"] for r in league.contracts_2627
+            if r["team_id"] == team
+        ]
+        rosters[team] = [
+            by_name[norm(league.name(pid))]
+            for pid in roster if norm(league.name(pid)) in by_name
+        ]
+
+    # Fit the win model on the training seasons so the mapping from strength to
+    # wins is the same one validated in models/validate.py.
+    ids = TEAM_ID_BY_ABBREVIATION
+    train_strengths = {}
+    season_rosters = {}
+    for player in players:
+        season_rosters.setdefault(
+            (player.season, ids.get(player.team)), []
+        ).append(player.player_id)
+    for season in train:
+        q, m = player_quality(value_model, players, season, all_seasons)
+        if not q:
+            continue
+        for team in teams:
+            if team.season != season:
+                continue
+            key = (season, team.team_id)
+            train_strengths[key], *_ = team_strength(
+                season_rosters.get(key, []), q, m, value_model.replacement_pm36
+            )
+    if len(train_strengths) < 60:
+        return {}
+    win_model = fit_win_model(center_by_season(train_strengths), teams, train)
+
+    raw = {
+        team: team_strength(
+            rosters[team], quality, minutes, value_model.replacement_pm36
+        )[0]
+        for team in TEAMS
+    }
+    mean = sum(raw.values()) / len(raw)
+    return {t: win_model.wins(v - mean) for t, v in raw.items()}
+
+
 # --------------------------------------------------------------------------
 # Scoring
 # --------------------------------------------------------------------------
@@ -489,11 +641,22 @@ class TeamScore:
         )
 
 
-def score(results, league):
-    scores = [
-        TeamScore(t, list(results[t].signed), sorted(league.arrivals(t)))
-        for t in TEAMS
-    ]
+def score(results, league, *, signings_only=True):
+    """Precision and recall, against a denominator chosen by mechanism.
+
+    ``signings_only`` is the headline. A planner that only signs free agents
+    cannot produce a trade or a draft pick, so scoring it against every arrival
+    puts moves in the denominator it could never make and bounds recall below 1
+    by construction. The full-arrivals number is reported alongside so the
+    bound is visible rather than assumed away.
+    """
+    scores = []
+    for t in TEAMS:
+        actual = (
+            sorted(signing_targets(t)) if signings_only
+            else sorted(league.arrivals(t) - pre_freeze_ids())
+        )
+        scores.append(TeamScore(t, list(results[t].signed), actual))
     proposed = sum(len(s.proposed) for s in scores)
     actual = sum(len(s.actual) for s in scores)
     hits = sum(len(s.hits) for s in scores)
@@ -539,7 +702,12 @@ def contested_accuracy(contests, league):
 
 
 def main(argv=None) -> int:
+    from mironba.sim.tick import use_utf8_console
     from mironba.world.evidence import load_ledger
+
+    # NBA rosters are wall-to-wall diacritics and a Windows console is cp1252.
+    # Losing a finished run at the print step is the failure this exists for.
+    use_utf8_console()
 
     parser = argparse.ArgumentParser(description="Multi-team branch simulation.")
     parser.add_argument("--out", type=Path, default=None)
@@ -607,6 +775,22 @@ def main(argv=None) -> int:
                 mark = "OK  " if row["correct"] else "MISS"
                 print(f"      {mark} {row['name']:<22} sim {row['winner']:<4} "
                       f"actual {row['actual'] or '-':<4} [{row['reason']}]")
+            print()
+            print("  READ THIS BEFORE THE RECALL NUMBER.")
+            print("  LeBron James's destination is the BRANCH PREMISE, not a")
+            print("  prediction: run_branch assigns him to Philadelphia because")
+            print("  that is what defines this branch. He is one of only two")
+            print("  producible signing targets, so the headline recall is one")
+            print("  stipulated hit and one genuine miss (Bassey to Golden")
+            print("  State). Predictive recall on non-stipulated signings is 0/1.")
+            all_scores, all_pooled = score(results, league, signings_only=False)
+            print()
+            print("  against ALL post-freeze arrivals (trades and draft picks")
+            print("  included, which a signing planner cannot produce):")
+            print(f"    recall {all_pooled['recall']:6.1%}   "
+                  f"precision {all_pooled['precision']:6.1%}   "
+                  f"(actual {all_pooled['actual']})")
+            payload["all_arrivals"] = all_pooled
             payload["scores"] = [asdict(s) for s in scores]
             payload["pooled"] = pooled
             payload["contested"] = accuracy

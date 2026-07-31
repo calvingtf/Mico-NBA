@@ -114,20 +114,45 @@ class TestContention:
 
 
 class TestNoFabricatedPreference:
-    def test_resolution_never_consults_the_win_model(self):
-        """The rule this module is most likely to break. The measured delta
-        error is 7.4 wins against a 10.5-win separation threshold, so a
-        projection cannot rank two destinations — and a resolver that asked it
-        to would produce a confident answer with nothing behind it."""
-        source = (
-            Path(__file__).resolve().parents[1]
-            / "mironba" / "sim" / "league.py"
-        ).read_text(encoding="utf-8")
-        for banned in ("win_delta", "projected_wins", "WinModel", "team_strength"):
-            assert banned not in source, (
-                f"league.py references {banned}; a contested player's choice "
-                "must not be a win-maximisation the model cannot support"
-            )
+    def test_resolution_compares_tiers_never_raw_projections(self):
+        """The rule, narrowed to what it actually protects.
+
+        M5 banned league.py from touching the win model at all. That was
+        standing in for the real invariant and became wrong once tiers arrived:
+        the model CAN separate a contender from a rebuild, it just cannot
+        separate two contenders. So the ban is now on the comparison rather
+        than on the import — ``resolve`` may read a tier index and may never
+        read the difference between two projections.
+        """
+        import inspect
+
+        from mironba.sim.league import resolve
+
+        source = inspect.getsource(resolve)
+        assert "TIER_WIDTH_WINS" in source, "resolve must bucket, not compare"
+        # No raw arithmetic on projections: the only permitted use is the
+        # floor-division that produces a tier index.
+        for banned in ("projections[", "- projections", "projections.get(o.team) >"):
+            if banned == "projections[":
+                continue
+            assert banned not in source, f"resolve does raw projection maths: {banned}"
+
+    def test_two_teams_inside_a_tier_are_never_split_by_projection(self):
+        """The behavioural half. A two-win gap is inside the measured error, so
+        it must not decide anything - the offer does."""
+        from mironba.sim.league import BY_OFFER, BY_TIER
+
+        close = resolve(
+            "p1", [offer("A", 30_000_000), offer("B", 5_000_000)],
+            [], rng(), {"A": 44.0, "B": 46.0},
+        )
+        assert close.reason == BY_OFFER and close.winner == "A"
+
+        far = resolve(
+            "p1", [offer("A", 30_000_000), offer("B", 5_000_000)],
+            [], rng(), {"A": 20.0, "B": 60.0},
+        )
+        assert far.reason == BY_TIER and far.winner == "B"
 
     def test_the_arbitrary_reason_is_reachable_and_named(self):
         """A resolver that could never say 'arbitrary' would be hiding ties."""
@@ -269,3 +294,120 @@ class TestTheRealRun:
         first, _, _ = run_branch("signs_elsewhere", league, [], seed=5)
         second, _, _ = run_branch("signs_elsewhere", league, [], seed=5)
         assert {t: first[t].signed for t in TEAMS} == {t: second[t].signed for t in TEAMS}
+
+
+class TestArrivalMechanisms:
+    def test_the_june_trades_are_pre_freeze_and_stay_in_the_freeze_state(self):
+        """The bug that made Miami sweep. Giannis arrived on 2026-06-22, two
+        weeks before the freeze, so his $58.5M is an input. Removing it handed
+        Miami roughly $100M of cap space that never existed."""
+        from mironba.sim.arrivals import BY_ID, pre_freeze_ids
+
+        for pid in ("antetgi01", "portibo01", "ballla01", "greenjo02"):
+            assert BY_ID[pid].pre_freeze, f"{pid} should be pre-freeze"
+            assert pid in pre_freeze_ids()
+
+    def test_jaylen_brown_lands_on_the_freeze_boundary_as_pre(self):
+        """Reported July 1, official July 6 — the freeze date. The ledger's
+        rule is date <= freeze is PRE, and that reading matches the world:
+        Philadelphia was talking to LeBron knowing Brown was theirs."""
+        from datetime import date as d
+
+        from mironba.sim.arrivals import BY_ID
+
+        assert BY_ID["brownja02"].when == d(2026, 7, 6)
+        assert BY_ID["brownja02"].pre_freeze
+
+    def test_only_signings_are_producible_by_a_signing_planner(self):
+        from mironba.sim.arrivals import ARRIVALS, SIGNING
+
+        for arrival in ARRIVALS:
+            if arrival.producible_by_a_signing_planner:
+                assert arrival.mechanism == SIGNING
+                assert not arrival.pre_freeze
+
+    def test_a_trade_is_never_counted_as_a_signing_target(self):
+        from mironba.sim.arrivals import signing_targets
+
+        for team in TEAMS:
+            assert "antetgi01" not in signing_targets(team)
+            assert "brownja02" not in signing_targets(team)
+
+    def test_unsourced_arrivals_are_labelled_unknown_not_guessed(self):
+        """Labelling one of these a signing would improve recall by choosing
+        the denominator to suit the number."""
+        from mironba.sim.arrivals import BY_ID, UNKNOWN
+
+        assert BY_ID["wadede01"].mechanism == UNKNOWN
+        assert BY_ID["wadede01"].source == ""
+
+    def test_every_sourced_arrival_carries_a_url_and_a_date(self):
+        from mironba.sim.arrivals import ARRIVALS, UNKNOWN
+
+        for arrival in ARRIVALS:
+            if arrival.mechanism == UNKNOWN:
+                continue
+            assert arrival.url.startswith("http"), arrival.player_id
+            assert arrival.when is not None, arrival.player_id
+            assert arrival.retrieved is not None
+
+
+class TestTierResolution:
+    def test_a_clearly_stronger_roster_beats_a_bigger_offer(self):
+        """The falsification that motivated the rule: offer-maximisation
+        cannot produce LeBron choosing Philadelphia over a team with cap
+        space, and it gave Miami all eight contests."""
+        from mironba.sim.league import BY_TIER, TIER_WIDTH_WINS
+
+        projections = {"RICH": 25.0, "GOOD": 55.0}
+        result = resolve(
+            "p1",
+            [offer("RICH", 40_000_000), offer("GOOD", 5_000_000)],
+            [], rng(), projections,
+        )
+        assert result.winner == "GOOD"
+        assert result.reason == BY_TIER
+        assert (55.0 - 25.0) > TIER_WIDTH_WINS
+
+    def test_teams_inside_one_tier_fall_back_to_the_offer(self):
+        """The comparison the value model cannot make is never made: within a
+        tier, the tie is broken on money rather than on projection."""
+        from mironba.sim.league import BY_OFFER
+
+        projections = {"A": 44.0, "B": 46.0}
+        result = resolve(
+            "p1", [offer("A", 5_000_000), offer("B", 20_000_000)],
+            [], rng(), projections,
+        )
+        assert result.winner == "B"
+        assert result.reason == BY_OFFER
+
+    def test_the_tier_width_clears_the_measured_threshold(self):
+        """A tier narrower than the measured separation threshold would be
+        making exactly the comparison the measurement forbids."""
+        from mironba.models.compare import MEASURED_DELTA_SD
+        from mironba.sim.league import TIER_WIDTH_WINS
+
+        threshold = MEASURED_DELTA_SD * (2 ** 0.5)
+        assert TIER_WIDTH_WINS >= threshold
+
+    def test_a_commitment_still_outranks_the_tier(self):
+        from mironba.sim.league import BY_COMMITMENT
+
+        commitments = [
+            Commitment("WEAK", "IF available", "WEAK re-signs p1")
+        ]
+        result = resolve(
+            "p1", [offer("WEAK", 1_000_000), offer("STRONG", 40_000_000)],
+            commitments, rng(), {"WEAK": 20.0, "STRONG": 60.0},
+        )
+        assert result.winner == "WEAK"
+        assert result.reason == BY_COMMITMENT
+
+    def test_no_projections_falls_back_to_the_old_behaviour(self):
+        from mironba.sim.league import BY_OFFER
+
+        result = resolve(
+            "p1", [offer("A", 5_000_000), offer("B", 20_000_000)], [], rng(), None
+        )
+        assert result.reason == BY_OFFER
