@@ -1,0 +1,42 @@
+id: undetermined-byc
+season: "2024-25"
+snapshot: bbref-2024-25
+team: DET
+partner: UTA
+trade_date: "2025-02-06"
+
+seed: >
+  Detroit has cap room and a young roster. Utah is open for business before
+  the deadline. You are the Pistons' GM. A modest, salary-matched swap is
+  perfectly achievable here.
+
+persona:
+  label: cautious-hoarder
+  risk_tolerance: 0.3
+  win_now_horizon: 2
+  asset_hoarding: 0.8
+
+# Deliberately left unresolved. Every player loads with re_sign_status UNKNOWN,
+# so the validator refuses to decide and returns UNDETERMINED.
+#
+# The team matters. An earlier version of this scenario used Boston, which was
+# above the second apron — so every proposal drew a definite SALARY_MATCH or
+# AGGREGATION error, and a definite ERROR outranks UNDETERMINED by design. The
+# scenario could therefore never show the outcome it existed to show. Detroit
+# is under the cap in 2024-25, so an ordinary swap is legal on the numbers and
+# the only open question left is the one we cannot answer.
+#
+# This scenario exists to keep that path exercised end to end with a live
+# model. It is the outcome most likely to be quietly lost — a run that only
+# ever sees approved and rejected would let `legal` start returning False for
+# undecidable trades without anything noticing, and M4 would score those as
+# correct rejections and report a hit rate that looks fine.
+byc_resolution:
+  mode: unresolved
+  sourced: false
+  note: >
+    Left unresolved on purpose. The correct answer here is "we cannot tell",
+    and the run should say so rather than guess.
+
+roster_size: 12
+roster_count: 15

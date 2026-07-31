@@ -1,0 +1,35 @@
+id: curry-to-lakers
+season: "2024-25"
+snapshot: bbref-2024-25
+team: LAL
+partner: GSW
+trade_date: "2025-02-06"
+
+seed: >
+  The Warriors have signalled they will listen on Stephen Curry before the
+  deadline. You are the Lakers' GM. Anything you send must satisfy the CBA's
+  salary-matching rules, which a separate engine will check.
+
+persona:
+  label: win-now
+  risk_tolerance: 0.8
+  win_now_horizon: 1
+  asset_hoarding: 0.2
+
+# Base-year compensation cannot be answered from the snapshot: Basketball-
+# Reference does not publish re-sign status, so every player loads as UNKNOWN
+# and every trade would come back UNDETERMINED. This scenario asserts the
+# common case so the salary-matching path is reachable at all.
+#
+# sourced: false is the honest flag. Nobody checked these specific contracts;
+# the assumption is recorded in the manifest and surfaced in the run output,
+# and `undetermined-byc.yaml` exists to exercise the path this one suppresses.
+byc_resolution:
+  mode: assume_not_re_signed
+  sourced: false
+  note: >
+    Assumed, not verified. Real BYC status per player would have to come from
+    contract records that no ingested source publishes.
+
+roster_size: 14
+roster_count: 15
