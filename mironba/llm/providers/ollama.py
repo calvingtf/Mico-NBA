@@ -157,5 +157,6 @@ class OllamaProvider:
                 return RuntimeInfo(
                     size_bytes=entry.get("size"),
                     size_vram_bytes=entry.get("size_vram"),
+                    context_length=entry.get("context_length"),
                 )
         return RuntimeInfo()

@@ -78,6 +78,12 @@ class RuntimeInfo:
 
     size_bytes: int | None = None
     size_vram_bytes: int | None = None
+    #: The context the server actually allocated, which is NOT the model's
+    #: maximum. The manifest recorded the maximum (262144 for this model) and
+    #: would not have noticed a server started with a different context — the
+    #: two differ by more than an order of magnitude and only one of them
+    #: describes the run.
+    context_length: int | None = None
 
     @property
     def gpu_fraction(self) -> float | None:

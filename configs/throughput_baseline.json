@@ -1,0 +1,8 @@
+{
+  "ollama|qwen3.6:27b": {
+    "prompt": "Count from 1 to 60, one number per line.",
+    "recorded_at": "2026-07-31T17:04:56Z",
+    "tokens": 200,
+    "tokens_per_s": 36.02
+  }
+}

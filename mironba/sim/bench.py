@@ -79,10 +79,23 @@ def bench(
                 # One seed per trial, recorded in that trial's manifest.
                 seed=(base_seed + i) if vary_seed else None,
                 arm=arm,
+                # A bench is exactly where a degraded machine must stop. One
+                # trial at the wrong speed is a bad row; twelve are a table
+                # nobody can compare against anything.
+                strict_throughput=True,
             )
         except ProviderError as exc:
             print(f"  server error: {exc}", flush=True)
             outcomes["server_error"] += 1
+            if "throughput canary" in str(exc):
+                # Not a transient. Every remaining trial would fail the same
+                # way and bury the reason under eleven identical lines.
+                print(
+                    "\nABORTING: the machine is not in a state worth "
+                    "measuring on.",
+                    flush=True,
+                )
+                break
             continue
         except Exception as exc:  # noqa: BLE001 - a crash is a result too
             print(f"  crashed: {type(exc).__name__}: {exc}", flush=True)

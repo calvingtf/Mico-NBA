@@ -37,6 +37,7 @@ from mironba.llm.client import (
     probe_runtime,
     resolve_profile,
 )
+from mironba.llm.canary import check_throughput, measure_throughput
 from mironba.llm.probe import observed_enforcement
 from mironba.llm.providers import ProviderError
 from mironba.rules.trade_validator import Verdict, summarize
@@ -90,6 +91,7 @@ def run_tick(
     quiet: bool = False,
     seed: int | None = None,
     arm: str = "blind",
+    strict_throughput: bool = False,
 ) -> tuple[TickResult, Run, LLMClient]:
     scenario = load_scenario(scenario_path)
     staged = stage(scenario)
@@ -128,6 +130,18 @@ def run_tick(
     # server reports nothing about an offload split until it has one.
     runtime = probe_runtime(cfg)
 
+    # And throughput, because residency is not speed. gpu_fraction was 1.0
+    # through a 3x slowdown: the weights were in VRAM and there was no room
+    # left to run them in. Measured before the manifest so the manifest can
+    # carry it, and checked against a baseline so a degraded machine stops
+    # rather than quietly producing an incomparable latency column.
+    canary = measure_throughput(cfg)
+    drift = check_throughput(cfg, canary)
+    if drift and strict_throughput:
+        raise ProviderError(drift)
+    if drift:
+        print(f"\nWARNING: {drift}\n", file=sys.stderr)
+
     # Manifest before the first token. A run that dies mid-call still knows
     # what it was.
     manifest = build_manifest(
@@ -153,6 +167,10 @@ def run_tick(
         model_size_vram_bytes=runtime.size_vram_bytes,
         gpu_fraction=runtime.gpu_fraction,
         fully_resident=runtime.fully_resident,
+        runtime_context_length=runtime.context_length,
+        canary_tokens_per_s=canary.tokens_per_s,
+        canary_wall_s=canary.wall_s,
+        canary_overhead_ratio=round(canary.overhead_ratio, 2),
         # The experiment condition. Two runs identical in every other manifest
         # field can differ only here, so it has to be recorded here.
         arm=arm,
