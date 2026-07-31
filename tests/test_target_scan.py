@@ -30,6 +30,7 @@ from mironba.rules.solver import (
     Asset,
     FeasibleTarget,
     TradeIntent,
+    UnlockAsset,
     absorbable_ceiling,
     scan_targets,
     solve,
@@ -305,3 +306,133 @@ class TestLatencyIsSplit:
         result = scan(own, theirs, own_salary=150_000_000, max_assets_out=4)
         assert result.survived_bound > 0
         assert result.prefilter_s < result.solve_s
+
+
+class TestUnlockSets:
+    """Which of your own contracts appear in a legal package for each target.
+
+    M1.6 measured the gap this closes. The list said "Gary Payton, 1 way, from
+    1 player out"; the model asked for Payton and put Jarred Vanderbilt — the
+    one player — in its exclusion list. The count said how many bodies and
+    never said which.
+    """
+
+    def test_the_unlock_set_is_exactly_the_assets_in_some_legal_package(self):
+        own = assets(*[(f"p{i}", 2_000_000 + i * 4_000_000) for i in range(8)])
+        theirs = assets(*[(f"t{i}", 1_500_000 + i * 6_000_000) for i in range(8)])
+        result = scan(own, theirs, own_salary=155_000_000)
+        assert result.any_feasible
+        for target in result.targets:
+            solved = solve_one(
+                TradeIntent((target.player_id,), tuple(own)), own, theirs,
+                own_salary=155_000_000, max_assets_out=3, limit=10_000,
+            )
+            expected = set()
+            for package in solved.packages:
+                expected.update(package.send_player_ids)
+            assert {u.player_id for u in target.unlocks} == expected
+
+    def test_offering_only_the_unlock_set_is_enough(self):
+        """The claim the prompt makes, asserted directly.
+
+        An intent that offers exactly the named contracts and nothing else must
+        still be satisfiable — otherwise the arm tells the model something that
+        is not true, which is worse than telling it nothing.
+        """
+        own = assets(*[(f"p{i}", 2_000_000 + i * 4_000_000) for i in range(8)])
+        theirs = assets(*[(f"t{i}", 1_500_000 + i * 6_000_000) for i in range(8)])
+        result = scan(own, theirs, own_salary=155_000_000)
+        for target in result.targets:
+            offered = tuple(u.player_id for u in target.unlocks)
+            solved = solve_one(
+                TradeIntent((target.player_id,), offered), own, theirs,
+                own_salary=155_000_000, max_assets_out=3,
+            )
+            assert solved.satisfiable, (
+                f"{target.player_id} is listed with unlocks {offered} but an "
+                "intent offering exactly those is unsatisfiable"
+            )
+
+    def test_excluding_the_whole_unlock_set_makes_it_unsatisfiable(self):
+        """The converse. If a target were still reachable after excluding every
+        named contract, the set would be incomplete and the model would be
+        entitled to ignore it."""
+        own = assets(*[(f"p{i}", 2_000_000 + i * 4_000_000) for i in range(8)])
+        theirs = assets(*[(f"t{i}", 1_500_000 + i * 6_000_000) for i in range(8)])
+        result = scan(own, theirs, own_salary=155_000_000)
+        for target in result.targets:
+            excluded = tuple(u.player_id for u in target.unlocks)
+            solved = solve_one(
+                TradeIntent((target.player_id,), tuple(own), excluded_player_ids=excluded),
+                own, theirs, own_salary=155_000_000, max_assets_out=3,
+            )
+            assert not solved.satisfiable
+
+    def test_unlock_assets_carry_no_money(self):
+        banned = (
+            "salary", "cap", "payroll", "apron", "dollar", "amount",
+            "money", "cost", "price", "worth", "contract", "value",
+        )
+        for field in dataclasses.fields(UnlockAsset):
+            for token in banned:
+                assert token not in field.name.lower(), (
+                    f"UnlockAsset.{field.name} looks like a money field"
+                )
+        assert {f.name for f in dataclasses.fields(UnlockAsset)} == {
+            "player_id", "name"
+        }
+
+    def test_the_rendered_unlock_line_leaks_no_figure(self):
+        target = FeasibleTarget(
+            "abcde01", "A Player", 3, 1,
+            unlocks=(UnlockAsset("wxyz02", "Some Guy"),),
+        )
+        rendered = target.render(with_unlocks=True)
+        assert "wxyz02" in rendered and "Some Guy" in rendered
+        assert all(int(n) < 1000 for n in re.findall(r"\d+", rendered)), rendered
+
+    def test_a_real_scan_with_unlocks_leaks_no_figure(self):
+        own = assets(*[(f"p{i}", 2_000_000 + i * 4_000_000) for i in range(8)])
+        theirs = assets(*[(f"t{i}", 1_500_000 + i * 6_000_000) for i in range(8)])
+        block = scan(own, theirs, own_salary=155_000_000).render(with_unlocks=True)
+        assert all(int(n) < 1000 for n in re.findall(r"\d+", block)), block
+
+    def test_unlocks_are_hidden_unless_asked_for(self):
+        """The feasible arm must keep rendering exactly what it rendered at
+        M1.6, or its column stops being a baseline."""
+        target = FeasibleTarget(
+            "abcde01", "A Player", 3, 1,
+            unlocks=(UnlockAsset("wxyz02", "Some Guy"),),
+        )
+        assert "wxyz02" not in target.render()
+        assert "\n" not in target.render()
+
+    def test_the_display_cap_never_hides_a_sole_unlock(self):
+        """Truncation is safe only because the head is the most usable. A
+        target with one way in must always show that one."""
+        from mironba.rules.solver import MAX_UNLOCKS_SHOWN
+
+        target = FeasibleTarget(
+            "abcde01", "A Player", 1, 1,
+            unlocks=(UnlockAsset("only01", "Only Option"),),
+        )
+        assert "only01" in target.render(with_unlocks=True)
+        many = FeasibleTarget(
+            "abcde01", "A Player", 20, 1,
+            unlocks=tuple(UnlockAsset(f"u{i:02}", f"P{i}") for i in range(20)),
+        )
+        rendered = many.render(with_unlocks=True)
+        shown = [u for u in many.unlocks if u.player_id in rendered]
+        assert len(shown) == MAX_UNLOCKS_SHOWN
+        assert shown == list(many.unlocks[:MAX_UNLOCKS_SHOWN]), "head, not a sample"
+        assert "and 12 other(s)" in rendered, "truncation must announce itself"
+
+    def test_the_lakers_case_names_vanderbilt(self):
+        """The specific failure M1.6 recorded, pinned as a regression."""
+        result = scan_targets(
+            own=LAL, theirs=GSW,
+            own_team=team("LAL", LAL_SALARY), partner_team=team("GSW", GSW_SALARY),
+            season=SEASON, trade_date=TRADE_DATE, max_assets_out=4,
+        )
+        payton = next(t for t in result.targets if t.player_id == "gp2")
+        assert [u.player_id for u in payton.unlocks] == ["vando"]

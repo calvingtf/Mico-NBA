@@ -37,16 +37,22 @@ from mironba.rules.cap import ApronTier
 from mironba.rules.solver import FeasibleTarget
 from mironba.world.events import EventType, Visibility
 
-#: The two experiment arms, kept side by side rather than replaced.
+#: The three experiment arms, kept side by side rather than replaced.
 #:
-#: ``blind`` is the M1.5 behaviour: the model is shown a roster and a payroll
-#: and asked what it wants. ``feasible`` additionally shows the solver-computed
-#: list of players it could actually acquire.
+#: ``blind``     M1.5 behaviour — a roster, a payroll, and "what do you want?"
+#: ``feasible``  M1.6 — plus the solver-computed list of acquirable players.
+#: ``unlock``    M2 — plus, per target, which of your contracts appear in a
+#:               legal package for him.
 #:
-#: The old arm stays in the harness permanently. Without it "satisfiability is
-#: N%" is a number with nothing to compare against, and the next change to the
-#: prompt would have no baseline either. The delta is the result.
-ARMS = ("blind", "feasible")
+#: Every arm stays in the harness permanently. Without the old ones
+#: "satisfiability is N%" is a number with nothing to compare against, and the
+#: next change to the prompt would have no baseline either. Keeping `blind`
+#: earned itself at M1.6: Detroit measured 80% there against M1.5's 0%, and
+#: almost all of that was the model switch rather than the intervention.
+ARMS = ("blind", "feasible", "unlock")
+
+#: Arms that show the acquirable-target list at all.
+ARMS_WITH_LIST = ("feasible", "unlock")
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,6 +220,36 @@ Use the exact player ids shown above. Do not invent ids. The list is computed
 one player at a time, so asking for two of them together may still not fit.\
 """
 
+INTENT_UNLOCK_TEMPLATE = """\
+{context}
+
+You decided to pursue a trade. Your stated reason was: {reason}
+
+The rules engine has already worked out who you can legally acquire from
+{partner_team}, and which of your own contracts appear in a legal package for
+each of them:
+
+{feasible}
+
+Anyone not on that list cannot be acquired for any combination of your
+contracts. And for anyone on it, a legal package uses at least one of the
+contracts named beneath him — so if you are unwilling to give up any of those,
+you cannot have him either.
+
+State what you WANT. Do not build a trade and do not work out salary matching -
+the engine will show you the legal packages for what you ask for.
+
+  target_player_ids     who you want, chosen from the list above
+  tradeable_asset_ids   who you would be willing to give up - include the
+                        contracts listed under your target
+  excluded_player_ids   who you will not give up under any circumstances -
+                        do NOT exclude a contract your target depends on
+  priority              your tradeable ids, most expendable first
+
+Use the exact player ids shown above. Do not invent ids. The list is computed
+one player at a time, so asking for two of them together may still not fit.\
+"""
+
 SELECT_TEMPLATE = """\
 {context}
 
@@ -261,10 +297,32 @@ TEMPLATES = (
     ACTION_TEMPLATE,
     INTENT_TEMPLATE,
     INTENT_FEASIBLE_TEMPLATE,
+    INTENT_UNLOCK_TEMPLATE,
     SELECT_TEMPLATE,
     REVISE_INTENT_TEMPLATE,
     REVISE_FEASIBLE_BLOCK,
 )
+
+#: The templates each arm can actually reach.
+#:
+#: ``template_hash(*TEMPLATES)`` hashes the whole *set*, so adding a template
+#: for a new arm changes the recorded hash of every run — including runs whose
+#: prompts are byte-for-byte what they were. That is the safe direction for a
+#: single milestone and the wrong one for comparing an arm across milestones:
+#: it cannot distinguish "this prompt changed" from "some other prompt was
+#: added". Hashing per arm makes the M1.6 blind and feasible measurements
+#: reusable against M2's unlock arm, and makes that reuse checkable rather than
+#: asserted.
+ARM_TEMPLATES: dict[str, tuple[str, ...]] = {
+    "blind": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
+              INTENT_TEMPLATE, SELECT_TEMPLATE, REVISE_INTENT_TEMPLATE),
+    "feasible": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
+                 INTENT_TEMPLATE, INTENT_FEASIBLE_TEMPLATE, SELECT_TEMPLATE,
+                 REVISE_INTENT_TEMPLATE, REVISE_FEASIBLE_BLOCK),
+    "unlock": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
+               INTENT_TEMPLATE, INTENT_UNLOCK_TEMPLATE, SELECT_TEMPLATE,
+               REVISE_INTENT_TEMPLATE, REVISE_FEASIBLE_BLOCK),
+}
 
 
 def render_context(context: GMContext, persona: GMPersona) -> str:
@@ -367,26 +425,41 @@ class GMAgent(Agent):
     def shows_feasible(self, context: GMContext) -> bool:
         """Whether this call actually gets the list.
 
-        Both conditions matter. An empty list in the ``feasible`` arm falls
-        back to the blind prompt rather than printing an empty heading, because
-        "here is who you can get: (nothing)" invites the model to invent one,
-        and because a run with nothing acquirable is a fact about the team that
-        should not be dressed up as a withheld list.
+        Both conditions matter. An empty list falls back to the blind prompt
+        rather than printing an empty heading, because "here is who you can
+        get: (nothing)" invites the model to invent one, and because a run with
+        nothing acquirable is a fact about the team that should not be dressed
+        up as a withheld list.
         """
-        return self.arm == "feasible" and bool(context.feasible_targets)
+        return self.arm in ARMS_WITH_LIST and bool(context.feasible_targets)
+
+    def shows_unlocks(self, context: GMContext) -> bool:
+        return self.arm == "unlock" and self.shows_feasible(context)
+
+    def _feasible_block(self, context: GMContext) -> str:
+        return "\n".join(
+            t.render(with_unlocks=self.shows_unlocks(context))
+            for t in context.feasible_targets
+        )
 
     def state_intent(self, context: GMContext, reason: str) -> TradeIntent:
         rendered = render_context(context, self.persona)
-        if self.shows_feasible(context):
-            user = INTENT_FEASIBLE_TEMPLATE.format(
+        if self.shows_unlocks(context):
+            template = INTENT_UNLOCK_TEMPLATE
+        elif self.shows_feasible(context):
+            template = INTENT_FEASIBLE_TEMPLATE
+        else:
+            template = INTENT_TEMPLATE
+        if template is INTENT_TEMPLATE:
+            user = template.format(
+                context=rendered, reason=reason, partner_team=context.partner_team
+            )
+        else:
+            user = template.format(
                 context=rendered,
                 reason=reason,
                 partner_team=context.partner_team,
-                feasible="\n".join(t.render() for t in context.feasible_targets),
-            )
-        else:
-            user = INTENT_TEMPLATE.format(
-                context=rendered, reason=reason, partner_team=context.partner_team
+                feasible=self._feasible_block(context),
             )
         messages = self._messages(context, user)
         self.log.emit(
@@ -428,7 +501,7 @@ class GMAgent(Agent):
         if self.shows_feasible(context):
             block = REVISE_FEASIBLE_BLOCK.format(
                 partner_team=context.partner_team,
-                feasible="\n".join(t.render() for t in context.feasible_targets),
+                feasible=self._feasible_block(context),
             )
         messages = self._messages(
             context,

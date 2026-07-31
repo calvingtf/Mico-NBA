@@ -25,7 +25,7 @@ import copy
 import sys
 from pathlib import Path
 
-from mironba.agents.gm import ARMS, TEMPLATES, GMAgent
+from mironba.agents.gm import ARM_TEMPLATES, ARMS, TEMPLATES, GMAgent
 from mironba.llm.client import (
     DEFAULT_CONFIG,
     SCHEMA_VERSION,
@@ -66,6 +66,7 @@ class TickResult:
         self.arm: str = "blind"
         self.feasible_count: int = 0
         self.feasible_shown: bool = False
+        self.unlocks_shown: bool = False
         #: Kept apart from solver_seconds on purpose. The pre-filter is one
         #: comparison per contract and the scan behind it is a full solve per
         #: survivor; blending them would hide which half grows at M3.
@@ -155,6 +156,9 @@ def run_tick(
         # The experiment condition. Two runs identical in every other manifest
         # field can differ only here, so it has to be recorded here.
         arm=arm,
+        # Hash of only the prompts this arm can reach, so the same arm stays
+        # comparable across milestones that add prompts for other arms.
+        arm_prompt_hash=template_hash(*ARM_TEMPLATES[arm]),
         feasible_targets=len(staged.scan.targets),
     )
     run = Run.start(manifest, runs_dir=runs_dir)
@@ -187,6 +191,7 @@ def run_tick(
     result.arm = arm
     result.feasible_count = len(staged.scan.targets)
     result.feasible_shown = agent.shows_feasible(staged.context)
+    result.unlocks_shown = agent.shows_unlocks(staged.context)
     result.prefilter_seconds = staged.scan.prefilter_s
     result.scan_solve_seconds = staged.scan.solve_s
     say = (lambda *a, **k: None) if quiet else print
@@ -199,6 +204,7 @@ def run_tick(
         actor="solver",
         arm=arm,
         shown_to_model=result.feasible_shown,
+        unlocks_shown=result.unlocks_shown,
         feasible=list(staged.scan.ids),
         considered=staged.scan.considered,
         survived_bound=staged.scan.survived_bound,
@@ -434,6 +440,7 @@ def _finish(
         arm=result.arm,
         feasible_count=result.feasible_count,
         feasible_shown=result.feasible_shown,
+        unlocks_shown=result.unlocks_shown,
         prefilter_seconds=result.prefilter_seconds,
         scan_solve_seconds=result.scan_solve_seconds,
         targets_off_list=result.targets_off_list,

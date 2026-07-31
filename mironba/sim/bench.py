@@ -446,6 +446,7 @@ def aggregate_runs(
 def compare_arms(
     scenario_path: Path | str,
     trials: int,
+    arms: tuple[str, ...] = ARMS,
     **kwargs,
 ) -> dict[str, dict]:
     """Run both arms on one scenario. The delta is the result.
@@ -456,53 +457,59 @@ def compare_arms(
     the harness rather than deleting it also means the next prompt change has a
     baseline waiting for it instead of needing one reconstructed afterwards.
     """
-    return {a: bench(scenario_path, trials, arm=a, **kwargs) for a in ARMS}
+    return {a: bench(scenario_path, trials, arm=a, **kwargs) for a in arms}
 
 
 def format_comparison(scenario_id: str, arms: dict[str, dict]) -> str:
+    """One column per arm, plus a delta against the first one present.
+
+    Written for N arms rather than two. The set grew from two to three between
+    M1.6 and M2 and will grow again; a formatter that hardcodes `blind` and
+    `feasible` silently drops the newest column, which is the one anybody is
+    reading the table for.
+    """
+    present = [a for a in ARMS if a in arms] + [a for a in arms if a not in ARMS]
+    if not present:
+        return ""
+    base = present[0]
+
     def pct(x):
-        return "  n/a" if x is None else f"{x * 100:5.1f}%"
+        return "n/a" if x is None else f"{x * 100:.1f}%"
 
-    blind, feasible = arms.get("blind", {}), arms.get("feasible", {})
-
-    def delta(key):
-        a, b = blind.get(key), feasible.get(key)
-        if a is None or b is None:
-            return ""
-        return f"   {(b - a) * 100:+.1f}pt"
+    def cell(arm, key, is_pct):
+        value = arms[arm].get(key)
+        text = pct(value) if is_pct else str(value)
+        if arm == base or not is_pct:
+            return f"{text:>12}"
+        other = arms[base].get(key)
+        if value is None or other is None:
+            return f"{text:>12}"
+        return f"{text + f' ({(value - other) * 100:+.0f})':>12}"
 
     rows = [
         ("intent satisfiable (1st)", "intent_satisfiable_first", True),
         ("intent satisfiable (final)", "intent_satisfiable_final", True),
         ("named an unreachable target", "off_list_rate", True),
         ("schema failure (1st attempt)", "schema_failure_rate_first_attempt", True),
+        ("trials completed", "completed", False),
+        ("LLM calls spent", "calls", False),
+        ("packages per satisfiable", "mean_packages_per_satisfiable_intent", False),
+        ("declined all legal options", "declined_all_count", False),
+        ("selection indices chosen", "selection_indices", False),
     ]
+    width = 68 + 12 * max(0, len(present) - 2)
     lines = [
         "",
-        "=" * 68,
-        f"  A/B  {scenario_id}",
-        "=" * 68,
-        f"  {'':32}{'blind':>9}{'feasible':>11}{'delta':>11}",
+        "=" * width,
+        f"  arms  {scenario_id}   (delta vs {base})",
+        "=" * width,
+        "  " + f"{'':30}" + "".join(f"{a:>12}" for a in present),
     ]
     for label, key, is_pct in rows:
-        fmt = pct if is_pct else str
         lines.append(
-            f"  {label:32}{fmt(blind.get(key)):>9}{fmt(feasible.get(key)):>11}"
-            f"{delta(key):>11}"
+            f"  {label:30}" + "".join(cell(a, key, is_pct) for a in present)
         )
-    lines += [
-        "",
-        f"  {'trials completed':32}{blind.get('completed', 0):>9}"
-        f"{feasible.get('completed', 0):>11}",
-        f"  {'packages per satisfiable intent':32}"
-        f"{str(blind.get('mean_packages_per_satisfiable_intent')):>9}"
-        f"{str(feasible.get('mean_packages_per_satisfiable_intent')):>11}",
-        f"  {'declined all legal options':32}{blind.get('declined_all_count', 0):>9}"
-        f"{feasible.get('declined_all_count', 0):>11}",
-        f"  {'selection indices chosen':32}{str(blind.get('selection_indices')):>9}"
-        f"{str(feasible.get('selection_indices')):>11}",
-        "=" * 68,
-    ]
+    lines.append("=" * width)
     return "\n".join(lines)
 
 
@@ -586,7 +593,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="blind = M1.5 behaviour; feasible = show the "
                              "solver-computed acquirable targets")
     parser.add_argument("--ab", action="store_true",
-                        help="run both arms and report the delta")
+                        help="run every arm and report the deltas")
+    parser.add_argument("--arms", default=None,
+                        help="with --ab, a comma-separated subset of arms")
     parser.add_argument("-n", "--trials", type=int, default=20)
     parser.add_argument("--profile", default="gm_agent")
     parser.add_argument("--runs-dir", default="runs", type=Path)
@@ -609,9 +618,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.from_runs:
         if args.ab:
+            chosen = tuple(args.arms.split(",")) if args.arms else ARMS
             arms = {
                 a: aggregate_runs(args.from_runs, args.scenario_id, arm=a)
-                for a in ARMS
+                for a in chosen
             }
             for arm_name, stats in arms.items():
                 print(format_report(stats))
@@ -622,8 +632,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.ab:
         if not args.scenario:
             parser.error("--scenario is required unless --from-runs is given")
+        chosen = tuple(args.arms.split(",")) if args.arms else ARMS
         arms = compare_arms(
-            args.scenario, args.trials, profile=args.profile,
+            args.scenario, args.trials, arms=chosen, profile=args.profile,
             runs_dir=args.runs_dir, vary_seed=not args.fixed_seed,
         )
         for stats in arms.values():

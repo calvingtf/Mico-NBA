@@ -390,6 +390,27 @@ def absorbable_ceiling(
     return (matching_upper_bound(outgoing, own_team.team_salary, env), best)
 
 
+#: How many unlock assets to print per target. Truncation is safe here in a way
+#: it would not be in the target list itself: the assets are ordered by how many
+#: legal packages each appears in, so the head is the most broadly useful, and
+#: an intent offering the whole head is satisfiable whenever any intent is.
+MAX_UNLOCKS_SHOWN = 8
+
+
+@dataclass(frozen=True, slots=True)
+class UnlockAsset:
+    """One of your own contracts that appears in some legal package for a target.
+
+    A distinct type rather than reusing ``Asset``, which carries a salary. The
+    whole value of this object is that it is an ``Asset`` with the price
+    removed, and inheriting or aliasing would put the price one attribute
+    access away from the prompt renderer.
+    """
+
+    player_id: str
+    name: str
+
+
 @dataclass(frozen=True, slots=True)
 class FeasibleTarget:
     """A player this team could actually acquire, with no price attached.
@@ -400,21 +421,41 @@ class FeasibleTarget:
     rather than a number it might try to do arithmetic with. Counts are safe
     and useful: "three ways to get him" is a fact about flexibility, not a
     quantity the model could misuse to argue a trade into legality.
+
+    ``unlocks`` answers the question M1.6 measured and could not close. The
+    list said "Gary Payton, 1 way, from 1 player out"; the model asked for
+    Payton and excluded Jarred Vanderbilt, who is the one player. Naming him is
+    not naming a price — it is the same class of fact as naming the target, and
+    it comes from the same solve that produced the target.
     """
 
     player_id: str
     name: str
     legal_package_count: int
     fewest_players_out: int
+    #: Own contracts appearing in at least one legal package for this target,
+    #: most broadly usable first. Empty in the arms that do not compute it.
+    unlocks: tuple[UnlockAsset, ...] = ()
 
-    def render(self) -> str:
+    def render(self, *, with_unlocks: bool = False) -> str:
         ways = "way" if self.legal_package_count == 1 else "ways"
         bodies = "player" if self.fewest_players_out == 1 else "players"
-        return (
+        line = (
             f"  {self.player_id:<12} {self.name:<26} "
             f"{self.legal_package_count} {ways}, from {self.fewest_players_out} "
             f"{bodies} out"
         )
+        if not with_unlocks or not self.unlocks:
+            return line
+        shown = self.unlocks[:MAX_UNLOCKS_SHOWN]
+        rest = len(self.unlocks) - len(shown)
+        names = ", ".join(f"{u.player_id} ({u.name})" for u in shown)
+        more = f", and {rest} other(s)" if rest > 0 else ""
+        # "legal packages use", not "needs one of". A target whose cheapest
+        # package is two players out is not unlocked by any single name here,
+        # and a phrasing that implied otherwise would be wrong in exactly the
+        # cases the GM most needs to get right.
+        return f"{line}\n      legal packages use: {names}{more}"
 
 
 @dataclass
@@ -442,8 +483,8 @@ class TargetScan:
     def ids(self) -> tuple[str, ...]:
         return tuple(t.player_id for t in self.targets)
 
-    def render(self) -> str:
-        return "\n".join(t.render() for t in self.targets)
+    def render(self, *, with_unlocks: bool = False) -> str:
+        return "\n".join(t.render(with_unlocks=with_unlocks) for t in self.targets)
 
     def explain(self) -> str:
         if self.targets:
@@ -524,10 +565,22 @@ def scan_targets(
             trade_date=trade_date,
             re_sign_status=re_sign_status,
             max_assets_out=max_assets_out,
-            limit=limit,
+            # Every legal package, not the shortlist. The unlock set has to be
+            # complete or it is worse than useless: a GM told "these assets
+            # work" will reasonably infer the omitted ones do not, and an
+            # incomplete list would rule out its own solution. The truncation
+            # for display happens later, where it is visible as truncation.
+            limit=len(own) ** max(1, max_assets_out) + 1,
             env=env,
         )
         if result.satisfiable:
+            # Ordered by how many legal packages each asset appears in, so the
+            # head of the list is the most broadly usable contract rather than
+            # an accident of iteration. The frequency itself is never printed:
+            # it is a ranking signal, not a fact the model needs.
+            appearances: Counter[str] = Counter()
+            for package in result.packages:
+                appearances.update(package.send_player_ids)
             scan.targets.append(
                 FeasibleTarget(
                     player_id=pid,
@@ -535,6 +588,12 @@ def scan_targets(
                     legal_package_count=result.feasible_found,
                     # solve() sorts fewest-bodies-first, so the head is the min.
                     fewest_players_out=len(result.packages[0].send_player_ids),
+                    unlocks=tuple(
+                        UnlockAsset(asset_id, own[asset_id].name)
+                        for asset_id, _ in sorted(
+                            appearances.items(), key=lambda kv: (-kv[1], kv[0])
+                        )
+                    ),
                 )
             )
     scan.solve_s = time.monotonic() - started
