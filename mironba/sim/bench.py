@@ -332,12 +332,18 @@ def aggregate_runs(
         if scenario_id and manifest.get("scenario_id") != scenario_id:
             continue
         # The arm lives in `extra`, where build_manifest puts anything it does
-        # not have a named field for. Runs written before M1.6 have no arm at
-        # all and are treated as blind, which is what they were.
-        run_arm = (manifest.get("extra") or {}).get("arm", "blind")
+        # not have a named field for.
+        #
+        # A run written before M1.6 has no arm key, and "no arm recorded" is
+        # NOT the same fact as "blind arm". Those runs were made against a
+        # different model, on CPU, and through a search prune that has since
+        # been fixed; defaulting them to blind quietly merged them into this
+        # experiment's baseline and inflated it from 12 trials to 26. An
+        # unlabelled run belongs to neither arm.
+        run_arm = (manifest.get("extra") or {}).get("arm")
         if arm and run_arm != arm:
             continue
-        arms[run_arm] += 1
+        arms[run_arm or "unlabelled"] += 1
         if not (directory / "stats.json").is_file():
             incomplete += 1
             continue
