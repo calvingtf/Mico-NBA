@@ -115,6 +115,26 @@ because at $181.1M Philadelphia was genuinely under the apron and the mid-level
 was really available. Cap mechanics alone do not force that contract — the only
 evidence for it is a statement dated after the freeze.
 
+**The deadline backtest predicts nothing, and the reasons are structural.** The
+2025 deadline, frozen the day before: 12 proposals, 0 counterparty pairs
+matched, precision and recall both 0%. Three separable causes, none of them
+"the model was wrong":
+
+1. **The validator cannot represent the trades that happened.** Of 13 deals on
+   2025-02-06, *not one* was a two-team trade with players on both sides —
+   every one was multi-team or picks-only. Widening to a 14-day window yields
+   exactly one scoreable trade.
+2. **The one scoreable trade was between two AMBIGUOUS teams**, and the planner
+   only lets buyers and sellers act. That gate is honest about the value
+   model's 10.5-win limit, and it also guarantees missing every deal between
+   middling teams — which is most deals.
+3. **The planner has no notion of player value.** The value model is excluded
+   here deliberately: its inputs are full-season totals, which in-season would
+   leak games after the freeze. Without it the planner maximises incoming
+   salary and proposes Jayson Tatum for Zion Williamson.
+
+The one number that did work: the solver found the real trade **legal, 1 of 1**.
+
 ## What is honest about it
 
 - **The freeze is enforced, not promised.** `world_state()` returns PRE-freeze
