@@ -1,0 +1,138 @@
+{
+  "blind": {
+    "arm": "blind",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 23,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 69.91,
+    "median_latency_s": 66.25,
+    "p90_latency_s": 92.42,
+    "intents": 5,
+    "intent_satisfiable_first": 0.8,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 1,
+    "revisions_that_became_satisfiable": 1,
+    "revision_rescue_rate": 1.0,
+    "mean_packages_per_satisfiable_intent": 1.0,
+    "declined_all_count": 4,
+    "decline_reasons": [
+      "Swapping Dennis Schr\u00f6der for Jordan Clarkson represents a lateral move at best, likely a downgrade in playmaking value while increasing salary obligations by $1M. With a low risk tolerance (0.3) and a",
+      "Malik Beasley provides immediate shooting and spacing that fits our win-now horizon better than KJ Martin's project status. With high asset hoarding and low risk tolerance, swapping a known 3-and-D co",
+      "With a high asset-hoarding preference (0.8) and low risk tolerance (0.3), I prefer to maintain roster stability rather than execute a lateral or downgrade swap. Schr\u00f6der offers more reliable playmakin",
+      "Low risk tolerance (0.3) advises against acquiring Collin Sexton due to injury history and efficiency concerns. High asset hoarding (0.8) suggests retaining current roster stability rather than making"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 4e-05,
+    "scan_solve_p50_s": 0.0033,
+    "scan_solve_worst_s": 0.005,
+    "mean_feasible_targets": 11.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 5,
+    "off_list_rate": 0.0,
+    "selection_indices": {
+      "0": 1
+    },
+    "solver_p50_s": 0.0001,
+    "solver_worst_s": 0.0002,
+    "binding_constraints": {
+      "SALARY_MATCH": 1
+    },
+    "verdicts_first": {
+      "undetermined": 1
+    },
+    "verdicts_final": {
+      "undetermined": 1
+    },
+    "outcomes": {
+      "stood_pat": 7,
+      "traded": 1,
+      "declined_all": 4
+    },
+    "trials_that_retried": 1,
+    "run_ids": [
+      "undetermined-byc-20260731T091600Z-abc1bba5",
+      "undetermined-byc-20260731T091715Z-a5c6df97",
+      "undetermined-byc-20260731T091832Z-9385cb90",
+      "undetermined-byc-20260731T091912Z-470d8b15",
+      "undetermined-byc-20260731T092127Z-54c53999",
+      "undetermined-byc-20260731T092438Z-1340780f",
+      "undetermined-byc-20260731T092810Z-81948072",
+      "undetermined-byc-20260731T093400Z-23709b89",
+      "undetermined-byc-20260731T093658Z-780304d5",
+      "undetermined-byc-20260731T093807Z-54ebcdd0",
+      "undetermined-byc-20260731T093933Z-41ce4a10",
+      "undetermined-byc-20260731T094040Z-a59603f1"
+    ]
+  },
+  "feasible": {
+    "arm": "feasible",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 22,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 71.07,
+    "median_latency_s": 74.24,
+    "p90_latency_s": 86.44,
+    "intents": 5,
+    "intent_satisfiable_first": 1.0,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 0,
+    "revisions_that_became_satisfiable": 0,
+    "revision_rescue_rate": null,
+    "mean_packages_per_satisfiable_intent": 1.0,
+    "declined_all_count": 5,
+    "decline_reasons": [
+      "The proposed swap of Tim Hardaway Jr. for Collin Sexton does not align with the team's strategic goals. With a win_now_horizon of 2 and low risk_tolerance, prioritizing roster balance is key. The Pist",
+      "Swapping Dennis Schr\u00f6der for Jordan Clarkson represents a lateral move at best, likely a downgrade in playmaking value while increasing salary obligations by $1M. With a low risk tolerance (0.3) and a",
+      "Swapping Malik Beasley for Josh Richardson represents a downgrade in offensive spacing and overall value. With a win_now_horizon of 2 and high asset_hoarding (0.8), retaining the better shooter (Beasl",
+      "With a high asset-hoarding preference (0.8) and low risk tolerance (0.3), I prefer to maintain roster stability rather than execute a lateral or downgrade swap. Schr\u00f6der offers more reliable playmakin",
+      "Low risk tolerance (0.3) advises against acquiring Collin Sexton due to injury history and efficiency concerns. High asset hoarding (0.8) suggests retaining current roster stability rather than making"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 3e-05,
+    "scan_solve_p50_s": 0.0033,
+    "scan_solve_worst_s": 0.0045,
+    "mean_feasible_targets": 11.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 5,
+    "off_list_rate": 0.0,
+    "selection_indices": {},
+    "solver_p50_s": 0.0001,
+    "solver_worst_s": 0.0001,
+    "binding_constraints": {},
+    "verdicts_first": {},
+    "verdicts_final": {},
+    "outcomes": {
+      "stood_pat": 7,
+      "declined_all": 5
+    },
+    "trials_that_retried": 0,
+    "run_ids": [
+      "undetermined-byc-20260731T094412Z-1c8d1a89",
+      "undetermined-byc-20260731T094532Z-6d6afebc",
+      "undetermined-byc-20260731T094845Z-679b224f",
+      "undetermined-byc-20260731T095005Z-edc2816b",
+      "undetermined-byc-20260731T095128Z-259aade3",
+      "undetermined-byc-20260731T095243Z-492b6c72",
+      "undetermined-byc-20260731T095603Z-2da48592",
+      "undetermined-byc-20260731T100023Z-0083a4d9",
+      "undetermined-byc-20260731T100352Z-013fe0fd",
+      "undetermined-byc-20260731T100500Z-d5e8c318",
+      "undetermined-byc-20260731T100626Z-b5e4d0ed",
+      "undetermined-byc-20260731T100733Z-158f1f32"
+    ]
+  }
+}

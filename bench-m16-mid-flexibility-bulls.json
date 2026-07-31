@@ -1,0 +1,137 @@
+{
+  "blind": {
+    "arm": "blind",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 43,
+    "schema_failure_rate_first_attempt": 0.0233,
+    "first_attempt_failures": 1,
+    "repairs_succeeded": 1,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 1,
+    "mean_latency_s": 80.08,
+    "median_latency_s": 87.54,
+    "p90_latency_s": 103.04,
+    "intents": 12,
+    "intent_satisfiable_first": 0.4167,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 7,
+    "revisions_that_became_satisfiable": 7,
+    "revision_rescue_rate": 1.0,
+    "mean_packages_per_satisfiable_intent": 1.17,
+    "declined_all_count": 0,
+    "decline_reasons": [],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 4e-05,
+    "scan_solve_p50_s": 0.0205,
+    "scan_solve_worst_s": 0.0223,
+    "mean_feasible_targets": 13.0,
+    "intents_naming_an_unreachable_target": 7,
+    "intents_with_a_list_available": 12,
+    "off_list_rate": 0.5833,
+    "selection_indices": {
+      "0": 10,
+      "1": 2
+    },
+    "solver_p50_s": 0.0002,
+    "solver_worst_s": 0.0002,
+    "binding_constraints": {
+      "SALARY_MATCH": 7
+    },
+    "verdicts_first": {
+      "approved": 12
+    },
+    "verdicts_final": {
+      "approved": 12
+    },
+    "outcomes": {
+      "traded": 12
+    },
+    "trials_that_retried": 7,
+    "run_ids": [
+      "mid-flexibility-bulls-20260731T101130Z-5b3c7c12",
+      "mid-flexibility-bulls-20260731T101449Z-2f44fc8b",
+      "mid-flexibility-bulls-20260731T102015Z-774613e4",
+      "mid-flexibility-bulls-20260731T102417Z-9a5b60a6",
+      "mid-flexibility-bulls-20260731T102825Z-fcd6e87d",
+      "mid-flexibility-bulls-20260731T103529Z-7c065ed3",
+      "mid-flexibility-bulls-20260731T104145Z-2da7cc66",
+      "mid-flexibility-bulls-20260731T104700Z-ef1434bf",
+      "mid-flexibility-bulls-20260731T105157Z-11349f78",
+      "mid-flexibility-bulls-20260731T105721Z-e1d32b63",
+      "mid-flexibility-bulls-20260731T110136Z-b66d4b32",
+      "mid-flexibility-bulls-20260731T110636Z-fa4dc1a1"
+    ]
+  },
+  "feasible": {
+    "arm": "feasible",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 37,
+    "schema_failure_rate_first_attempt": 0.027,
+    "first_attempt_failures": 1,
+    "repairs_succeeded": 1,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 1,
+    "mean_latency_s": 88.71,
+    "median_latency_s": 92.36,
+    "p90_latency_s": 122.54,
+    "intents": 12,
+    "intent_satisfiable_first": 0.9167,
+    "intent_satisfiable_final": 1.0,
+    "revised_intents": 1,
+    "revisions_that_became_satisfiable": 1,
+    "revision_rescue_rate": 1.0,
+    "mean_packages_per_satisfiable_intent": 1.58,
+    "declined_all_count": 1,
+    "decline_reasons": [
+      "Declining the trade. Swapping Kevin Huerter for Collin Sexton does not improve the roster's fit or win-now potential. Huerter provides better spacing, defensive versatility, and a more manageable cont"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 3e-05,
+    "scan_solve_p50_s": 0.0206,
+    "scan_solve_worst_s": 0.0213,
+    "mean_feasible_targets": 13.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 12,
+    "off_list_rate": 0.0,
+    "selection_indices": {
+      "0": 8,
+      "1": 3
+    },
+    "solver_p50_s": 0.0002,
+    "solver_worst_s": 0.002,
+    "binding_constraints": {
+      "SALARY_MATCH": 1
+    },
+    "verdicts_first": {
+      "approved": 11
+    },
+    "verdicts_final": {
+      "approved": 11
+    },
+    "outcomes": {
+      "traded": 11,
+      "declined_all": 1
+    },
+    "trials_that_retried": 1,
+    "run_ids": [
+      "mid-flexibility-bulls-20260731T111136Z-7c4672f9",
+      "mid-flexibility-bulls-20260731T111453Z-58c90685",
+      "mid-flexibility-bulls-20260731T112129Z-bfca373c",
+      "mid-flexibility-bulls-20260731T112531Z-fc9ce598",
+      "mid-flexibility-bulls-20260731T112951Z-2d085167",
+      "mid-flexibility-bulls-20260731T113722Z-14e6e2f8",
+      "mid-flexibility-bulls-20260731T114154Z-30728d21",
+      "mid-flexibility-bulls-20260731T114615Z-5b941914",
+      "mid-flexibility-bulls-20260731T115119Z-0a037cb4",
+      "mid-flexibility-bulls-20260731T115638Z-59165cb6",
+      "mid-flexibility-bulls-20260731T120058Z-1b7ea70f",
+      "mid-flexibility-bulls-20260731T120530Z-ab39d79f"
+    ]
+  }
+}

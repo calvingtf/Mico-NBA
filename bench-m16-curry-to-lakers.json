@@ -1,0 +1,134 @@
+{
+  "blind": {
+    "arm": "blind",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 36,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 90.19,
+    "median_latency_s": 90.49,
+    "p90_latency_s": 110.62,
+    "intents": 12,
+    "intent_satisfiable_first": 0.0,
+    "intent_satisfiable_final": 0.0,
+    "revised_intents": 12,
+    "revisions_that_became_satisfiable": 0,
+    "revision_rescue_rate": 0.0,
+    "mean_packages_per_satisfiable_intent": null,
+    "declined_all_count": 0,
+    "decline_reasons": [],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 5e-05,
+    "scan_solve_p50_s": 0.2271,
+    "scan_solve_worst_s": 0.2526,
+    "mean_feasible_targets": 4.0,
+    "intents_naming_an_unreachable_target": 12,
+    "intents_with_a_list_available": 12,
+    "off_list_rate": 1.0,
+    "selection_indices": {},
+    "solver_p50_s": 0.0003,
+    "solver_worst_s": 0.0004,
+    "binding_constraints": {
+      "SALARY_MATCH": 24
+    },
+    "verdicts_first": {},
+    "verdicts_final": {},
+    "outcomes": {
+      "unsatisfiable": 12
+    },
+    "trials_that_retried": 12,
+    "run_ids": [
+      "curry-to-lakers-20260731T071806Z-42e15c0f",
+      "curry-to-lakers-20260731T072234Z-11c52b47",
+      "curry-to-lakers-20260731T072646Z-bf4d4ecb",
+      "curry-to-lakers-20260731T073132Z-d96e56dc",
+      "curry-to-lakers-20260731T073620Z-6009645c",
+      "curry-to-lakers-20260731T074007Z-fa885339",
+      "curry-to-lakers-20260731T074541Z-8893a56a",
+      "curry-to-lakers-20260731T074952Z-69d4507b",
+      "curry-to-lakers-20260731T075458Z-64ee084b",
+      "curry-to-lakers-20260731T075941Z-4e05957d",
+      "curry-to-lakers-20260731T080423Z-02d23a9d",
+      "curry-to-lakers-20260731T080838Z-85abcb9e"
+    ]
+  },
+  "feasible": {
+    "arm": "feasible",
+    "trials": 12,
+    "completed": 12,
+    "incomplete": 0,
+    "calls": 40,
+    "schema_failure_rate_first_attempt": 0.0,
+    "first_attempt_failures": 0,
+    "repairs_succeeded": 0,
+    "unrecovered_schema_failures": 0,
+    "unrecovered_rate": 0.0,
+    "truncations": 0,
+    "mean_latency_s": 91.59,
+    "median_latency_s": 96.02,
+    "p90_latency_s": 121.29,
+    "intents": 12,
+    "intent_satisfiable_first": 0.0833,
+    "intent_satisfiable_final": 0.4167,
+    "revised_intents": 11,
+    "revisions_that_became_satisfiable": 4,
+    "revision_rescue_rate": 0.3636,
+    "mean_packages_per_satisfiable_intent": 1.6,
+    "declined_all_count": 3,
+    "decline_reasons": [
+      "The proposed trade swaps Dalton Knecht for Brandin Podziemski. With a 'win_now_horizon' of 1 and a core featuring LeBron James and Luka Don\u010di\u0107, maintaining floor spacing is critical. Knecht offers rel",
+      "The proposed trade (Vanderbilt for Gary Payton II) does not provide a meaningful on-court upgrade for a championship-contending roster already featuring LeBron James and Luka Don\u010di\u0107. With a win_now_ho",
+      "The only legal package offered involves trading Christian Wood for Trayce Jackson-Davis. With a win_now_horizon of 1, retaining the proven veteran production of Wood is superior to acquiring the devel"
+    ],
+    "prefilter_p50_s": 3e-05,
+    "prefilter_worst_s": 4e-05,
+    "scan_solve_p50_s": 0.2297,
+    "scan_solve_worst_s": 0.263,
+    "mean_feasible_targets": 4.0,
+    "intents_naming_an_unreachable_target": 0,
+    "intents_with_a_list_available": 12,
+    "off_list_rate": 0.0,
+    "selection_indices": {
+      "0": 2
+    },
+    "solver_p50_s": 0.0004,
+    "solver_worst_s": 0.0109,
+    "binding_constraints": {
+      "SALARY_MATCH": 11,
+      "SALARY_MATCH_PARTNER": 5,
+      "ROSTER_LIMIT": 2
+    },
+    "verdicts_first": {
+      "approved": 2
+    },
+    "verdicts_final": {
+      "approved": 2
+    },
+    "outcomes": {
+      "unsatisfiable": 7,
+      "traded": 2,
+      "declined_all": 3
+    },
+    "trials_that_retried": 11,
+    "run_ids": [
+      "curry-to-lakers-20260731T081337Z-a0b0c99b",
+      "curry-to-lakers-20260731T081807Z-3e364405",
+      "curry-to-lakers-20260731T082402Z-b1563d15",
+      "curry-to-lakers-20260731T082928Z-585d24d3",
+      "curry-to-lakers-20260731T083356Z-fd810a66",
+      "curry-to-lakers-20260731T083909Z-7f2c17db",
+      "curry-to-lakers-20260731T084528Z-144b8394",
+      "curry-to-lakers-20260731T084938Z-4b15c00a",
+      "curry-to-lakers-20260731T085419Z-a3290481",
+      "curry-to-lakers-20260731T085935Z-be13b2aa",
+      "curry-to-lakers-20260731T090529Z-229968c0",
+      "curry-to-lakers-20260731T091030Z-7863f84c"
+    ]
+  }
+}

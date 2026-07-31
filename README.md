@@ -6,6 +6,48 @@ project charter; this file records what actually exists.
 Part of the MiroFish/MiroShark family. Package, charter, and repo folder all
 read `MiroNBA`/`mironba`.
 
+## Status: M1.6 — feasibility computed before the model is asked
+
+M1.5 made illegal packages unrepresentable and satisfiability still measured
+**0 of 7**. The intents were not malformed; they were unaffordable. The prompt
+showed a roster and a payroll and asked what the GM wanted, while withholding
+the one quantity that decides what is possible.
+
+M1.6 supplies it — as a set of names, never as a number:
+
+    0. rules/solver.py works out who this team can legally acquire  <- new
+    1. choose an action        (LLM)
+    2. state a TradeIntent     (LLM)   — targets chosen from that list
+       -> rules/solver.py enumerates every LEGAL package for it
+    3. pick one by index       (LLM)   — or decline all, with a reason
+
+The model still sees no salary and still emits no package. Both arms are kept
+permanently: `--arm blind` is the M1.5 prompt, `--arm feasible` adds the list,
+and `bench --ab` runs both.
+
+Measured over 72 trials on a fully GPU-resident model, aggregated across three
+scenarios:
+
+| | blind | feasible | delta |
+| --- | --- | --- | --- |
+| Named an unreachable target | 65.5% | **0.0%** | **−65.5pt** |
+| Intent satisfiable, first attempt | 31.0% | **58.6%** | **+27.6pt** |
+| Intent satisfiable, final | 58.6% | **75.9%** | **+17.2pt** |
+
+Step 3 ran live for the first time — 39 times, 26 selections and 13 reasoned
+declines — and `UNDETERMINED` was reached from a model-generated intent. See
+[M1.6 measurements](#m16-what-changed-when-the-model-was-told-what-was-possible).
+
+Two things found on the way there are corrections to what is written below, and
+both are marked in place rather than edited away:
+
+- **Ollama 0.32.5 does enforce the schema.** M1.5's headline probe result
+  (0/9 conformed) was measured on 0.31.1 and is still true of that version. It
+  is not true of the one running now.
+- **The solver's search prune was unsound** and silently discarded legal
+  packages. It did not change M1.5's satisfiability result, but it did make
+  the first M1.6 pre-filter report that the Lakers could acquire nobody at all.
+
 ## Status: M1.5 — illegal proposals made unrepresentable
 
 M1 measured the propose-then-validate loop at **0 legal proposals in 12 live
@@ -645,6 +687,12 @@ prose, supplies the schema **only** through the server parameter, never in the
 prompt, and checks whether the reply conforms. A probe the model would pass
 anyway proves nothing, which is the trap the M1 flag fell into.
 
+> **Superseded at M1.6, and kept.** Everything in this subsection is a correct
+> measurement of Ollama **0.31.1**. On **0.32.5**, the same probe against the
+> same two models returns **9 of 9 conformed** on every shape. The capability
+> was added between versions; the measurement was not wrong. See
+> [Schema enforcement, one version later](#schema-enforcement-one-version-later).
+
 Result on Ollama 0.31.1 / qwen3.6:35b-a3b — **0 of 9 conformed**:
 
 | Schema shape | Conformed | Verdict |
@@ -700,6 +748,14 @@ a convenient way to destroy manifests. Cleanup is a manual act, outside the
 code.
 
 ### The numbers
+
+> **Kept, and marked.** These runs are CPU-bound (`gpu_fraction: 0.0`) and were
+> made against a validator whose search prune was too strict — see
+> [A prune that deleted legal packages](#a-prune-that-deleted-legal-packages).
+> The satisfiability figures survive that fix: the two intents in question
+> wanted Curry at $55.8M and Markkanen at $42.2M, and the prune was wrong by at
+> most $1.6M. The latency figures do not survive the move to a GPU-resident
+> model and should not be compared with anything below.
 
 16 trials across two scenarios, 30 LLM calls, on CPU (`gpu_fraction: 0.0`
 recorded in every manifest — the latency below is CPU-bound and not comparable
@@ -772,3 +828,363 @@ disappointing result.
 
 That is deliberately **not** implemented here. It would change the measurement
 above, and the measurement above is what justifies it.
+
+## M1.6: what changed when the model was told what was possible
+
+The lever named at the end of M1.5, pulled. The shape of the fix is the M1.5
+principle applied one step earlier — the deterministic layer that owns the
+arithmetic computes the answer, and the model chooses within it — with one
+constraint carried over intact: **the model is told *who*, never *how much*.**
+
+### The model switch, confirmed first
+
+Every M1 and M1.5 latency figure was measured on a model Ollama had placed
+entirely on the CPU. `qwen3.6:35b-a3b` is 22.3 GiB of weights against 24 GB of
+VRAM, and `num_gpu` did not move it. `qwen3.6:27b` is 16.2 GiB and loads whole:
+
+```
+  residency  100.0% on GPU of 15.9 GiB
+```
+
+`gpu_fraction: 1.0` in every manifest below, so the numbers mean something on
+this hardware. Measured throughput: **35 tok/s** generation, ~3100 tok/s
+prefill. Confirmed before benching, because on a partial offload none of the
+rest would have been worth collecting.
+
+Two costs came with the switch, both measured rather than assumed:
+
+- **`thinking: true` dominates wall-clock.** The same prompt takes **7.4s**
+  with thinking off and **122s** with it on — the model spends its whole
+  budget reasoning (14k characters, 4096 tokens) before answering. Ollama
+  accepts `think: "low"|"medium"|"high"` but qwen3.6 produces byte-identical
+  output for all three, so the reasoning length cannot be bounded. `max_tokens`
+  went to 6144 because 4096 truncated one call in four, and a truncation
+  counted as a schema failure is the exact contamination `max_tokens` caused at
+  M1.
+- **A schema that would not compile.** See below.
+
+### A `maxLength` the grammar compiler would not take
+
+The first call on the new server failed outright:
+
+```
+HTTP 400 "Failed to initialize samplers: failed to parse grammar"
+```
+
+`REASON_MAX` was 4000. Bisected against the live server:
+
+| `maxLength` | Compiles |
+| --- | --- |
+| ≤ 1999 | yes |
+| ≥ 2000 | no |
+
+Nothing else tripped it — enums, `$defs`/`$ref`, integer minimums and array
+bounds all compile. The compiler appears to expand a string bound into a
+bounded repetition and give up past a ceiling.
+
+Now 1500, and the reasoning behind the old value has **inverted** rather than
+merely loosened. 4000 was chosen so a verbose rationale could not be scored as a
+schema failure — correct while the schema was being ignored and `maxLength` was
+a *validation* limit. Under an enforced grammar it is a *decoding* limit: the
+model is made to close the string, so a long reason is clipped instead of
+failing the parse. A hermetic test now walks every agent schema for bounds over
+1600. The failure was loud, which is the good case, but it was loud at call time
+and no test before this one could have seen it.
+
+### Schema enforcement, one version later
+
+Same probe, same two models, upgraded server:
+
+| Server | Model | Flat | With `$defs` | Inlined |
+| --- | --- | --- | --- | --- |
+| 0.31.1 | qwen3.6:35b-a3b | 0/3 | 0/3 | 0/3 |
+| 0.32.5 | qwen3.6:35b-a3b | **3/3** | **3/3** | **3/3** |
+| 0.32.5 | qwen3.6:27b | **3/3** | **3/3** | **3/3** |
+
+The capability was added between versions. Note the second row: it is the *same
+model* that failed 0/9 at M1.5, so this is not a property of the model, and
+attributing it to one would have been the easy mistake. An unparseable schema is
+now a hard HTTP 400 instead of a silent no-op, which is the honest behaviour and
+is what surfaced the `maxLength` cliff above.
+
+`OllamaProvider.enforces_schema()` still returns `False`. The capability is real
+but version-dependent, and that method cannot see a version; returning `True`
+would restore precisely the M1 defect of a static claim standing in for a fact
+about the running process. The client continues to take its flag from
+`observed_enforcement()`, which measures it per `(server, base_url, model)`.
+
+### A prune that deleted legal packages
+
+`solve` skips subsets that fail a cheap arithmetic bound before building a
+`Trade`. That prune called `max_incoming_salary` with no `post_trade_tier`,
+which answers a deliberately conservative question: `_self_consistent_tier` must
+pick one tier, and a tier the team would be pushed out of is not
+self-consistent.
+
+Golden State at $176,540,943 is $1.6M under the first apron. Sending $8M out:
+
+| | |
+| --- | --- |
+| Bracket table allows | $15,752,000 |
+| …but that lands them at $184.3M, over the apron | |
+| So the self-consistent tier collapses to flat 100% | $8,000,000 |
+| True ceiling: enough to land $1 below the apron | **$9,591,056** |
+
+Harmless inside `validate_trade`, which knows the actual incoming salary and
+passes the resulting tier explicitly. Not harmless as a prune — nothing runs
+behind a prune to catch what it dropped. This one dropped **twelve legal Lakers
+packages, every single one**, so the first run of the M1.6 pre-filter reported
+that the Lakers could acquire nobody at all. That reads as a finding about an
+apron team with no flexibility. It was an artifact of the search.
+
+`matching_upper_bound` takes the maximum over every tier, so whatever tier the
+trade lands in, the bound is at least that tier's limit. A prune may over-admit
+and pay for it in wasted validations; it may never under-admit.
+
+Tested two ways, because one of them would have missed it. A grid asserts the
+bound dominates every tier's exact limit. A brute-force fixture on the real
+Lakers and Warriors payrolls enumerates every subset with no bound at all and
+asserts the pruned solver finds all of them — the synthetic fixtures never sat
+near an apron, which is the only place the two answers differ.
+
+This does **not** overturn M1.5's satisfiability result. Those intents wanted
+Curry at $55.8M and Markkanen at $42.2M; a $1.6M correction does not reach them.
+
+### The pre-filter
+
+Two passes, in cost order:
+
+1. **Bound.** One arithmetic ceiling for the whole roster — the loosest limit
+   any subset could justify — then one comparison per partner contract. Drops
+   the unaffordable majority without constructing a single `Trade`. O(1) per
+   player.
+2. **Solve.** A full `solve` per survivor, one target at a time. Every name that
+   comes back is backed by a validated package, not by a bound that merely
+   failed to rule it out.
+
+Both are timed separately, because they scale differently and a blended number
+would hide which one matters at M3.
+
+What reaches the model is a list of people and two counts:
+
+```
+  sextoco01    Collin Sexton              5 ways, from 1 player out
+  clarkjo01    Jordan Clarkson           10 ways, from 1 player out
+```
+
+No salary, no cap figure, no dollar amount. `FeasibleTarget` is checked field by
+field and again on its rendered text, because a clean field name does not stop a
+renderer leaking a figure. Counts are safe and useful — "three ways to get him"
+is a fact about flexibility, not a quantity that can be used to argue a trade
+into legality.
+
+Feasibility is computed **one target at a time and is not additive**: two
+individually-acquirable players may still be unaffordable together, which is why
+the revise-intent path stays.
+
+### The third scenario
+
+LAL and DET are the two extremes, and between them they miss the league. Above
+the first apron, `max_incoming_salary` takes the flat percentage. Under the cap,
+it takes the cap-room branch. Neither had ever consulted `exception_match_limit`
+— the three-formula median most of the league actually trades under, and the
+function whose tier dispatch was wrong until M1.5 with every test still green.
+
+**Chicago**, on figures from the snapshot:
+
+| | |
+| --- | --- |
+| Payroll | $165,919,354 |
+| Salary cap | $140,588,000 → over it |
+| First apron | $178,132,000 → $12.2M below it |
+| Tier | `OVER_CAP` |
+| Mid-sized contracts | Ball $21.4M, Vučević $20.0M, P. Williams $18.0M, Huerter $16.8M, Collins $16.7M |
+
+At $20M outgoing the bracket table allows **$27,752,000** back where apron
+matching would allow $20,000,000, so the uncovered path is demonstrably live.
+
+**"Expiring" is deliberately not claimed.** The ingest carries a season and a
+salary, not a contract end year, so no scenario can source expiry and this one
+does not pretend to. What is sourced is the tier and the contract sizes.
+Asserting expiry from memory would be the same class of error as assuming
+base-year compensation, and that one is at least flagged.
+
+Against Utah, 13 of 14 contracts are acquirable and exactly one is not:
+**Markkanen at $42,176,400** — the player the Detroit GM chased through both its
+intents in M1.5. So the scenario can distinguish "picks someone reachable" from
+"picks the best player on the board regardless".
+
+### The bottleneck moved again: acquirable ≠ acquirable *on these terms*
+
+The list fixed target selection outright — the Lakers GM went from naming an
+unreachable target in **12 of 12** blind intents to **0 of 12** with the list.
+First-attempt satisfiability did not follow it up, and the reason is specific
+enough to be worth stating exactly.
+
+The scan answers an unconditional question: *given everything on your roster,
+who could you get?* The model then answers a different one, because a
+`TradeIntent` also names what it is **willing to part with**. Those two do not
+have to agree, and repeatedly they did not:
+
+```
+scan says      paytoga02  Gary Payton     1 way, from 1 player out
+model wants    paytoga02
+model offers   morrima02, reddica01, hayesja02, miltosh01   (four minimums)
+model excludes ..., vandeja01, ...
+the one legal package:  send Jarred Vanderbilt -> receive Gary Payton
+```
+
+The model asked for a player the list promised, then explicitly excluded the
+only asset that delivers him. `1 way, from 1 player out` says how many bodies it
+takes and never says **which**, so an intent can satisfy the list and still be
+unsatisfiable — not because feasibility was wrong, but because it was
+conditional on a pool the model then narrowed.
+
+This is the same shape as the M1.5 result one level down, and the next lever is
+nameable for the same reason: the solver already knows which contracts unlock
+each target and could say so, and naming a player is not naming a price. It is
+**deliberately not implemented here**, on the same grounds as last time — it
+would change the measurement that justifies it.
+
+Non-additivity is the smaller second cause. Feasibility is computed one target
+at a time, so an intent naming two individually-acquirable players can still be
+unaffordable, which is why the revise path stays and why it now converts.
+
+### The numbers
+
+**72 trials, 201 LLM calls, three scenarios, both arms, `gpu_fraction: 1.0` in
+every manifest.** `qwen3.6:27b`, Q4_K_M, thinking on, 16384 context, one seed
+per trial recorded in that trial's manifest.
+
+| | LAL — 1st apron | | DET — cap room | | CHI — over cap | |
+| --- | --- | --- | --- | --- | --- | --- |
+| | blind | feasible | blind | feasible | blind | feasible |
+| Trials / LLM calls | 12 / 36 | 12 / 40 | 12 / 23 | 12 / 22 | 12 / 43 | 12 / 37 |
+| Intents stated | 12 | 12 | 5 | 5 | 12 | 12 |
+| **Named an unreachable target** | **12/12** | **0/12** | 0/5 | 0/5 | **7/12** | **0/12** |
+| **Satisfiable, first attempt** | **0%** | **8.3%** | 80% | 100% | **41.7%** | **91.7%** |
+| **Satisfiable, final** | **0%** | **41.7%** | 100% | 100% | 100% | 100% |
+| Revisions that rescued | 0/12 | 4/11 | 1/1 | 0/0 | 7/7 | 1/1 |
+| Packages per satisfiable intent | — | 1.6 | 1.0 | 1.0 | 1.17 | 1.58 |
+| Selected a package | 0 | 2 | 1 | 0 | 12 | 11 |
+| Declined all legal options | 0 | 3 | 4 | 5 | 0 | 1 |
+| Feasible targets available | 4 | 4 | 11 | 11 | 13 | 13 |
+| Schema failure, first attempt | 0% | 0% | 0% | 0% | 2.3% | 2.7% |
+| Latency mean / p90 | 90.2s / 110.6s | 91.6s / 121.3s | 69.9s / 92.4s | 71.1s / 86.4s | 80.1s / 103.0s | 88.7s / 122.5s |
+
+Aggregated over all 29 intents in each arm:
+
+| | blind | feasible | delta |
+| --- | --- | --- | --- |
+| **Named an unreachable target** | 65.5% (19/29) | **0.0%** (0/29) | **−65.5pt** |
+| **Intent satisfiable, first attempt** | 31.0% (9/29) | **58.6%** (17/29) | **+27.6pt** |
+| **Intent satisfiable, final** | 58.6% (17/29) | **75.9%** (22/29) | **+17.2pt** |
+| LLM calls spent | 102 | 99 | −3 |
+
+**Supplying solver-computed feasibility moved first-attempt satisfiability from
+31.0% to 58.6%, and eliminated unreachable targets entirely — 65.5% to 0%.**
+The second number is the cleaner result: it is the thing the intervention
+directly controls, and it went to zero in all three scenarios.
+
+It also costs nothing. The feasible arm spent *fewer* LLM calls (99 vs 102)
+because it needed fewer revisions, so the list pays for itself in the same
+budget it improves.
+
+**The blind arm is not M1.5's blind arm, and that is the point of keeping it.**
+Detroit blind measures 80% first-attempt here against M1.5's 0%. Almost none of
+that is the list — it is the model change and the prune fix. Had M1.5's number
+been reused as the baseline, the list would have been credited with a swing it
+did not produce. Re-measuring both arms on the same model, same code and same
+seeds is what makes the delta attributable.
+
+**Team flexibility dominates the absolute level.** Chicago reaches 100% final
+satisfiability in *both* arms and trades in 12 of 12 blind trials; Los Angeles
+reaches 41.7% at best. An apron team has few legal moves and the list cannot
+invent any. What the list changes for Chicago is efficiency — 41.7% → 91.7%
+first-attempt, so the answer arrives without a repair round.
+
+### Step 3, exercised for the first time
+
+Never reached live at M1.5. Here it ran **39 times**: 26 selections and 13
+declines.
+
+| Index chosen | Times |
+| --- | --- |
+| 0 | 21 |
+| 1 | 5 |
+| declined all | 13 |
+
+**Not defaulting to zero.** Index 1 is chosen 5 of 26 times, and the selection
+prose discriminates explicitly:
+
+> "Package [0] trades Markieff Morris for Trayce Jackson-Davis. […] The other
+> packages involve trading established contributors like Hayes or Reddish for a
+> similar…"
+
+**The declines are coherent and persona-consistent.** Every one cites the
+structured persona parameters by name and makes a basketball argument rather
+than a legality argument — which is correct, since legality is no longer the
+model's problem:
+
+> "The proposed trade (Vanderbilt for Gary Payton II) does not provide a
+> meaningful on-court upgrade for a championship-contending roster already
+> featuring LeBron James and Luka Dončić. With a win_now_horizon of 1…"
+
+> "With a high asset-hoarding preference (0.8) and low risk tolerance (0.3), I
+> prefer to maintain roster stability rather than execute a lateral or
+> downgrade swap."
+
+The decline rate tracks the persona in the direction it should: Detroit's
+`cautious-hoarder` (asset_hoarding 0.8, one asset out) stood pat in 7 of 12
+trials and declined 9 of the 10 package sets it was shown, while Chicago's
+`balanced` GM declined once in 23. That is the persona parameters feeding
+behaviour, not prose flavour.
+
+### UNDETERMINED, from a model-generated intent
+
+Reached at M1.6 without any hand-supplied step — the M1.5 requirement that was
+still outstanding:
+
+```
+run  undetermined-byc-20260731T092127Z-54c53999   arm=blind  gpu_fraction=1.0
+  INTENT   targets=['hendrta01'] tradeable=['beaslma01']     <- model
+  SOLVER   satisfiable=True packages=1
+  SELECTED idx=0 declined=False                              <- model
+  VERDICT  UNDETERMINED
+     BASE_YEAR_COMPENSATION: [UTA] Taylor Hendricks may be a base-year-
+     compensation player: we do not know whether he re-signed with this team
+```
+
+Once in 72 trials, which is the honest frequency: it needs a satisfiable intent,
+a selected package, and the `unresolved` BYC scenario, and only one of the three
+scenarios leaves BYC unresolved.
+
+### Latency, split as required
+
+| | pre-filter | target scan | per-intent solve |
+| --- | --- | --- | --- |
+| p50 | **0.03 ms** | 3.3–227 ms | 0.1–0.4 ms |
+| worst | **0.05 ms** | 263 ms | 10.9 ms |
+
+The pre-filter is ~100–7500× cheaper than the scan behind it, which is the
+whole reason for doing it first. The scan's spread is the persona: Los Angeles
+allows 4 assets out and pays 227 ms; Detroit allows 1 and pays 3.3 ms. Growth
+is C(n, max_assets_out) per surviving target.
+
+Against ~80 s of model latency per call, all deterministic work is under 0.3%
+of a tick. Nothing here constrains M3.
+
+### What M1.6 does not show
+
+- **One model, one quantization.** Every figure is `qwen3.6:27b` Q4_K_M. M5 is
+  where this becomes a comparison.
+- **12 trials per cell.** A 27.6pt aggregate delta is well clear of the noise;
+  the per-scenario first-attempt figures are not, individually.
+- **Thinking is on and costs ~16×** (7.4 s vs 122 s on an identical prompt).
+  Whether it changes decision *quality* is unmeasured — it was held constant,
+  not varied.
+- **Two truncations remain** at `max_tokens: 6144`, both on Chicago, and both
+  are the entire schema-failure rate (1 call in ~100 per arm). They are a
+  budget artifact, not a form-filling failure.
+- **Step 3 still chooses from short lists** — 1.0 to 1.6 packages per
+  satisfiable intent. "Which of six" has not been tested live.
