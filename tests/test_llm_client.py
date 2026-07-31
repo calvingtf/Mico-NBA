@@ -325,6 +325,43 @@ class TestSchemasAreSmallAndSafe:
         for spec in blob.get("properties", {}).values():
             assert spec.get("type") != "object", f"{schema.__name__} nests an object"
 
+    @pytest.mark.parametrize("schema", AGENT_SCHEMAS, ids=lambda s: s.__name__)
+    def test_no_bound_exceeds_what_a_grammar_compiler_will_take(self, schema):
+        """A schema is only a defence if the server can compile it.
+
+        ``maxLength: 4000`` on the ``reason`` fields made Ollama 0.32.5 reject
+        every request outright:
+
+            HTTP 400 "Failed to initialize samplers: failed to parse grammar"
+
+        Bisected on this machine, 1999 compiles and 2000 does not — the
+        compiler appears to expand the bound into a bounded repetition and give
+        up past a ceiling. The failure is loud, which is the good case, but it
+        is loud at *call* time and hermetic tests never saw it. This one does.
+
+        The ceiling here is deliberately below the observed cliff rather than
+        at it. Sitting on a boundary that another server may place elsewhere is
+        how this recurs on the next backend.
+        """
+        SAFE_MAX = 1_600
+        blob = schema.model_json_schema()
+
+        def walk(node, path="") -> None:
+            if isinstance(node, dict):
+                for key in ("maxLength", "maxItems", "maxProperties"):
+                    if key in node:
+                        assert node[key] <= SAFE_MAX, (
+                            f"{schema.__name__}{path}.{key} = {node[key]}, over "
+                            f"the {SAFE_MAX} ceiling a grammar compiler accepts"
+                        )
+                for key, value in node.items():
+                    walk(value, f"{path}.{key}")
+            elif isinstance(node, list):
+                for i, item in enumerate(node):
+                    walk(item, f"{path}[{i}]")
+
+        walk(blob)
+
     def test_the_action_enum_is_inlined(self):
         spec = ActionChoice.model_json_schema()["properties"]["action"]
         assert spec.get("enum") == ["propose_trade", "stand_pat"]

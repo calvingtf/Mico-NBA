@@ -30,20 +30,26 @@ class OllamaProvider:
     name = "ollama"
 
     def enforces_schema(self) -> bool:
-        """Whether we have *verified* this server constrains decoding.
+        """Whether *any* Ollama may be assumed to constrain decoding.
 
-        False, on evidence. Ollama documents ``format`` as accepting a JSON
-        schema, and this provider still sends it — but on 0.31.1 serving
-        qwen3.6:35b-a3b it was observed to have no effect: a request carrying
-        the full TradeProposal schema returned ``{"trade": {"sent_ids": ...}}``,
-        and one carrying the legacy ``format: "json"`` returned free prose. A
-        grammar cannot produce either.
+        False, and it stays False even though the server on this machine now
+        demonstrably does enforce. The two observations, both measured with
+        ``llm/probe.py``:
 
-        Returning True here previously was the worst kind of wrong: it made the
-        client skip the prompt-level fallback *and* logged a claim of
-        enforcement that the raw completions contradict. The measured
-        schema-failure rate was then a statement about a defence that was never
-        running. See README, "Structured output: what actually happened".
+          * 0.31.1, qwen3.6:35b-a3b — 0/9 conformed. ``format`` carrying the
+            full schema returned ``{"trade": {"sent_ids": ...}}``; the legacy
+            ``format: "json"`` returned free prose. A grammar produces neither.
+          * 0.32.5, both qwen3.6:27b and qwen3.6:35b-a3b — 9/9 conformed, on
+            flat, ``$defs``-bearing and inlined shapes alike. Same probe, same
+            models, upgraded server. An unparseable schema is now a hard HTTP
+            400 rather than a silent no-op, which is the honest behaviour.
+
+        So the capability is real but version-dependent, and this method cannot
+        see a version. Returning True would restore exactly the M1 defect: a
+        static claim standing in for a fact about the process actually running.
+        The client takes its flag from ``observed_enforcement()`` instead, which
+        measures it per (server, base_url, model) and can be wrong only about
+        the run it was measured in.
         """
         return False
 

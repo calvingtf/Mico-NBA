@@ -30,13 +30,24 @@ from pydantic import BaseModel, Field
 #: it and a branch in the agent — not widening an existing form.
 ActionType = Literal["propose_trade", "stand_pat"]
 
-#: Generous, and deliberately so. An earlier 400-character cap turned a verbose
-#: but perfectly well-formed rationale into a *schema failure*, which then
-#: showed up in the headline number as if the model could not fill the form.
-#: The cap exists to stop a runaway generation from being stored, not to
-#: enforce brevity — the structure is what this schema is for. Prose length is
-#: bounded by max_tokens, where it belongs.
-REASON_MAX = 4000
+#: Bounded by what the grammar compiler will accept, not by taste.
+#:
+#: This was 4000, chosen so a verbose rationale could not be counted as a schema
+#: failure the way an earlier 400-character cap had been. On Ollama 0.32.5 that
+#: value makes the server reject the request outright:
+#:
+#:     HTTP 400 "Failed to initialize samplers: failed to parse grammar"
+#:
+#: Bisected on this machine: ``maxLength`` up to 1999 compiles, 2000 and above
+#: does not. The compiler appears to expand the bound into a bounded repetition
+#: and give up past a fixed ceiling. 1500 sits clear of the cliff with room for
+#: roughly 250 words, which is a rationale rather than an essay.
+#:
+#: The failure mode has inverted, and that is why a smaller cap is now safe.
+#: Under an ignored schema the cap was a *validation* limit and overrunning it
+#: failed the parse. Under an enforced grammar it is a *decoding* limit: the
+#: model is made to close the string, so the reason is clipped rather than lost.
+REASON_MAX = 1500
 
 
 class ActionChoice(BaseModel):
