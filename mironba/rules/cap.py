@@ -54,7 +54,10 @@ def tier_for_salary(team_salary: int, env: CapEnvironment) -> ApronTier:
     The aprons are *hard lines*: a team exactly at the apron is treated as
     above it, matching how the league applies apron restrictions.
     """
-    if team_salary >= env.second_apron:
+    # No second apron before the 2023 CBA. Returning SECOND_APRON for a 2019
+    # team would apply restrictions that did not exist, and would reject
+    # trades the league actually approved.
+    if env.has_second_apron and team_salary >= env.second_apron:
         return ApronTier.SECOND_APRON
     if team_salary >= env.first_apron:
         return ApronTier.FIRST_APRON
@@ -90,11 +93,13 @@ def exception_match_limit(outgoing: int, env: CapEnvironment) -> int:
     round-number label. The gap only matters for outgoing salaries in
     $7.25M-$7.50M, where this returns the more conservative bracket.
     """
+    brackets = env.match_brackets
+    cushion = brackets["cushion"]
     candidates = sorted(
         (
-            pct_of(outgoing, SMALL_SALARY_MATCH_PCT) + TRADE_CUSHION,
-            outgoing + env.expanded_tpe,
-            pct_of(outgoing, STANDARD_MATCH_PCT) + TRADE_CUSHION,
+            pct_of(outgoing, brackets["small_pct"]) + cushion,
+            outgoing + env.middle_buffer,
+            pct_of(outgoing, brackets["large_pct"]) + cushion,
         )
     )
     return candidates[1]
@@ -118,8 +123,9 @@ def max_incoming_salary(
     if post_trade_tier is None:
         post_trade_tier = _self_consistent_tier(outgoing, team_salary_before, env)
 
-    if post_trade_tier >= ApronTier.FIRST_APRON:
+    if post_trade_tier >= ApronTier.FIRST_APRON and env.apron_restricts_matching:
         # Apron teams get no cushion and no brackets: a flat share of outgoing.
+        # 2023 CBA only - see CapEnvironment.apron_restricts_matching.
         return pct_of(outgoing, env.apron_match_pct)
 
     # Below the aprons a team may either absorb into cap room or use the
@@ -208,6 +214,28 @@ def minimum_salary(season: str, years_of_service: int) -> int:
             f"no minimum salary scale for {season!r}; sourced seasons: {known}"
         ) from None
     return scale[min(max(years_of_service, 0), 10)]
+
+
+def cannot_be_a_minimum_contract(season: str, salary: int) -> bool:
+    """True when ``salary`` is too large to be a minimum in ``season``, for sure.
+
+    An admissible bound, and it exists so an unsourced minimum-salary scale does
+    not make every pre-2023 trade UNDETERMINED. The scale tracks the cap, and
+    every pre-2023 cap is below every sourced one, so the largest minimum in any
+    *sourced* season is an upper bound for every earlier season. A salary above
+    it cannot be a minimum contract in an earlier year, whatever the scale said.
+
+    The bound may over-admit - it never under-admits. A salary below it falls
+    through to the real scale, and if that is missing the caller reports
+    UNDETERMINED rather than guessing.
+    """
+    if season in MINIMUM_SALARY_SCALE:
+        return False
+    if int(season[:4]) >= min(int(s[:4]) for s in MINIMUM_SALARY_SCALE):
+        # Not an earlier season, so the bound argument does not apply.
+        return False
+    ceiling = max(max(tiers.values()) for tiers in MINIMUM_SALARY_SCALE.values())
+    return salary > ceiling
 
 
 def qualifies_for_minimum_exception(

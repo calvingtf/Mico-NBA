@@ -24,7 +24,15 @@ from pathlib import Path
 
 #: Basketball-Reference asks for no more than ~20 requests/minute and will
 #: return 429 and then block outright. 3.5s keeps us under that with headroom.
-DEFAULT_MIN_INTERVAL = 3.5
+#: Seconds between requests to the same host.
+#:
+#: Raised from 3.5s after a seven-season backfill was cut off by an HTTP 429.
+#: Basketball-Reference allows roughly 20 requests a minute and bans for about
+#: an hour on violation; 3.5s is ~17/min, close enough to the line that a few
+#: manual fetches alongside a running backfill tripped it. 4.5s is ~13/min,
+#: which costs about three minutes per season and does not get the job banned
+#: two thirds of the way through.
+DEFAULT_MIN_INTERVAL = 4.5
 
 USER_AGENT = "MiroNBA research ingest (single-user, cached, rate-limited)"
 

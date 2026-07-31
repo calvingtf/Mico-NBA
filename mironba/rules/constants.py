@@ -30,6 +30,89 @@ STANDARD_MATCH_PCT = 125
 #: Matching percentage for small outgoing salaries, teams below the first apron.
 SMALL_SALARY_MATCH_PCT = 200
 
+#: Which collective bargaining agreement a season runs under.
+#:
+#: This is not a cosmetic label. The 2023 CBA introduced the second apron and
+#: its restrictions - no aggregation, no cash, frozen picks - and applying any
+#: of them to a 2019 trade would reject a deal that was legal when it was made.
+#: A backtest that silently did so would report a validator error as a league
+#: fact, which is the failure mode this whole project is arranged against.
+CBA_2017 = "2017"
+CBA_2023 = "2023"
+
+#: The 2023 CBA took effect for the 2023-24 season.
+CBA_2023_FIRST_SEASON = 2023
+
+#: Salary-matching brackets per era: (small %, middle buffer source, large %,
+#: cushion). The middle bracket is ``outgoing + buffer``; under the 2023 CBA
+#: that buffer is the season's expanded TPE, under the 2017 CBA it is a flat
+#: $5,000,000 that did not scale.
+#:
+#: **The 2017 percentages are derived, and they check out exactly.** The
+#: published bracket edges for that era are $6,533,333 and $19,600,000. Solving
+#: ``p*x + cushion == x + 5,000,000`` at those two points gives p = 175% and
+#: p = 125% with a $100,000 cushion, to the dollar. Two independent published
+#: boundaries agreeing on the same two percentages and the same cushion is a
+#: much better warrant than either figure alone.
+MATCH_BRACKETS = {
+    CBA_2017: {"small_pct": 175, "large_pct": 125, "cushion": 100_000,
+               "flat_buffer": 5_000_000},
+    CBA_2023: {"small_pct": SMALL_SALARY_MATCH_PCT, "large_pct": STANDARD_MATCH_PCT,
+               "cushion": TRADE_CUSHION, "flat_buffer": None},
+}
+
+#: Published bracket edges, kept as an assertion target rather than as the
+#: implementation. ``test_2017_brackets_reproduce_the_published_edges`` solves
+#: the crossovers from the percentages above and checks them against these.
+PUBLISHED_2017_CROSSOVERS = (6_533_333, 19_600_000)
+
+
+#: What is and is not modelled for each CBA era. Stated as data so it can be
+#: printed, tested, and cited rather than remembered.
+#:
+#: The 2017-era gaps are all *data* gaps, not rule gaps: the rules are written,
+#: the per-season figures were never sourced. Where a figure is missing the
+#: validator returns UNDETERMINED rather than deciding - a trade is never
+#: approved or rejected on a number this project does not have.
+ERA_COVERAGE = {
+    CBA_2017: {
+        "modelled": (
+            "salary matching (175/125% + $100K over a flat $5M middle buffer, "
+            "derived from the published $6,533,333 and $19,600,000 edges)",
+            "cap, tax and floor per season (sourced; see PROVENANCE)",
+            "roster limits, aggregation window, base-year compensation",
+            "Stepien rule on first-round picks",
+        ),
+        "not_modelled": (
+            "apron as a hard-cap trigger - under this CBA the apron bound a "
+            "team that used the non-taxpayer MLE, the bi-annual exception, or "
+            "acquired by sign-and-trade. Trades are not gated on it, and the "
+            "apron figure is an inert placeholder for every season but 2022-23.",
+            "cash limits - not sourced per season; cash movement returns "
+            "UNDETERMINED rather than being ruled on.",
+            "minimum salary scale - not sourced. Salaries above the largest "
+            "sourced minimum are decided by an admissible bound; those below "
+            "return UNDETERMINED.",
+            "exception amounts (MLE, bi-annual, room) - not sourced.",
+        ),
+        "cannot_apply": (
+            "second apron and every restriction attached to it - it did not "
+            "exist. has_second_apron is False and the rules are unreachable.",
+            "100% apron matching - a 2023 CBA addition.",
+        ),
+    },
+    CBA_2023: {
+        "modelled": ("everything the validator implements",),
+        "not_modelled": (),
+        "cannot_apply": (),
+    },
+}
+
+
+def era_for_season(season: str) -> str:
+    """Which CBA a season runs under. Derived from the season, never guessed."""
+    return CBA_2023 if int(season[:4]) >= CBA_2023_FIRST_SEASON else CBA_2017
+
 #: Roster limits. The 2023 CBA moved two-way slots from 2 to 3.
 MAX_STANDARD_ROSTER = 15
 MIN_STANDARD_ROSTER = 14
@@ -126,6 +209,54 @@ class CapEnvironment:
     taxpayer_mle: int = 0
     room_exception: int = 0
     bi_annual_exception: int = 0
+    #: Which CBA this season runs under. Defaults from the season rather than
+    #: to a constant, so a newly added environment cannot silently inherit the
+    #: wrong era by omission.
+    cba_era: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.cba_era:
+            object.__setattr__(self, "cba_era", era_for_season(self.season))
+
+    @property
+    def apron_restricts_matching(self) -> bool:
+        """Whether crossing the first apron tightens salary matching.
+
+        **2023 CBA only.** Under the 2017 CBA the apron was purely a hard-cap
+        *trigger* - it bound a team that used the non-taxpayer mid-level, the
+        bi-annual exception, or acquired a player by sign-and-trade - and it
+        placed no limit on trade matching. Over-the-cap teams used the ordinary
+        brackets however far above the tax they were.
+
+        Applying the modern 100% apron rule to a 2019 trade would reject deals
+        the league approved, and the error would look like an era-specific
+        result rather than an anachronism.
+        """
+        return self.cba_era == CBA_2023
+
+    @property
+    def has_second_apron(self) -> bool:
+        """Whether a second apron exists at all this season.
+
+        It does not before 2023-24. Every second-apron restriction keys on
+        this rather than comparing against ``second_apron``, because a
+        sentinel value large enough never to be crossed would still leave the
+        rule *reachable*, and reachable is what tests cannot rule out.
+        """
+        return self.cba_era == CBA_2023
+
+    @property
+    def match_brackets(self) -> dict:
+        return MATCH_BRACKETS[self.cba_era]
+
+    @property
+    def middle_buffer(self) -> int:
+        """The middle salary-matching bracket's buffer.
+
+        Scales with the cap under the 2023 CBA; a flat $5M under the 2017 one.
+        """
+        flat = self.match_brackets["flat_buffer"]
+        return self.expanded_tpe if flat is None else flat
 
     @property
     def start_year(self) -> int:
@@ -134,6 +265,139 @@ class CapEnvironment:
 
 
 _ENVIRONMENTS: dict[str, CapEnvironment] = {
+    "2016-17": CapEnvironment(
+        season="2016-17",
+        salary_cap=94_143_000,
+        tax_level=113_287_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=113_287_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=113_287_000,
+        minimum_team_salary=84_729_000,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2017-18": CapEnvironment(
+        season="2017-18",
+        salary_cap=99_093_000,
+        tax_level=119_266_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=119_266_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=119_266_000,
+        minimum_team_salary=89_183_700,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2018-19": CapEnvironment(
+        season="2018-19",
+        salary_cap=101_869_000,
+        tax_level=123_733_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=123_733_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=123_733_000,
+        minimum_team_salary=91_682_100,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2019-20": CapEnvironment(
+        season="2019-20",
+        salary_cap=109_140_000,
+        tax_level=132_627_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=132_627_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=132_627_000,
+        minimum_team_salary=98_226_000,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2020-21": CapEnvironment(
+        season="2020-21",
+        salary_cap=109_140_000,
+        tax_level=132_627_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=132_627_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=132_627_000,
+        minimum_team_salary=98_226_000,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2021-22": CapEnvironment(
+        season="2021-22",
+        salary_cap=112_414_000,
+        tax_level=136_606_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=136_606_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=136_606_000,
+        minimum_team_salary=101_172_600,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
+    "2022-23": CapEnvironment(
+        season="2022-23",
+        salary_cap=123_655_000,
+        tax_level=150_267_000,
+        # NOT SOURCED per season, and NOT READ by any 2017-era rule: the apron
+        # was a hard-cap trigger, not a matching restriction, and hard-cap
+        # triggers are not modelled for trades. Set to the tax level as an
+        # inert placeholder where no figure was sourced; test_era_coverage
+        # asserts no 2017-era path reads it.
+        first_apron=156_983_000,
+        # No second apron exists before the 2023 CBA. has_second_apron is False
+        # for this era, so this value is unreachable by construction.
+        second_apron=156_983_000,
+        minimum_team_salary=111_290_000,
+        expanded_tpe=0,          # 2017 CBA uses a flat $5M buffer, not this
+        apron_match_pct=125,     # unused: apron_restricts_matching is False
+        cash_limit=0,            # NOT_MODELLED for this era
+        non_taxpayer_mle=0,      # NOT_MODELLED for this era
+    ),
     "2023-24": CapEnvironment(
         season="2023-24",
         salary_cap=136_021_000,
@@ -205,6 +469,16 @@ _ENVIRONMENTS: dict[str, CapEnvironment] = {
 #:                scales with the cap).
 #: "unverified" — recalled, not confirmed. Treat as a placeholder.
 PROVENANCE: dict[str, tuple[Confidence, str]] = {
+    "cba_era": (
+        "derived",
+        "Which CBA the season runs under, derived from the season year: the "
+        "2023 CBA took effect for 2023-24. Load-bearing rather than cosmetic - "
+        "the second apron and its restrictions do not exist before it, and the "
+        "salary-matching brackets differ (175/125 + $100K over a flat $5M "
+        "buffer, against 200/125 + $250K over the expanded TPE). The 2017 "
+        "percentages are derived from the two published bracket edges "
+        "$6,533,333 and $19,600,000, which they reproduce exactly.",
+    ),
     "salary_cap": ("verified", "NBA PR releases; Hoops Rumors cap/tax announcements"),
     "tax_level": ("verified", "NBA PR releases"),
     "first_apron": ("verified", "NBA PR releases; Hoops Rumors 'Tax Aprons' glossary"),
