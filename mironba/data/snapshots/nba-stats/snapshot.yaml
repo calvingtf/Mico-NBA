@@ -1,0 +1,29 @@
+snapshot_id: nba-stats
+as_of_date: "2026-07-31"
+seasons: ['2014-15', '2015-16', '2016-17', '2017-18', '2018-19', '2019-20', '2020-21', '2021-22', '2022-23', '2023-24', '2024-25']
+source: stats.nba.com (NBA official)
+notes: >
+  Per-player and per-team regular-season totals. Unlike the Basketball-
+  Reference tables, these ARE committed: stats.nba.com is the league's own
+  API and carries no redistribution restriction of the kind that keeps
+  scraped salary data out of this repo. Committing them is what lets the
+  value model be refit from a clone.
+
+  Regular season only. Playoff performance is excluded deliberately — the
+  target is regular-season wins, and mixing the two would train on games
+  that are not being predicted.
+
+  MIN is total minutes and is a float: the NBA's own totals carry fractional
+  minutes. GP is games played, not games available; a player who was injured
+  simply has fewer of both, and nothing here distinguishes "rested" from
+  "hurt" from "benched". That is the availability limitation recorded in the
+  README, and it is a property of the source, not of the ingest.
+
+  PLUS_MINUS is raw on-court point differential, not an adjusted metric. It
+  is heavily team-dependent: a fifth option on a good team outscores a first
+  option on a bad one. models/value.py uses it as a regression target rather
+  than as a value metric for exactly that reason.
+
+  2019-20 and 2020-21 are ingested but excluded by the value model: both were
+  shortened and one was played in a bubble. The exclusion lives in the model
+  so it is visible and reversible, rather than being hidden by absence here.
