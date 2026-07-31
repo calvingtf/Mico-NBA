@@ -2,12 +2,11 @@
 # names a job ("gm_agent") and never a model, so swapping models in M5 is an
 # edit to this file and nothing else.
 #
-# Verified on this machine 2026-07-30: `qwen3.6:35b-a3b` is pulled (Q4_K_M,
-# 262144 context, thinking-capable). `qwen3.6:27b` is NOT pulled — the
-# local_deep profile is declared per the charter but will fail preflight until
-# someone runs `ollama pull qwen3.6:27b`. That is deliberate: a profile that
-# silently fell back to the available model would make an M5 comparison
-# between "27b" and "35b-a3b" a comparison of one model against itself.
+# Verified on this machine 2026-07-31: both `qwen3.6:35b-a3b` (22.3 GiB) and
+# `qwen3.6:27b` (16.2 GiB) are pulled, Q4_K_M. The size difference is the whole
+# reason gm_agent moved to local_deep: 22.3 GiB of weights plus a KV cache does
+# not fit in 24 GB of VRAM, and every M1/M1.5 number was measured on a model
+# Ollama had pushed entirely onto the CPU. 16.2 GiB does fit.
 
 defaults:
   server: ollama
@@ -38,13 +37,30 @@ profiles:
     gpu_layers: 40
 
   local_deep:
-    model: qwen3.6:27b           # dense, steadier reasoning — NOT PULLED YET
+    model: qwen3.6:27b           # dense, steadier reasoning, and it fits in VRAM
     thinking: true
     temperature: 0.3
     top_p: 0.9
     seed: 20260730
-    context_length: 8192
-    max_tokens: 2048
+    # Matches OLLAMA_CONTEXT_LENGTH=16384 on this machine. Asking for more than
+    # the server was started with does not raise — it silently reallocates or
+    # truncates, and a context that quietly shrank would show up as a schema
+    # failure attributed to the model.
+    context_length: 16384
+    # num_predict covers thinking tokens as well as content on Ollama, so a
+    # budget sized for the answer alone truncates mid-reasoning and returns
+    # empty content — which arrives as a schema failure and reads as the model
+    # being unable to fill a two-field form.
+    #
+    # Measured thinking blocks on this model run 5.5k-14k characters, roughly
+    # 1400-3500 tokens. 4096 was enough for most calls and truncated one in
+    # four; the repair retry rescued it, but a truncation counted as a schema
+    # failure is the exact contamination `max_tokens` caused at M1. 6144 leaves
+    # headroom for a long reasoning block plus the form. It raises the worst
+    # case to ~3 minutes at 34 tok/s and leaves the typical call unchanged,
+    # because a call that finishes early still finishes early.
+    max_tokens: 6144
+    gpu_layers: 99               # "all of them"; 27b has fewer than 99
 
   # Deterministic decoding, for measuring the schema-failure floor without
   # sampling noise. Same model as local_fast.
@@ -67,7 +83,11 @@ profiles:
     seed: 20260730
 
 roles:
-  gm_agent: local_fast
+  # Moved off local_fast at M1.6. Not for reasoning quality — for residency.
+  # 35b-a3b ran at gpu_fraction 0.0 on this box, so its latency figures
+  # described a CPU and its outputs were produced under a 40s/call budget
+  # nobody would choose. local_fast stays declared for the M5 comparison.
+  gm_agent: local_deep
   media_agent: local_fast
   market_agent: local_fast
   report_agent: local_deep

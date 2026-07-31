@@ -1,0 +1,67 @@
+id: mid-flexibility-bulls
+season: "2024-25"
+snapshot: bbref-2024-25
+team: CHI
+partner: UTA
+trade_date: "2025-02-06"
+
+seed: >
+  Utah is selling before the deadline and will talk about anyone. You are the
+  Bulls' GM: over the cap, clear of the aprons, with several mid-sized
+  contracts you are willing to move. Anything you send must satisfy the CBA's
+  salary-matching rules, which a separate engine will check.
+
+# WHY CHICAGO
+#
+# The first two scenarios are the two extremes, and between them they miss the
+# league. Los Angeles is above the first apron, so `max_incoming_salary` takes
+# the flat apron percentage and the bracket table is never consulted. Detroit
+# is under the cap, so it takes the cap-room branch and the bracket table is
+# never consulted there either. Neither scenario has ever exercised
+# `exception_match_limit` — the three-formula median that most of the league
+# actually trades under, and the function whose tier dispatch was wrong until
+# M1.5 without a single test noticing.
+#
+# Chicago qualifies on figures from the snapshot, not from memory:
+#
+#   payroll        $165,919,354
+#   salary cap     $140,588,000   -> over it
+#   first apron    $178,132,000   -> $12.2M below it
+#   tier           OVER_CAP
+#
+# and it holds the mid-sized contracts the description asks for — Lonzo Ball
+# $21.4M, Nikola Vucevic $20.0M, Patrick Williams $18.0M, Kevin Huerter
+# $16.8M, Zach Collins $16.7M. At $20M outgoing the bracket table allows
+# $27,752,000 back where flat apron matching would allow $20,000,000, so the
+# path this scenario exists to cover is demonstrably live.
+#
+# On "expiring": deliberately NOT claimed. The ingest carries a season and a
+# salary, not a contract end year, so no scenario can source expiry from the
+# snapshot and this one does not pretend to. What is sourced is the tier and
+# the contract sizes. Asserting expiry from memory would be the same class of
+# error as assuming base-year compensation, and that one is at least flagged.
+#
+# The satisfiability gradient is the point. Against Utah, 13 of 14 contracts
+# are acquirable and exactly one is not: Lauri Markkanen at $42,176,400. That
+# is the same player the Detroit GM chased through both its intents in M1.5,
+# so this scenario can distinguish "the model picks someone reachable" from
+# "the model picks the best player on the board regardless".
+
+persona:
+  label: balanced
+  risk_tolerance: 0.5
+  win_now_horizon: 3
+  asset_hoarding: 0.5
+
+# assume_not_re_signed, matching curry-to-lakers. Leaving BYC unresolved would
+# make every verdict UNDETERMINED and drown the salary-matching signal this
+# scenario is here to produce. undetermined-byc.yaml already owns that path.
+byc_resolution:
+  mode: assume_not_re_signed
+  sourced: false
+  note: >
+    Assumed, not verified — the same unsourced assumption curry-to-lakers
+    records, for the same reason.
+
+roster_size: 14
+roster_count: 15
