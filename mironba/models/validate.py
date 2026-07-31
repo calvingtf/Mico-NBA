@@ -99,7 +99,7 @@ def fit_shrink(teams, train_seasons: tuple[str, ...]) -> float:
     return slope
 
 
-def validate(test_season: str, *, quiet: bool = False) -> dict:
+def validate(test_season: str, *, quiet: bool = False, centered: bool = True) -> dict:
     players = load_player_seasons()
     teams = load_team_seasons()
     all_seasons = sorted({p.season for p in players})
@@ -145,7 +145,11 @@ def validate(test_season: str, *, quiet: bool = False) -> dict:
 
     # Centered within season, because wins are zero-sum and the metric is not
     # era-neutral. See center_by_season for the +7.8 win bias this removes.
-    strengths = center_by_season(strengths)
+    # `centered=False` reproduces the pre-fix model, which exists so the
+    # zero-sum invariant can be shown failing on it.
+    raw_train = dict(strengths)
+    if centered:
+        strengths = center_by_season(strengths)
     win_model = fit_win_model(strengths, teams, train)
     say("\nstage 3  wins")
     say(f"  {win_model.describe()}")
@@ -165,7 +169,7 @@ def validate(test_season: str, *, quiet: bool = False) -> dict:
         raw_test[key] = team_strength(
             rosters.get(key, []), quality, minutes, value_model.replacement_pm36
         )[0]
-    centered_test = center_by_season(raw_test)
+    centered_test = center_by_season(raw_test) if centered else raw_test
     previous_season = max(s for s in all_seasons if s < test_season)
 
     shrink = fit_shrink(teams, train)
@@ -211,6 +215,9 @@ def validate(test_season: str, *, quiet: bool = False) -> dict:
         say(f"  v0 DOES NOT beat all baselines. Best baseline is "
             f"'{worst.name}' at MAE {worst.mae:.2f} against v0's {scores[0].mae:.2f}.")
 
+    from mironba.models.diagnostics import zero_sum_balance, worst_season_error
+
+    balances = zero_sum_balance(strengths, teams, win_model, train)
     mean_known = float(np.mean([c[0] for c in coverage])) if coverage else 0.0
     say(f"\n  minute share priced from prior seasons: {mean_known:.1%}")
     say(f"  players priced / replacement: "
@@ -218,6 +225,21 @@ def validate(test_season: str, *, quiet: bool = False) -> dict:
 
     return {
         "test_season": test_season,
+        "centered": centered,
+        "zero_sum_worst_per_team": worst_season_error(balances),
+        "zero_sum_balances": [
+            {"season": b.season, "mean_strength": b.mean_strength,
+             "predicted": b.predicted_wins, "actual": b.actual_wins,
+             "error_per_team": b.error_per_team}
+            for b in balances
+        ],
+        "errors": {
+            "v0 roster model": [abs(p - a) for p, a in zip(predicted_model, actual)],
+            "baseline: previous-season wins":
+                [abs(p - a) for p, a in zip(predicted_prev, actual)],
+            "baseline: previous regressed to .500":
+                [abs(p - a) for p, a in zip(predicted_shrunk, actual)],
+        },
         "train_seasons": list(train),
         "shrink": shrink,
         "scores": {s.name: {"mae": s.mae, "rmse": s.rmse, "bias": s.bias} for s in scores},

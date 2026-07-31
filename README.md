@@ -20,8 +20,12 @@ than they look.
 | 2024-25 | 8.58 | 9.13 | **8.41** |
 | **pooled MAE** | **7.49** | 8.46 | 7.99 |
 
-**The stop rule fired.** v0 beats both baselines in 3 of 4 held-out seasons and
-on pooled MAE, so the hierarchical model stays unbuilt. See
+**v0 has the lower pooled MAE, but the advantage does not clear noise.** On 120
+paired team-seasons the gap is −0.97 wins against previous-season wins
+(p=0.053) and −0.50 against the regressed baseline (p=0.159). The honest
+summary is *at least as good as the baselines and probably a little better,
+not demonstrably better*. The hierarchical model stays unbuilt anyway — the
+evidence does not justify more complexity, it justifies more seasons. See
 [M2 measurements](#m2-a-value-model-and-what-it-can-and-cannot-tell-you).
 
 Also here: a throughput canary in every manifest, because `gpu_fraction: 1.0`
@@ -1355,9 +1359,36 @@ league mean discards the rest without needing to know what the era trend was.
 Bias went to -0.00 and stayed there in all four held-out seasons.
 
 To be explicit about the order of events: this change was made **after** seeing
-v0 lose. It was motivated by the bias term, which is visible without reference
-to any baseline, and it is a correction rather than a tuning knob — there is no
-free parameter in it.
+v0 lose. That ordering is exactly when a "fix" deserves suspicion, so the claim
+is tested rather than asserted.
+
+**The defect is visible in-sample, with no held-out data and no baseline.**
+Thirty teams share exactly 1,230 wins every season, so a win model must
+reproduce that total for each *training* season it was fitted on. The
+uncentered model does not:
+
+| training season | mean strength | predicted wins | actual | error per team |
+| --- | --- | --- | --- | --- |
+| 2015-16 | −0.719 | 1108.7 | 1230 | **−4.04** |
+| 2016-17 | −0.512 | 1159.6 | 1230 | −2.35 |
+| 2017-18 | −0.408 | 1185.1 | 1230 | −1.50 |
+| 2018-19 | −0.071 | 1268.1 | 1230 | +1.27 |
+| 2021-22 | −0.188 | 1239.5 | 1230 | +0.32 |
+| 2022-23 | +0.541 | 1419.0 | 1230 | **+6.30** |
+
+A pooled least-squares fit forces residuals to sum to zero *overall*, which is
+why the defect survives an ordinary fit statistic — it balances across seasons
+while being 4 wins per team low in 2015-16 and 6 wins per team high in 2022-23.
+Checking per season is what exposes it, and the trend runs parallel to the
++7.81 held-out bias.
+
+Centred, every season lands at exactly 1230.0 and the worst per-team error is
+0.00. `TestZeroSumInvariant` asserts both halves: that the invariant holds
+after centring and that it fails before, so the evidence cannot rot.
+
+That makes this a correction to a defect the training data already showed, not
+a change selected against the test set. The improvement in held-out MAE is a
+consequence of it, not the reason for it.
 
 ### Validation
 
@@ -1374,14 +1405,44 @@ k = 0.53-0.68), because a baseline you tuned is not a baseline.
 | 2024-25 | 8.58 | 9.13 | **8.41** | -0.00 |
 | **pooled** | **7.49** | 8.46 | 7.99 | |
 
-**v0 beats both baselines in 3 of 4 held-out seasons and on pooled MAE.** The
-stop rule fires: the hierarchical model is a later optimisation, not this
-round's work.
+v0 has the lower MAE in 3 of 4 held-out seasons and the lower pooled MAE. That
+was the original claim here, and a paired test says it was too strong.
 
-The one loss is worth stating plainly rather than averaging away. In 2024-25 v0
-trails the regressed baseline by **0.17 wins** on 30 teams, which is well inside
-the noise of a sample that size. It is a loss, not a rounding error, and it is
-why the headline says "3 of 4" rather than "beats the baselines".
+### Does the advantage clear noise? Mostly not
+
+Per-team absolute errors compared as matched pairs — the same thirty teams are
+scored by every method, so season difficulty cancels instead of counting as
+noise.
+
+| comparison | mean difference | t | p | teams better |
+| --- | --- | --- | --- | --- |
+| v0 vs previous-season wins | **−0.97** wins | −1.96 | 0.053 | 69 / 120 |
+| v0 vs regressed to .500 | **−0.50** wins | −1.42 | 0.159 | 66 / 120 |
+
+Negative favours v0. Neither clears the conventional threshold on 120 paired
+team-seasons, and the second is not close.
+
+**The edge over the regressed baseline rests largely on one season.** Dropping
+each held-out season in turn from the pool:
+
+| dropped | mean difference vs regressed |
+| --- | --- |
+| 2021-22 | −0.54 |
+| 2022-23 | −0.62 |
+| **2023-24** | **−0.13** |
+| 2024-25 | −0.73 |
+
+Removing 2023-24 collapses the advantage from −0.50 to −0.13 wins. Per season,
+2023-24 is the only one that separates at all (−1.63 wins, p=0.019); 2021-22
+and 2022-23 are within noise and 2024-25 tilts slightly to the baseline
+(+0.16, p=0.832).
+
+**So the claim this section supports is narrow:** v0 is at least as good as
+both baselines and probably a little better, on evidence that is one season
+away from being indistinguishable. It is not established as better. What would
+settle it is more held-out seasons, not a more elaborate model — and that is
+the reason the hierarchical version stays unbuilt rather than because v0
+"cleared" anything.
 
 What is *not* out of sample is roster membership: projecting 2023-24 requires
 knowing who was on each team in 2023-24. That is the point of a trade simulator

@@ -24,3 +24,10 @@ include = ["mironba*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["error"]
+markers = [
+    # Refits the value model against the real snapshot rather than a fixture.
+    # A few seconds, not milliseconds, and it needs the nba-stats tables to be
+    # present — but it is the test that checks the README's claim against the
+    # data the README quotes, so it runs by default rather than being opt-in.
+    "slow: refits a model against real snapshot data",
+]
