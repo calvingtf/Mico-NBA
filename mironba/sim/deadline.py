@@ -69,7 +69,15 @@ SHORTLIST = 6
 #: Prior-season value is what a deadline buyer actually reasons about, and it
 #: is fully pre-freeze at any in-season date - the season being played has not
 #: finished, so last season's totals leak nothing.
-VALUE_SEASON = {"2024-25": "2023-24", "2023-24": "2022-23", "2025-26": "2024-25"}
+#: Derived, not enumerated. It was a hardcoded three-entry dict, so when seven
+#: seasons were backfilled every one of them silently got an empty value map,
+#: `_will_part_with` saw nothing worth keeping, and the planner proposed
+#: **zero** trades for those seasons. A pooled backtest over ten seasons would
+#: then have divided three seasons' proposals by ten seasons' positives and
+#: reported it as a recall collapse.
+_SEASONS = ("2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21",
+            "2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
+VALUE_SEASON = {s: _SEASONS[i - 1] for i, s in enumerate(_SEASONS) if i}
 
 
 #: Median prior-season box_pm36 among valued players (1.04 in 2023-24). Above
