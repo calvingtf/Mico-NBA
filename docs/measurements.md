@@ -1024,3 +1024,48 @@ causal story about why a trade happens.
 
 Nothing is fitted until this is applied. The ranker harness exists; the fit does
 not, and this is why.
+
+---
+
+## 29. The degree-preserving null, and why it is not yet the deciding test
+
+Run with genuine weighting — 50 distinct pair weights, team trade frequency
+ranging 1 to 11, verified non-degenerate:
+
+| null | mean | sd | ratio | normalized headroom |
+|---|---|---|---|---|
+| uniform | 2.58% | 0.247 | 1.41x | +1.09% |
+| degree-preserving | 2.59% | 0.243 | 1.41x | +1.08% |
+
+**They agree to within noise, and that is not the reassurance it looks like.**
+
+The question the degree-preserving null exists to answer is: *did the planner
+merely learn which teams are active?* Answering it requires giving the null
+proposer the planner's own bias toward active teams, then asking whether the
+planner still beats it.
+
+**This construction weights the wrong side.** It weights which pairs *qualify*
+by team frequency, while the null proposer's coverage is still drawn uniformly.
+So the null proposer has no team-activity bias at all, and the test cannot
+detect a planner that has one. The two nulls agreeing is explained by that, not
+by the planner's advantage being independent of team activity.
+
+**The claim that survives is therefore the weaker one:**
+
+> **Better than proposing pairs at random.** Pooled precision 3.64% against a
+> 2.58% uniform null, 1.41x, +1.09% normalized headroom.
+
+**Not established:**
+
+> ~~Identifies who trades with whom.~~
+
+To establish it, the null proposer must draw its *coverage* from the same
+team-frequency distribution the planner exhibits — measure the planner's own
+per-team proposal counts, sample the null's covered pairs weighted by those, and
+re-score. A planner that only learned team activity would then match the null.
+That has not been run.
+
+**Fourteenth entry, and the first where a mechanism was built correctly and
+still answered a different question than the one asked.** The weighting is real,
+the degeneracy guard works, the variance is non-trivial — and it is on the wrong
+side of the comparison. Correct machinery, wrong wiring.
