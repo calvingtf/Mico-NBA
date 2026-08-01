@@ -1291,3 +1291,56 @@ neighbourhood, and more teams means more events as well as more listeners. The
 binding cost is LLM latency, not scheduling: at the five-team run's observed
 rate, thirty agents is a multi-hour job and belongs in the background from the
 first command.
+
+---
+
+## 34. The $0 was a read bug; the exclusion is real
+
+**Diagnosis: a read bug at my call site, not the solver.**
+
+`FeasibleSigning` carries **no amount, by design** — its fields are
+`player_id, name, route_count, routes`, and its docstring says so: *"names and
+route labels, never an amount"*, enforced by
+`test_feasible_signings_carry_no_money`. That is the same boundary rule that
+keeps salaries away from the model. My call site read
+`getattr(option, "amount", 0)`, which returns the default for every option
+because the field does not exist.
+
+So `max $0` was my read, not the solver's answer. The class docstring stated
+the reason and I did not read it before writing the accessor.
+
+**Blast radius: none on the decision.** The admit/exclude test was
+`if scan.signings:` — feasibility, not amount — so the 6-of-30 result never
+depended on the broken field. Re-run with the correct accessor:
+
+| | |
+|---|---|
+| admitted | **6 of 30** — DEN, HOU, LAL, MIN, NYK, ORL |
+| routes found | 3–5 each: bird, non-taxpayer MLE, taxpayer MLE, bi-annual, minimum |
+| reported suitors admitted | LAL, MIN |
+| reported suitors excluded | **CLE, GSW, MIA, PHI** |
+
+Identical to before. The routes are named and plural, so the solver is working;
+the exclusions are genuine rather than artifacts of a broken read. **The
+freeze-state diagnosis stands.**
+
+### The correction cannot be applied league-wide
+
+Entry 33 proposed applying the freeze-state correction and reporting both ways.
+The correction that exists is `gsw_freeze_state()` — **hand-worked for one team**
+in the LeBron backtest, and defined there *before* any of this filter work, which
+is what would have made it admissible evidence. There is no general date filter,
+because the contracts snapshot has no date column; that is the limitation, not a
+missing feature.
+
+Correcting one team by hand and reporting the filter as fixed would be selecting
+the correction to the result. Not done.
+
+### The gate fails again
+
+The run proceeds only if the filter admits the reported suitors and still
+excludes a meaningful share of the league. It excludes a meaningful share — 24 of
+30 — and it drops four of six reported suitors including the one that signed him.
+
+**The thirty-agent run does not proceed.** What it needs is a dated contracts
+ingest, which is a data-collection task and not a modelling one.
