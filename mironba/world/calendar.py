@@ -105,8 +105,84 @@ class SeasonCalendar:
 #: shape a deadline makes and would be a remarkable coincidence otherwise.
 #:
 #: The playoff-eligibility waiver date is March 1, sourced to NBA.com's trade
-#: deadline explainer. It does not move by season.
+#: deadline explainer. It does not move by season - except in 2020-21, whose
+#: whole calendar shifted, and where it is set relative to that season's own
+#: March deadline rather than pretending March 1 applied.
+#:
+#: DEADLINES FOR 2016-17..2022-23 ARE DERIVED FROM OUR OWN TRANSACTION LOG, not
+#: from a citation. Each season has one dominant in-season trade day - 8 to 16
+#: trades against 1 to 5 on the next busiest - and that spike is the deadline.
+#: The method validates itself on the seasons that also have sourced dates
+#: (2023-24, 2024-25, 2025-26 all reproduce exactly) and on 2020-21, where it
+#: independently finds 2021-03-25: the COVID season's deadline really did move
+#: to late March, and a method that assumed February would have been wrong.
+#:
+#: Season bounds come from the first and last game in the ingested game log.
+#: They are used only for phase reporting; nothing keys a trade rule on them.
 CALENDARS: dict[str, SeasonCalendar] = {
+    "2016-17": SeasonCalendar(
+        season="2016-17",
+        regular_season_start=date(2016, 10, 25),
+        deadline=date(2017, 2, 23),
+        playoff_eligibility_waiver=date(2017, 3, 1),
+        regular_season_end=date(2017, 4, 12),
+        playoffs_start=date(2017, 4, 15),
+        playoffs_end=date(2017, 6, 12),
+    ),
+    "2017-18": SeasonCalendar(
+        season="2017-18",
+        regular_season_start=date(2017, 10, 17),
+        deadline=date(2018, 2, 8),
+        playoff_eligibility_waiver=date(2018, 3, 1),
+        regular_season_end=date(2018, 4, 11),
+        playoffs_start=date(2018, 4, 14),
+        playoffs_end=date(2018, 6, 8),
+    ),
+    "2018-19": SeasonCalendar(
+        season="2018-19",
+        regular_season_start=date(2018, 10, 16),
+        deadline=date(2019, 2, 7),
+        playoff_eligibility_waiver=date(2019, 3, 1),
+        regular_season_end=date(2019, 4, 10),
+        playoffs_start=date(2019, 4, 13),
+        playoffs_end=date(2019, 6, 13),
+    ),
+    "2019-20": SeasonCalendar(
+        season="2019-20",
+        regular_season_start=date(2019, 10, 22),
+        deadline=date(2020, 2, 6),
+        playoff_eligibility_waiver=date(2020, 3, 1),
+        regular_season_end=date(2020, 8, 14),
+        playoffs_start=date(2020, 8, 17),
+        playoffs_end=date(2020, 10, 11),
+    ),
+    "2020-21": SeasonCalendar(
+        season="2020-21",
+        regular_season_start=date(2020, 12, 22),
+        deadline=date(2021, 3, 25),
+        playoff_eligibility_waiver=date(2021, 4, 1),
+        regular_season_end=date(2021, 5, 16),
+        playoffs_start=date(2021, 5, 22),
+        playoffs_end=date(2021, 7, 20),
+    ),
+    "2021-22": SeasonCalendar(
+        season="2021-22",
+        regular_season_start=date(2021, 10, 19),
+        deadline=date(2022, 2, 10),
+        playoff_eligibility_waiver=date(2022, 3, 1),
+        regular_season_end=date(2022, 4, 10),
+        playoffs_start=date(2022, 4, 16),
+        playoffs_end=date(2022, 6, 16),
+    ),
+    "2022-23": SeasonCalendar(
+        season="2022-23",
+        regular_season_start=date(2022, 10, 18),
+        deadline=date(2023, 2, 9),
+        playoff_eligibility_waiver=date(2023, 3, 1),
+        regular_season_end=date(2023, 4, 9),
+        playoffs_start=date(2023, 4, 15),
+        playoffs_end=date(2023, 6, 12),
+    ),
     "2023-24": SeasonCalendar(
         season="2023-24",
         regular_season_start=date(2023, 10, 24),
