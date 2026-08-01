@@ -194,6 +194,55 @@ proposals 421 → 415 and precision not at all.
 
 **The planner enumerates legal permutations; it does not model a market.**
 
+### Ranking does not work on features the solver has already consumed
+
+The enumerator is a retrieval stage — 2118 proposals against 71 real trades is
+what retrieval looks like when it works. So precision was supposed to move to a
+second stage: retrieve wide, rank the head. It was fitted and it does not work.
+
+**1637 complete-feature rows, 82 positive pairs, 61 distinct trades**, ten
+seasons, leave-one-season-out, logistic regression. A trade counts once however
+many of its pairs surface.
+
+| | p@1 | p@5 | p@10 |
+| --- | --- | --- | --- |
+| test | 0.0% | **6.0%** | **6.0%** |
+| train | 0.0% | 2.0% | 3.0% |
+| **random ranker** | **5.01%** | **5.01%** | **5.01%** |
+
+**p@10 of 6.0% against 5.01% is 1.20x on 61 trades across ten folds — inside
+noise.** The ranker does not beat a random ranker.
+
+Two things it would be easy to over-read, and neither says what it looks like:
+
+- **p@1 = 0% in all ten folds is uninformative.** Under a 5.01% baseline, zero
+  hits in ten single-item draws is the *most likely* outcome. It is not
+  anti-signal.
+- **Train scoring below test is not overfitting** — the direction is wrong for
+  that. It is variance on small folds, and calling it either way would be
+  reading noise.
+
+**The explanation is the result.** The largest coefficient is salary similarity
+(+0.168 standardised): teams with comparable payrolls trade with each other.
+That is close to mechanical, because **salary matching requires comparable
+money and the enumerator already enforces it**. Every negative in the training
+set is a *legal* proposal — it survived the solver. The discriminative variance
+was consumed at retrieval.
+
+> **Retrieve-then-rank requires the ranker to hold information the retriever did
+> not use.** Here it does not, and no amount of tuning changes that.
+
+What would be needed, and none of it is in the ingest: positional need, contract
+timing, front-office relationship history, age curves, availability.
+
+**Limitations.** `record_gap` was never populated — standings were not wired
+through the capture — and is declared absent rather than advertised. The
+completeness restriction drops 25% of positives and biases the survivors toward
+established players.
+
+**The enumerator's own result is unaffected**: 1.41x, +1.09% normalized
+headroom, p<0.0001, surviving a null built from its own team-activity bias.
+
 ### The validator's legality rate is a false-rejection rate
 
 The README used to say "5 of 5 on real trades". Every real trade in that set is
