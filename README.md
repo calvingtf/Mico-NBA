@@ -285,6 +285,16 @@ Each of these mechanisms exists because something got past the one before it:
   earlier boundary test constrained types.
 - **A pre-commit hook running the suite** — added after a commit went in red and
   broke a milestone gate.
+- **Merge-not-overwrite tests over every writer, enumerated programmatically** —
+  added after three writers in one module were found to have the same defect,
+  one at a time, a round apart each. Fixing one call site is not fixing the
+  class, so a fourth writer is covered without anyone remembering to cover it.
+
+**An aside that turned out to matter.** An eleven-season stats table and the
+provenance for thirteen seasons were both destroyed by that defect and both
+recovered from git — because data snapshots are committed. That was a
+*reproducibility* decision, made so any figure could be recomputed from primary
+artifacts. It turned out to be the backup.
 
 ## See it
 

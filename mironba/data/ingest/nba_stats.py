@@ -160,6 +160,18 @@ def fetch_game_log(season: str, *, timeout: int = 120) -> list[dict]:
     return frame[list(GAME_FIELDS)].to_dict("records")
 
 
+#: Writers whose input is season-partitioned. These MUST merge with what is
+#: already stored: opening "w" with only the current pull destroys every other
+#: season, and does it silently - the file still parses and the loader still
+#: loads. Three writers here had that defect, found one at a time.
+PARTITIONED = frozenset({"write_game_logs", "write_snapshot"})
+
+#: Writers that legitimately replace the whole table, because their input is
+#: the whole table. Declared so a new writer cannot be ambiguous about which
+#: kind it is; tests/test_writers_merge.py fails on anything undeclared.
+WHOLE_TABLE = frozenset({"write_careers"})
+
+
 def write_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
     """Write game logs, **merging** with seasons already on disk.
 
@@ -264,9 +276,25 @@ def write_snapshot(pulls: list[SeasonPull], root: Path = SNAPSHOT_ROOT) -> Path:
     dump("team_seasons.csv", TEAM_FIELDS,
          [(p.season, r) for p in pulls for r in p.teams])
 
-    with (directory / "sources.csv").open("w", newline="", encoding="utf-8") as handle:
+    # Merged for the same reason as the data tables, and it is worse here: this
+    # is the provenance record. Losing it does not lose numbers, it loses the
+    # answer to "where did this season come from", which is the one thing this
+    # project refuses to leave unanswered. It was silently down to two seasons
+    # of provenance for thirteen seasons of data.
+    sources_path = directory / "sources.csv"
+    kept: list[list[str]] = []
+    pulled = {p.season for p in pulls}
+    if sources_path.is_file():
+        with sources_path.open(encoding="utf-8", newline="") as handle:
+            reader = csv.reader(handle)
+            next(reader, None)
+            kept = [row for row in reader if len(row) > 1 and row[1] not in pulled]
+
+    with sources_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["table", "scope", "source_url", "retrieved_date"])
+        for row in kept:
+            writer.writerow(row)
         for pull in pulls:
             for table, endpoint in (
                 ("player_seasons", "leaguedashplayerstats"),
