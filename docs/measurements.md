@@ -1455,3 +1455,75 @@ was reasonable before this distribution was visible. It is visible now.
 "non-trivial" threshold for stopping, and the clustering does not permit
 proceeding on a February validation. The next step is a July validation on a
 prior season, and it is a different test from the one currently queued.
+
+---
+
+## 37. July validation: the method survives, and the suitor gate part-opens
+
+The February test was withdrawn - 57% of boundary disagreements sit in
+June-July, so passing it would have licensed nothing about the July case. What
+replaced it, in order, all defined before touching the freeze:
+
+### All 77 disagreement rows, inspected
+
+Systematic, not scattered. Four categories: **covid-1920/2021 (26)** - the
+source is right and the fixed July-1 rule is wrong for the extended seasons,
+harmless because reconstruction reads files, not the rule; **draft-week filed
+forward (19)** - almost entirely picks-only rows with no roster effect;
+**july-in-closing (10)** - moratorium signings filed in the *closing* season's
+file, which is the file a July reconstruction reads, so the class lands in our
+favour; **other (22)** - mostly no-roster-effect backfill. Genuine misplacement
+risk: ~12 player-placements across ten seasons, 7 of them the 2023-07-06
+cluster our use-pattern reads correctly anyway.
+
+### Cross-season consistency, seven seasons
+
+Reconstruction of S at July 10 checked against presence implied by S+1's log -
+a table the method never reads. Consistency, not ground truth: it cannot vouch
+for players with no S+1 activity, or moves filed in neither log.
+
+| | |
+|---|---|
+| must-present constraints | 138 |
+| **agreement** | **138/138 = 100%** |
+| via no-transaction inference | 25 |
+| via dated transaction | 113 |
+| undateable rows | 0 |
+
+**The seam, quantified.** Departures filed in S+1's log, invisible to
+roster_on(S): 58 pooled over July 1-10 windows, **4-9 per league per July 1-6
+window** - the freeze sits at the moratorium boundary, where most movement is
+dated on or after the freeze itself.
+
+### The suitor check, both ways
+
+| | without dated state | with dated state |
+|---|---|---|
+| admitted | 6/30 | **8/30** |
+| reported suitors admitted | LAL, MIN | **LAL, MIN, PHI** |
+| **Philadelphia** | excluded | **admitted - 5 routes** |
+
+**PHI's admission was the roster count, not the payroll.** Its payroll moved
+only $727,637; its roster count moved 16 to 14. Season tables count everyone
+who appeared; the dated filter removes post-freeze arrivals, and the signing
+solver had been reading "roster full" off table bloat.
+
+**CLE, GSW, MIA remain excluded, all by one cause:** season-end rosters "full"
+(15-16) of contracts that expired June 30 - an expiry the 2025-26 season table
+cannot express. The `bbref-contracts-2026-27` structure snapshot carries end
+years and could resolve it, but wiring it in is its own method and gets the
+same definition-before-application discipline. Raw roster counts run 12-29
+against a 15-max; the dated filter narrows, not fixes, that distortion.
+
+### The gate, honestly
+
+"Admits the reported suitors and still excludes a meaningful share": the second
+half holds (22 of 30 excluded), the first is 3 of 6 - including, decisively,
+the team that signed him. The three still out share one named, data-basis
+cause. **Part-open: the thirty-agent run remains blocked pending the expiry
+basis, and proceeding is a decision, not a default.**
+
+Representability re-checked: **34 of 71, unchanged** - its inputs are
+prior-season values and standings-based dispositions, neither consumes payroll,
+confirmed by rerun rather than assertion. Leakage audit line updated: dating is
+no longer the weakest link; contract expiry is.
