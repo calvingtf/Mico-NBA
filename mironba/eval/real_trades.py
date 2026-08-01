@@ -388,6 +388,66 @@ class TradeCheck:
         return f"  {mark}{self.trade.when} {teams}  sends {shape}{detail}"
 
 
+#: Seasons available for the year-over-year comparison, newest last.
+_RESIGN_SEASONS = ("2016-17", "2017-18", "2018-19", "2019-20", "2020-21",
+                   "2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
+_RESIGN_CACHE: dict[str, dict[str, ReSignStatus]] = {}
+
+
+def re_sign_status(season: str) -> dict[str, ReSignStatus]:
+    """Derive, per player, whether BYC can apply in ``season``.
+
+    ``APPROVED`` was 0 at every scale because base-year compensation could
+    never be ruled out: the ingest carried no re-sign status, so every trade
+    came back UNDETERMINED on a question nobody could answer. Ten seasons make
+    it answerable for most players.
+
+    Three cases, and only the third leaves the question open:
+
+    * **Changed team** between seasons - he was signed by the new team as an
+      outside free agent, not re-signed by it, so BYC does not apply.
+    * **Same team, raise of 20% or less** - the BYC raise threshold is not met,
+      whatever his Bird status was.
+    * **Same team, raise above 20%** - a genuine BYC candidate. Returned as
+      ``RE_SIGNED_BIRD``, which is the conservative direction: it keeps the
+      restriction on rather than assuming it away.
+
+    Everything else - no prior season on file, a player appearing for the first
+    time - stays ``UNKNOWN``. The point is to answer what the data answers, not
+    to convert an absence into a permission.
+    """
+    if season in _RESIGN_CACHE:
+        return _RESIGN_CACHE[season]
+    try:
+        index = _RESIGN_SEASONS.index(season)
+    except ValueError:
+        return {}
+    if index == 0:
+        return {}
+    prior = _RESIGN_SEASONS[index - 1]
+
+    def book(name):
+        path = SNAPSHOTS / f"bbref-{name}" / "contracts.csv"
+        if not path.is_file():
+            return {}
+        with path.open(encoding="utf-8", newline="") as handle:
+            return {r["player_id"]: (r["team_id"], int(r["salary"]))
+                    for r in csv.DictReader(handle)}
+
+    now, before = book(season), book(prior)
+    out: dict[str, ReSignStatus] = {}
+    for pid, (team, salary) in now.items():
+        if pid not in before:
+            continue
+        old_team, old_salary = before[pid]
+        if team != old_team or salary <= old_salary * 1.2:
+            out[pid] = ReSignStatus.NOT_RE_SIGNED
+        else:
+            out[pid] = ReSignStatus.RE_SIGNED_BIRD
+    _RESIGN_CACHE[season] = out
+    return out
+
+
 def check(trade: RealTrade) -> TradeCheck:
     """Validate one real trade, two teams or three.
 
@@ -425,12 +485,13 @@ def check(trade: RealTrade) -> TradeCheck:
         for team in trade.teams
     )
     service = _service_years(trade.season)
+    resign = re_sign_status(trade.season)
     players = tuple(
         PlayerAsset(
             player_id=move.player_id, name=move.player_id,
             salary=salary[move.player_id],
             from_team=move.from_team, to_team=move.to_team,
-            re_sign_status=ReSignStatus.UNKNOWN,
+            re_sign_status=resign.get(move.player_id, ReSignStatus.UNKNOWN),
             years_of_service=service.get(move.player_id),
         )
         for move in trade.moves

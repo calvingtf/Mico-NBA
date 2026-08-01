@@ -846,3 +846,46 @@ trades and its negatives are generated proposals, so it is bounded by the three
 seasons where the planner runs - 13 positives against 653 negatives. At 13
 positives a classifier fits noise, which is the stated gate. Raising it needs
 calendars and game logs for the backfilled seasons, not more model capacity.
+
+---
+
+## 25. Deriving re-sign status: APPROVED 0 -> 33
+
+`APPROVED` was **0 at every scale** — 12 trades, 98 trades, it never moved.
+Not because the validator disliked real trades, but because base-year
+compensation could never be *ruled out*: the ingest carried no re-sign status,
+so every trade returned UNDETERMINED on a question nothing could answer.
+
+Ten seasons make it answerable. Three cases, and only the third stays open:
+
+| evidence | conclusion |
+|---|---|
+| changed team between seasons | signed as an outside free agent, not re-signed — BYC cannot apply |
+| same team, raise ≤ 20% | the BYC raise threshold is not met |
+| same team, raise > 20% | genuine BYC candidate — `RE_SIGNED_BIRD` |
+| no prior season on file | **`UNKNOWN`**, left open |
+
+Over 4,068 consecutive-season player rows: 1,578 changed team, 1,807 stayed
+with a raise of 20% or less, 683 are candidates. **83.2% resolvable by
+evidence.**
+
+| | before | after |
+|---|---|---|
+| APPROVED | **0** | **33** |
+| UNDETERMINED | 75 | 42 |
+| REJECTED | 23 | **23** |
+
+**REJECTED does not move.** That is the check that this resolved open questions
+rather than manufacturing permissions — a derivation that turned rejections into
+approvals would be laundering, and this one cannot: the candidate case returns
+`RE_SIGNED_BIRD`, which keeps the restriction *on*.
+
+Per era: 2017 CBA n=84 → 26 / 41 / 17. 2023 CBA n=14 → 7 / 1 / 6.
+
+**The null is still 100%.** Every trade in this set was made and approved by the
+league, so a validator that approves everything unconditionally still scores
+perfectly, and this remains a false-rejection rate — now **23/98 = 23.5%**.
+What changed is the ceiling on what the metric can *say*: it can now
+distinguish "approved" from "could not tell", which it could not before. It did
+not become a skill measure and no amount of derivation would make it one on a
+test set containing no illegal trades.
