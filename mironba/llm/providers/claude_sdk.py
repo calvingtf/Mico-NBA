@@ -213,13 +213,13 @@ class ClaudeSdkProvider:
         """
         return []
 
-    def model_info(self, *, base_url: str, model: str, timeout: float = 30) -> ModelInfo:
+    def model_info(self, base_url: str, model: str, timeout: float = 30) -> ModelInfo:
         return ModelInfo(
             model_id=model,
             quantization="not-applicable (hosted)",
             families=("anthropic", "sdk"),
         )
 
-    def runtime_info(self, *, base_url: str, model: str, timeout: float = 30) -> RuntimeInfo:
+    def runtime_info(self, base_url: str, model: str, timeout: float = 30) -> RuntimeInfo:
         """All None. No local weights; see the anthropic provider's note."""
         return RuntimeInfo()

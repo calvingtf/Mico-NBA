@@ -18,6 +18,8 @@ no schema in which an illegal package could be written down.
 
 from __future__ import annotations
 
+import re
+
 import json
 from datetime import date
 from pathlib import Path
@@ -244,4 +246,109 @@ class TestOnlyRulesMayApprove:
                 )
                 assert token not in values, (
                     f"{schema.__name__} offers {token!r} as an allowed value"
+                )
+
+
+# ---------------------------------------------------------------------------
+# What the model SEES. Added after M10 found the claim and the check were
+# about different surfaces.
+# ---------------------------------------------------------------------------
+
+MONEY = re.compile(r"\$\s?\d")
+
+
+def _sample_context():
+    """A GM context with recognisable figures, for rendering."""
+    from mironba.agents.gm import GMContext, GMPersona, RosterEntry
+    from mironba.rules.cap import ApronTier
+
+    return GMContext(
+        team_id="LAL",
+        season="2024-25",
+        scenario_seed="test",
+        own_roster=(RosterEntry("aaa01", "Own Player", 12_345_678),),
+        partner_team="GSW",
+        partner_roster=(RosterEntry("bbb01", "Their Player", 55_761_216),),
+        team_salary=187_502_042,
+        tier=ApronTier.FIRST_APRON,
+        roster_count=15,
+        notes=(),
+    ), GMPersona(label="t", risk_tolerance=0.5, win_now_horizon=1, asset_hoarding=0.5)
+
+
+class TestWhatTheModelSees:
+    """The claim is about prompts, so the assertion has to be about prompts.
+
+    ``test_the_model_never_supplies_a_figure`` constrains what the model *emits*
+    and every agent-facing schema. Neither says anything about what is rendered
+    *into* a prompt, and for four milestones the README claimed "the model never
+    sees a salary" while ``CONTEXT_TEMPLATE`` rendered the payroll, the apron
+    tier, and every contract on both rosters.
+    """
+
+    def test_the_context_prompt_does_carry_money(self):
+        """Pinning what is actually true, so the README can match it.
+
+        This is deliberately an assertion that money IS present. The previous
+        state of the world was a claim of absence with no test either way; a
+        test that records the real behaviour is what stops the claim drifting
+        back.
+        """
+        from mironba.agents.gm import render_context
+
+        context, persona = _sample_context()
+        rendered = render_context(context, persona)
+        assert MONEY.search(rendered), "context prompt no longer carries money"
+        assert "187,502,042" in rendered, "team payroll is visible to the model"
+        assert "12,345,678" in rendered, "own-roster salaries are visible"
+        assert "55,761,216" in rendered, "partner-roster salaries are visible"
+        assert "first apron" in rendered, "apron status is visible"
+
+    def test_every_roster_line_carries_a_salary(self):
+        from mironba.agents.gm import RosterEntry
+
+        assert MONEY.search(RosterEntry("x", "Y", 1_000_000).render())
+
+    def test_the_readme_claim_matches_the_rendered_surface(self):
+        """The README may not claim salary-blindness while this renders money.
+
+        Enforces the charter rule added at M10: no claim without a test that
+        asserts the surface the claim is actually about.
+        """
+        from pathlib import Path
+
+        readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(
+            encoding="utf-8"
+        )
+        # A retraction may quote the old claim; an assertion may not make it.
+        # Distinguished by line, so the correction note stays legal and any
+        # reinstatement of the claim does not.
+        RETRACTION = ("used to read", "was false", "no longer", "entry 21")
+        offenders = [
+            line.strip()
+            for line in readme.splitlines()
+            if "sees a salary" in line
+            and not any(marker in line for marker in RETRACTION)
+        ]
+        assert not offenders, (
+            f"README claims salary-blindness: {offenders}. render_context() "
+            "emits team payroll, apron status and every contract on both "
+            "rosters. Say what is true, not the nearest true-sounding thing."
+        )
+
+    def test_the_model_still_cannot_emit_a_package_or_terms(self):
+        """The half of the claim that survived, kept explicit.
+
+        Seeing a salary and being able to *set* one are different powers. The
+        first is what M10 found; the second is what the architecture actually
+        prevents, and it is still prevented.
+        """
+        from mironba.agents.gm import PackageSelection, TradeIntent
+
+        for model in (TradeIntent, PackageSelection):
+            for name, field in model.model_fields.items():
+                annotation = str(field.annotation).lower()
+                assert "float" not in annotation or "salary" not in name.lower()
+                assert "salary" not in name.lower(), (
+                    f"{model.__name__}.{name} would let the model state terms"
                 )

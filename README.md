@@ -26,8 +26,14 @@ So the architecture changed rather than the prompt:
 model states an INTENT  ->  solver enumerates every LEGAL package  ->  model picks an INDEX
 ```
 
-The model never sees a salary, never emits a package, never states terms.
-Illegal proposals stopped being discouraged and became **unrepresentable**.
+The model **does** see team payroll, apron status, and every contract on both
+rosters — that is what `CONTEXT_TEMPLATE` renders. What it cannot do is **emit a
+package or state terms**: it names a player, an intent, or an index, and the
+solver builds the deal. Illegal proposals stopped being discouraged and became
+**unrepresentable**.
+
+*(The first sentence used to read "the model never sees a salary". That was
+false for four milestones and no test covered it — see measurements entry 21.)*
 
 ### Then it wanted players it could not afford: 0 of 7 intents satisfiable
 
@@ -174,7 +180,7 @@ separate. Dropped sentences are *shown*, not silently discarded. Six tests in
 `tests/test_surface.py` assert every limitation reaches both the terminal
 report and the HTML.
 
-**Agents still never see a salary — including when you ask them about one.**
+**Agents cannot state terms — including when you ask them about money.**
 Money questions are routed to the solver's own record rather than to the model
 ([`docs/example-chat.txt`](docs/example-chat.txt)):
 

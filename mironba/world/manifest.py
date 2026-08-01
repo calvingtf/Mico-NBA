@@ -171,6 +171,11 @@ class RunManifest:
 
     def _residency(self) -> str:
         if self.gpu_fraction is None:
+            # "unknown" invites someone to go and find the number. For a hosted
+            # model there is nothing to find - no local weights exist - and the
+            # two cases must not read the same.
+            if self.server in ("anthropic", "claude_sdk"):
+                return "not applicable (hosted API - no local weights)"
             return "unknown (server does not publish an offload split)"
         gib = (self.model_size_bytes or 0) / 2**30
         return (

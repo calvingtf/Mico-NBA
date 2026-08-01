@@ -647,3 +647,56 @@ Every number in the README, against the standing rule.
 | Signing backtest precision | 14.3% | ~2.1% drawing from the 522-player pool | **holds, weakly** — beats a naive null ~7x, but the pool is generous to us; a tighter null over only the real free-agent pool would be higher and has not been computed |
 
 Three of nine fail. All three were headline numbers.
+
+---
+
+## 21. The sixth check that certified a different surface than its claim
+
+The README said, in two places and in `agents/gm.py` in a third:
+
+> The model never sees a salary, never emits a package, never states terms.
+
+Two thirds of that is true. The first third was false for four milestones, and
+`tests/test_boundary.py` passed the whole time.
+
+**Found by accident.** Claude Haiku's stand-pat reasons in the M10 calibration
+run cited a figure: *"acquiring him would require trading away multiple core
+rotation pieces to match his $55.7M salary."* Checking whether the model had
+recalled that from training or been handed it, the answer was handed it —
+**29 money strings in the `action_choice` prompt**:
+
+```
+Your team: LAL   payroll $187,502,042   apron status: first apron
+```
+
+`RosterEntry.render()` emits `${salary:,}` for **every player on both rosters**,
+and `CONTEXT_TEMPLATE` adds payroll and apron tier. Not one target salary — the
+complete salary book for both teams, on the first call of every arm including
+blind.
+
+**Why the test missed it.** `test_boundary.py` asserted on agent-facing
+*schemas* (no field can hold a salary) and on model *outputs* (the model never
+supplies a figure). Both still pass, and both are about what the model can
+**say**. The claim was about what the model can **see**. Nothing rendered a
+prompt and looked at it.
+
+**What changed.** `TestWhatTheModelSees` renders `CONTEXT_TEMPLATE` and asserts
+money *is* present — recording the real behaviour, because a claim of absence
+with no test either way is how this survived. A second test greps the README and
+fails if the salary-blindness claim reappears, allowing a quoted retraction and
+nothing else. The README now says what is true: the model sees payroll, apron
+status and both rosters' contracts, and cannot emit a package or state terms.
+
+**The pattern, sixth instance.** After a 200% recall, a legality rate counting
+UNDETERMINED as legal, a counterparty match a random proposer beats, a canary
+recorded as passing on a hosted model, and sampling params recorded as values
+never sent — this is the same failure again: **a check that certifies a
+different surface than the claim it is trusted to support.** The charter rule
+gains a companion: no claim in the README without a test asserting the surface
+the claim is actually about.
+
+**What it does not invalidate.** The blind/feasible/unlock A/B remains internally
+valid — all three arms shared this context, so the contrast between them is
+unaffected. What is wrong is the word "blind", which never meant salary-blind,
+and the M10 question as posed. A genuinely salary-free fourth arm is the way to
+ask it properly.

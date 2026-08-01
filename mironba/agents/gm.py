@@ -7,7 +7,7 @@ Three steps now, and the middle one is not an LLM call.
     3. pick from legal options (LLM)   - by index, or decline all
 
 Between 2 and 3 the deterministic solver turns the intent into legal packages.
-The model never emits a package and never sees a salary, so an illegal proposal
+The model never emits a package and never states terms, so an illegal proposal
 is not merely discouraged - it has no representation. M1 measured the previous
 propose-then-validate design at 0 legal proposals in 12 attempts, with 9 repair
 retries rescuing none. Salary matching is integer constraint satisfaction, and

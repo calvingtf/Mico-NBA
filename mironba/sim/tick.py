@@ -135,8 +135,13 @@ def run_tick(
     # left to run them in. Measured before the manifest so the manifest can
     # carry it, and checked against a baseline so a degraded machine stops
     # rather than quietly producing an incomparable latency column.
-    canary = measure_throughput(cfg)
-    drift = check_throughput(cfg, canary)
+    # The canary exists to catch a LOCAL server that has silently spilled
+    # weights to system RAM. Against a hosted model it measures network
+    # latency and someone else's load, and a number that cannot fail is not a
+    # check - recording one would let a run claim a passing canary it never had.
+    hosted = cfg.server in ("anthropic", "claude_sdk")
+    canary = None if hosted else measure_throughput(cfg)
+    drift = None if hosted else check_throughput(cfg, canary)
     if drift and strict_throughput:
         raise ProviderError(drift)
     if drift:
@@ -152,8 +157,13 @@ def run_tick(
         prompt_template_hash=template_hash(*TEMPLATES),
         snapshot_date=staged.snapshot_date,
         temperature=cfg.temperature,
-        top_p=cfg.top_p,
-        seed=cfg.seed,
+        # Anthropic rejects temperature and top_p together, so the provider
+        # sends temperature only; and the Messages API takes no seed at all.
+        # Recording either here would put a value in the manifest that was
+        # never sent, which is the same failure as recording a canary that
+        # never ran. Both come back null, and sampling_not_settable says why.
+        top_p=None if cfg.server == "anthropic" else cfg.top_p,
+        seed=None if cfg.server in ("anthropic", "claude_sdk") else cfg.seed,
         thinking=cfg.thinking,
         schema_version=SCHEMA_VERSION,
         scenario_id=scenario.id,
@@ -168,9 +178,22 @@ def run_tick(
         gpu_fraction=runtime.gpu_fraction,
         fully_resident=runtime.fully_resident,
         runtime_context_length=runtime.context_length,
-        canary_tokens_per_s=canary.tokens_per_s,
-        canary_wall_s=canary.wall_s,
-        canary_overhead_ratio=round(canary.overhead_ratio, 2),
+        canary_tokens_per_s=canary.tokens_per_s if canary else None,
+        canary_wall_s=canary.wall_s if canary else None,
+        canary_overhead_ratio=round(canary.overhead_ratio, 2) if canary else None,
+        sampling_not_settable=(
+            "top_p: Anthropic rejects it alongside temperature; seed: the "
+            "Messages API has no seed parameter. Neither was sent, so both are "
+            "null rather than the configured value. Runs are therefore NOT "
+            "bit-reproducible on this provider - the manifest's reproducible "
+            "flag reflects that."
+            if cfg.server in ("anthropic", "claude_sdk") else None
+        ),
+        canary_not_applicable=(
+            "hosted API: throughput measures network and provider load, not "
+            "local weight residency. Recorded null rather than as a pass."
+            if hosted else None
+        ),
         # The experiment condition. Two runs identical in every other manifest
         # field can differ only here, so it has to be recorded here.
         arm=arm,

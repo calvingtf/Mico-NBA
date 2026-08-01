@@ -36,7 +36,6 @@ spilled to system RAM, and it cannot mean anything here.
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 from typing import Any
 
@@ -178,9 +177,9 @@ class AnthropicProvider:
             }]
             body["tool_choice"] = {"type": "tool", "name": SCHEMA_TOOL}
 
-        started = time.monotonic()
-        payload = post_json(self._url(base_url), body, self._headers(), timeout)
-        latency = time.monotonic() - started
+        payload, latency = post_json(
+            self._url(base_url), body, timeout=timeout, headers=self._headers()
+        )
 
         text, thinking = "", ""
         for block in payload.get("content", []):
@@ -229,7 +228,7 @@ class AnthropicProvider:
             for entry in data.get("data", [])
         ]
 
-    def model_info(self, *, base_url: str, model: str, timeout: float = 30) -> ModelInfo:
+    def model_info(self, base_url: str, model: str, timeout: float = 30) -> ModelInfo:
         """What is knowable about a hosted model: its id and the API version.
 
         Quantization is deliberately "not-applicable" rather than "unknown".
@@ -242,6 +241,6 @@ class AnthropicProvider:
             families=("anthropic",),
         )
 
-    def runtime_info(self, *, base_url: str, model: str, timeout: float = 30) -> RuntimeInfo:
+    def runtime_info(self, base_url: str, model: str, timeout: float = 30) -> RuntimeInfo:
         """All None, on purpose. See :data:`NOT_APPLICABLE`."""
         return RuntimeInfo(size_bytes=None, size_vram_bytes=None, context_length=None)
