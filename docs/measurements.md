@@ -784,3 +784,65 @@ anyway. Nothing here separates the two, and the charter's anti-goal on prose
 personas was aimed at a different failure than this one. Any future claim that
 a persona changed behaviour needs a control where the parameters are permuted
 and the outcome is measured — which has not been run.
+
+---
+
+## 24. Re-scoring at scale: 98 legality-scoreable, but still 13 deadline positives
+
+Ten seasons ingested, CBA-era machinery in place. The gate for everything else.
+
+| season | era | parsed | representable | scoreable | APPR | UND | REJ |
+|---|---|---|---|---|---|---|---|
+| 2016-17 | 2017 | 59 | 34 | **0** | 0 | 0 | 0 |
+| 2017-18 | 2017 | 44 | 31 | 20 | 0 | 15 | 5 |
+| 2018-19 | 2017 | 63 | 44 | 26 | 0 | 22 | 4 |
+| 2019-20 | 2017 | 43 | 30 | 17 | 0 | 12 | 5 |
+| 2020-21 | 2017 | 24 | 14 | 7 | 0 | 5 | 2 |
+| 2021-22 | 2017 | 36 | 22 | 10 | 0 | 10 | 0 |
+| 2022-23 | 2017 | 16 | 10 | 4 | 0 | 3 | 1 |
+| 2023-24 | 2023 | 23 | 8 | 4 | 0 | 1 | 3 |
+| 2024-25 | 2023 | 31 | 21 | 4 | 0 | 3 | 1 |
+| 2025-26 | 2023 | 26 | 18 | 6 | 0 | 4 | 2 |
+| **pooled** | | **365** | **232** | **98** | **0** | **75** | **23** |
+
+**Scoreable trades 13 -> 98.** `APPROVED` remains **0** at every scale: no real
+trade is ever approved outright, because base-year compensation needs a re-sign
+status the ingest does not carry. The legality figure is a false-rejection rate
+against a 100% approve-everything null, unchanged in kind by the larger n.
+
+**2016-17 scores zero** of 34 representable trades: 18 are draft-rights deals
+and 16 hit players with no salary row. Reported, not worked around.
+
+### The era split does not diverge significantly
+
+| era | n | legal | rate |
+|---|---|---|---|
+| 2017 CBA | 84 | 67 | 79.8% |
+| 2023 CBA | 14 | 8 | 57.1% |
+
+A 22.7-point gap, and the instinct is to hunt for a wrong era rule. Two-proportion
+test: **z = 1.85, p = 0.064.** Not significant at n=14. **No era rule can be
+called wrong on this evidence**, and looking for one would be fitting noise.
+The 2023-era rejections are two `SALARY_MATCH`, two `ROSTER_LIMIT` (an input
+gap - roster size on the date is not in the ingest) and one
+`AGGREGATION_SECOND_APRON`.
+
+### The deadline denominator did NOT move
+
+| | proposed | actual | matched | precision | null | delta |
+|---|---|---|---|---|---|---|
+| pooled, 3 seasons | 673 | **13** | 11 | 2.97% | 6.67% | **-3.69 pts** |
+
+Only 2023-24, 2024-25 and 2025-26 have standings coverage; `CALENDARS` carries
+no earlier season and the game-log ingest starts at 2022-23. The backfill added
+contracts and transactions, not calendars or game logs.
+
+**So the two denominators are different quantities and must not be conflated.**
+98 is legality-scoreable trades across ten seasons. **13 is deadline positives**,
+and it is unchanged. Precision remains 3.7 points *below* its null.
+
+**Consequence: the ranker is not unlocked.** Its positives are real deadline
+trades and its negatives are generated proposals, so it is bounded by the three
+seasons where the planner runs - 13 positives against 653 negatives. At 13
+positives a classifier fits noise, which is the stated gate. Raising it needs
+calendars and game logs for the backfilled seasons, not more model capacity.
