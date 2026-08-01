@@ -154,7 +154,7 @@ so each real trade has three chances to be hit:
 | | observed | null | |
 | --- | --- | --- | --- |
 | counterparty matches | 11 of 13 | **10.18 expected** | P(null ≥ observed) = **0.426** |
-| precision | **2.97%** | **2.40%** random proposer | **1.24x**, not significant |
+| precision (10 seasons, n=71) | **3.64%** | **2.57%** | **1.41x**, +1.09% headroom |
 
 **Corrected.** This table read "null 6.67%, below chance" until the pooled null
 was audited. It was computed as the union of qualifying pairs across seasons
@@ -164,8 +164,16 @@ count. The union credited the null with pairs no proposal could ever have hit.
 Corrected, precision is marginally *above* chance rather than 3.7 points below
 it. See measurements entry 26; 1.24x on 13 positives is not a result either.
 
-The counterparty metric remains indistinguishable from chance. Both are
-measures of proposal volume, not of identifying who trades with whom.
+**The advantage survives a null given the planner's own team-activity bias**
+(the planner does have one, r=+0.342), so it is not explained by having learned
+which teams trade. That is the first claim here to survive a null designed to
+kill it. The headroom says how small it is: **+1.09%** of the distance between
+chance and perfection. Ratio and headroom are quoted together everywhere —
+1.41x sounds like a finding, +1.09% says how much of one.
+
+**Two independent full runs produced byte-identical per-season figures.**
+
+The counterparty metric remains indistinguishable from chance.
 
 Two named causes were fixed before this — the disposition gate and the absence
 of any player value — and precision did not move. A third refinement moved

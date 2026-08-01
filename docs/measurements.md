@@ -1069,3 +1069,53 @@ That has not been run.
 still answered a different question than the one asked.** The weighting is real,
 the degeneracy guard works, the variance is non-trivial — and it is on the wrong
 side of the comparison. Correct machinery, wrong wiring.
+
+---
+
+## 30. The activity explanation is ruled out; the effect is real and small
+
+Closed in one round, per the decision rule: measure the bias, then rewire only
+if it is there.
+
+**Step 1 — is the bias there?** Correlate the planner's per-team pair
+participation against real trades per team:
+
+| pooled r | per-season range |
+|---|---|
+| **+0.342** (n=30 teams) | −0.094 to +0.572 |
+
+Moderate, not near zero. So the planner *does* favour teams that really trade,
+and the null needed rewiring rather than a shrug.
+
+**Step 2 — rewire and re-score.** The null proposer's *covered* pairs are now
+drawn weighted by the planner's own per-team proposal counts, so a planner that
+learned only team activity would match it:
+
+| null | mean | sd | ratio | normalized headroom | p |
+|---|---|---|---|---|---|
+| uniform | 2.57% | 0.252 | 1.41x | +1.09% | <0.0001 |
+| **planner-bias-preserving** | **2.57%** | 0.244 | **1.41x** | **+1.09%** | <0.0001 |
+
+**Unchanged.** Handing the null the planner's own team bias does not help it.
+
+**Why**, and this is the part that makes the result interpretable rather than
+lucky: the planner covers roughly half the 435-pair space every season. At that
+coverage a team-level bias barely changes the overlap with qualifying pairs —
+there is not enough selectivity left for the bias to express itself. The bias is
+real (r=+0.342) and it is not doing the work.
+
+### The claim that now survives
+
+> **Better than proposing pairs at random, and not because it learned which
+> teams are active.** Pooled precision 3.64% against 2.57%, **1.41x**,
+> p<0.0001, and the advantage survives a null given the planner's own
+> team-activity bias.
+
+> **Normalized headroom is +1.09%.** The planner closes about one percent of the
+> distance between chance and perfection. The ratio and the headroom describe
+> the same result and must be quoted together: 1.41x sounds like a finding,
+> +1.09% says how small a finding it is.
+
+This is the first claim in the project to survive a null it was designed to
+fail. It is also, on the headroom, a very small effect — and both halves of that
+sentence belong in the README.
