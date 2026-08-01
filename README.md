@@ -41,7 +41,12 @@ Legal-by-construction is not useful if the intent is impossible. The fix was to
 compute feasibility *before* asking. Three scenarios, three arms, 29–36 trials
 each:
 
-| | blind | feasible | unlock |
+**All figures below are POOLED across three scenarios.** They may not be placed
+beside per-scenario numbers — doing exactly that produced the seventh error
+above. The arm formerly called `blind` is now `unaided`: it meant "without the
+feasible-target list", never "without money".
+
+| *(pooled, 3 scenarios)* | unaided | feasible | unlock |
 | --- | --- | --- | --- |
 | Named an unreachable target | 65.5% | **0.0%** | **0.0%** |
 | Intent satisfiable, first attempt | 31.0% | 58.6% | **100%** |
@@ -57,6 +62,52 @@ The model then **declined 16 of the 23 legal package sets it was shown**. On an
 apron team whose only legal moves are cheap-for-cheap swaps that is a defensible
 read of a thin market — but solving feasibility produced *informed refusals*,
 not trades.
+
+
+### Model comparison: where constraints bind, only the scaffolding works
+
+Qwen 27B against three hosted models, `unaided` arm, **per scenario** — not
+pooled, for the reason given above. 12 trials per cell unless noted.
+
+**Los Angeles — above the first apron, constraints bind:**
+
+| model | arm | acted | 1st attempt | final |
+| --- | --- | --- | --- | --- |
+| Qwen 27B | unaided | 12/12 | **0/12** | **0/12** |
+| Sonnet 5 | unaided | 12/12 | **0/12** | **0/12** |
+| Opus 5 | unaided | 12/12 | **0/12** | **0/12** |
+| **Qwen 27B** | **unlock** | **21/21** | **21/21** | **21/21** |
+
+**No model succeeds unaided, at any capability.** A frontier model is not better
+than the 27B here — all three are at zero. The scaffolding takes the *weakest*
+model to 21/21.
+
+**Chicago (over the cap, clear of the aprons) and the positive control (under
+the cap, ten legal packages verified before any model saw it):**
+
+| model | Chicago 1st / final | control 1st / final |
+| --- | --- | --- |
+| Qwen 27B | 5/12 → 12/12 | 5/14 → 8/14 |
+| Haiku 4.5 | 0/12 acted at all | 2/12 → 8/12 |
+| Sonnet 5 | 11/13 → 12/13 | **0/12 → 12/12** |
+| Opus 5 | 9/24 → 23/24 | **12/12 → 12/12** |
+
+Capability does substitute where constraints do not bind: Opus is 12/12 on the
+first attempt at the control where Qwen manages 5 of 14. **Sonnet's control cell
+is the one place the retry does all the work** — 0/12 first attempt, 12/12
+final, meaning every intent it formed was initially unsatisfiable and every one
+was rescued by a single revision round.
+
+The control exists because the other scenarios cannot separate good judgment
+from refusal: declining a bad trade is correct and most trades are bad. Haiku
+standing pat 24/24 elsewhere was unreadable until it acted 11/12 here — it was
+judging, not refusing.
+
+**These numbers are not sampling-matched.** `temperature` is deprecated on
+Sonnet 5 and Opus 5 (HTTP 400), no seed is available on any of them, and their
+manifests are flagged `NOT REPRODUCIBLE` with the reason recorded. The Qwen arms
+ran at temperature 0.8 with a fixed seed. The comparison supports a claim about
+*which arm wins*, not a precise ranking between models.
 
 ### The value model is directionally useful and not demonstrably better than regression to the mean
 
@@ -137,6 +188,103 @@ That the validator *rejects* illegal trades is shown by the M0 synthetic
 coverage matrix, which contains illegal ones. The two are no longer conflated.
 
 ---
+
+---
+
+## Seven results that weren't
+
+Every headline number below survived at least one revision, and seven were
+wrong at the time they were first written down. They are listed because the
+pattern is the most transferable thing this project produced — more so than
+anything about basketball.
+
+**Recall of 200%.** `pair_hits` counted *proposals* that matched a real trade;
+recall divided it by the number of *real trades*. Several proposals can hit one
+trade, so the ratio exceeded 1. Caught by printing the per-season table and
+reading a percentage above 100 — the arithmetic had never been looked at, only
+the trend.
+
+**Validator legality of 5 of 5.** `TradeCheck.legal` counted `UNDETERMINED` as
+legal. Rebuilding the verdict distribution gave APPROVED 0, UNDETERMINED 7,
+REJECTED 3 — **no real trade is ever approved outright**. Worse, every trade in
+that set was legal, so a validator approving everything scores 100%: the metric
+was a false-rejection rate against a null it had never been compared to.
+
+**Counterparty matching, 11 of 13.** Never tested against a null. The proposals
+cover ~48% of all 435 team pairs, and a three-team trade is matched by any of
+its three constituent pairs, so chance alone scores 10.18. **p = 0.426.** A
+20,000-trial Monte Carlo put the observed value inside the null distribution's
+bulk. Caught by asking what a random proposer would score.
+
+**A canary recorded as passing on a hosted model.** The throughput canary exists
+to catch a *local* server that has silently spilled weights to system RAM. The
+first hosted run recorded `canary_tokens_per_s=102.56` — a real number,
+measuring network latency and someone else's load, that would have read as a
+pass. **A canary that cannot fail is not a check.** Caught by reading the
+manifest of a run rather than its summary line.
+
+**Sampling parameters recorded as values never sent.** Manifests carried
+`top_p=0.95` and `seed=20260730` for Anthropic runs. The provider sends neither
+— the API rejects `top_p` alongside `temperature` and has no `seed` at all — and
+Sonnet 5 and Opus 5 reject `temperature` outright with an HTTP 400. Caught by a
+400 on a live call, which raised the question of what else in that row was
+fiction.
+
+**"The model never sees a salary" — a claim that was false for nine
+milestones.** It appeared in the README twice and in `agents/gm.py` once, and no
+longer appears anywhere as an assertion (see measurements entry 21). `CONTEXT_TEMPLATE` renders team payroll, apron
+status, and `${salary:,}` for **every player on both rosters** — 29 money
+strings in the first prompt of every arm. Caught by accident: Claude Haiku cited
+"$55.7M" in a stand-pat reason, and checking whether it had recalled that or
+been handed it produced the answer.
+
+**Qwen's 31% and 65.5% in a per-scenario column.** Both figures are correct
+*pooled across three arms*. Placed beside per-scenario hosted numbers they
+asserted something the data never said. The real per-scenario figure for Qwen
+unaided on the apron scenario is **0 of 12** — identical to Sonnet and Opus.
+Caught by rebuilding the table from the recorded manifests.
+
+**Five of the seven were caught by rebuilding the number from primary artifacts
+— manifests, event logs, the transaction log — rather than re-reading the
+summary that reported it.** The other two came from a live API error and a
+model quoting something it should not have had. None was caught by review.
+
+### Two species, two rules
+
+**A check that certifies a different surface than the claim it is cited for.**
+Six of the seven. The legality test asserted verdicts, not the null. The
+boundary test asserted schemas and outputs, never prompt text. The canary
+asserted throughput, not whether throughput meant anything on that transport.
+Each check was correct and each was cited for something it did not cover.
+
+> **Standing rule.** A claim about what the model *sees* needs a test on
+> rendered prompts, not on types. More generally: no claim in the README
+> without a test asserting the surface the claim is actually about.
+
+**A figure valid at one scope quoted at another.** The seventh, and a different
+failure — nothing was mismeasured. 31% pooled across three arms is right; the
+same number in a per-scenario cell is a different assertion.
+
+> **Standing rule.** A figure carries its scope. A pooled number may not occupy
+> a per-scenario cell, and any table mixing the two states which is which.
+
+### What these produced
+
+Each of these mechanisms exists because something got past the one before it:
+
+- **Admissibility property tests for prunes** — a prune may over-admit, never
+  under-admit. Added after a solver prune silently discarded 12 legal packages.
+- **The throughput canary** — added after `gpu_fraction: 1.0` reported a healthy
+  run through a 3x slowdown. It later fired mid-benchmark and aborted seven
+  trials rather than record them.
+- **Null before metric** — no number reported without what a do-nothing or
+  random system scores on the same data. Now a charter rule.
+- **Append-only runs with manifests** — every figure recomputable from primary
+  artifacts, which is how five of the seven above were found.
+- **Prompt-text assertions** — added after the salary claim, because every
+  earlier boundary test constrained types.
+- **A pre-commit hook running the suite** — added after a commit went in red and
+  broke a milestone gate.
 
 ## See it
 
@@ -289,6 +437,33 @@ rather than a confabulation.
    unfalsifiable and not scored.
 8. **One model, one quantization, one machine.** Throughput and latency describe
    an RTX 3090 running `qwen3.6:27b` at Q4_K_M.
+
+## What is still unmeasured
+
+Named because an absent measurement that nobody names reads as a measurement
+that came back fine.
+
+- **Whether the persona does anything.** Citation of persona parameters in
+  stated reasons falls monotonically with capability — Qwen 78.3%, Sonnet 67.7%,
+  Haiku 61.2%, Opus 50.6% — and Qwen restates the numbers *as* its justification
+  where stronger models reason about cap state. That is consistent with the
+  persona being text the weak model recites rather than a disposition it acts
+  from. **The permutation control that would settle it has not been run**:
+  permute the parameters, hold everything else, measure whether behaviour moves.
+  Until then every persona-driven result here carries this caveat.
+- **The salary-free arm.** A fourth arm with all money stripped from the
+  rendered context, to ask what the numbers were doing in the model's reasoning
+  now that we know it can see them. Free to run on the local model. Not run.
+- **Re-scoring across the ten ingested seasons.** Seven seasons were backfilled
+  and the CBA-era machinery is in place, but legality has not been re-scored at
+  scale, the 2017-vs-2023 era split has not been computed, and the deadline
+  backtest has not been re-run with the pair null recomputed at the larger
+  denominator. Entirely deterministic; no model calls needed.
+- **Whether the LLM plans a better offseason than the deterministic planner.**
+  The backtest uses the deterministic one on purpose, so a failure is
+  attributable. The comparison has not been run.
+- **The counterfactual branch.** Unfalsifiable by construction. Run and
+  reported, never scored.
 
 ## Reading further
 
