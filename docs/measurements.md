@@ -1236,3 +1236,58 @@ encode the label.
 +1.09% normalized headroom, p<0.0001**, surviving a null built from its own
 team-activity bias. The retrieve-then-rank idea was sound; the ranking half of
 it does not work with these features at this sample size.
+
+---
+
+## 33. The suitor filter excludes the team that signed him
+
+The gate before the thirty-agent run, and it does not pass.
+
+**Reported suitors, from PRE-freeze evidence:** GSW, CLE, LAL, MIA, MIN, PHI —
+six teams, drawn from items `LBJ-01`, `LBJ-04` and the `GSW-*` series.
+
+**Hard filter** — does `feasible_signings()` find a legal route to LeBron at the
+freeze state? **Admits 6 of 30 teams:** DEN, HOU, LAL, MIN, NYK, ORL.
+
+**It filters hard — 20% of the league — and it filters wrong.**
+
+| | |
+|---|---|
+| reported suitors admitted | **LAL, MIN** (2 of 6) |
+| reported suitors **excluded** | **CLE, GSW, MIA, PHI** (4 of 6) |
+
+**Philadelphia is excluded, and Philadelphia is where he signed.** A filter that
+removes the team that actually won the player is not a filter, it is a bug with
+good precision. The soft filter was not run: there is nothing to narrow.
+
+### Why, and it is a known limitation rather than a new one
+
+The freeze state is built from the season contracts table, which carries **no
+date column**. It therefore includes players signed *after* the freeze, which
+inflates every buyer's payroll — the exact exposure the leakage audit already
+names as "the weakest link". Philadelphia's own case is documented: correcting
+its freeze state moved its offer from $40.9M of cap space to the $15,044,000
+mid-level. Here the uncorrected payroll pushes it past the point where any route
+survives.
+
+A second signal that the scan is not returning what it appears to: every admitted
+team reports `max $0`, so the routes being counted carry no amount. Either the
+scan's option objects are being read wrongly at this call site, or the only
+surviving routes are minimum-salary ones. Not diagnosed — the filter has already
+failed its validation gate and diagnosing it further is next round's work.
+
+### The gate holds
+
+The instruction was to run this check *before* the expensive part, and to treat
+"nominates most of the league" as a finding rather than something to tune. The
+opposite happened — it nominates a fifth of the league and drops the winner —
+and the same rule applies: **this is a finding about the filter, and the
+thirty-agent run does not proceed on it.**
+
+Cost estimate, for when it does: the five-team run recorded 17 wakes against 65
+polled (74% saved). Under a filter admitting 6 teams the wake count would scale
+to roughly 20–25, not 6x — the scheduler wakes on events touching a team's
+neighbourhood, and more teams means more events as well as more listeners. The
+binding cost is LLM latency, not scheduling: at the five-team run's observed
+rate, thirty agents is a multi-hour job and belongs in the background from the
+first command.
