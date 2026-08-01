@@ -44,7 +44,6 @@ AVAILABLE = (
     "roster_slot_distance",   # |roster_a - roster_b|, from contracts.csv
     "disposition_pair",       # buyer/seller/ambiguous each side, from standings
     "apron_tier_pair",        # tier each side, from payroll + constants
-    "record_gap",             # |win_pct_a - win_pct_b| at the freeze
     "value_moving",           # prior-season box_pm36 of players in the package
     "value_gap",              # value difference between the sides
     "guaranteed_share",       # guaranteed / salary, from contracts.csv
@@ -54,6 +53,9 @@ AVAILABLE = (
 #: hand-curated evidence rows, not league-wide. Using them as features would
 #: train on a handful of annotated cases and generalise to nothing.
 NOT_AVAILABLE = (
+    "record_gap",                 # standings were never wired through capture;
+                                  # measured 100% absent in both classes, so it
+                                  # is declared absent rather than advertised
     "contract_end_year",          # not in the ingest at all
     "player_option / team_option",  # contract_type is present but sparse
     "no_trade_clause",            # column exists, populated for ~0 rows
@@ -120,14 +122,17 @@ def extract(
     out_v = sum(values.get(p, 0.0) for p in moving_a)
     in_v = sum(values.get(p, 0.0) for p in moving_b)
 
-    features: dict[str, float] = {
-        "salary_magnitude": math.log1p(max(pay_a, pay_b)),
+    # None, never 0.0, for absence. For a difference feature 0.0 reads as
+    # "identical" - the most-similar value - so an unvalued player would look
+    # like a perfect match, and unvalued players cluster in the positive class.
+    features: dict[str, float | None] = {
+        "salary_magnitude": math.log1p(max(pay_a, pay_b)) if max(pay_a, pay_b) else None,
         "salary_similarity": (
-            1 - abs(pay_a - pay_b) / max(pay_a, pay_b) if max(pay_a, pay_b) else 0.0
+            1 - abs(pay_a - pay_b) / max(pay_a, pay_b) if max(pay_a, pay_b) else None
         ),
         "roster_slot_distance": abs(roster.get(team_a, 0) - roster.get(team_b, 0)),
-        "value_moving": out_v + in_v,
-        "value_gap": abs(out_v - in_v),
+        "value_moving": (out_v + in_v) if (moving_a or moving_b) else None,
+        "value_gap": abs(out_v - in_v) if (moving_a or moving_b) else None,
     }
     if standings:
         a, b = standings.get(team_a), standings.get(team_b)

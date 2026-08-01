@@ -1171,3 +1171,68 @@ multi-team and the planner is not.
 
 Sixteenth entry. The first found by a rule refusing to agree with a number that
 had already been published.
+
+---
+
+## 32. The ranker does not beat a random ranker
+
+Fitted, reported, negative.
+
+**Setup.** 2101 captured proposals across ten seasons, restricted to
+complete-feature rows: **1637 rows, 82 positive pairs, 61 distinct trades**.
+75% of positives survive the restriction. Leave-one-season-out, never split
+within a season. Logistic regression on five standardised features, chosen so
+coefficients are readable at this sample size.
+
+**Precision at k, trade level** — a trade counts once however many of its pairs
+are surfaced, because a three-team deal contributes three correlated pairs and
+ranking all three highly is one insight, not three:
+
+| | p@1 | p@5 | p@10 |
+|---|---|---|---|
+| **test** (held-out season) | **0.0%** | **6.0%** | **6.0%** |
+| train | 0.0% | 2.0% | 3.0% |
+| pair level | 0.0% | 6.0% | 6.0% |
+| **random ranker** | **5.01%** | **5.01%** | **5.01%** |
+
+**p@1 is 0% in all ten folds.** The top-ranked proposal is never a real trade.
+
+**p@10 of 6.0% against a 5.01% base rate is 1.20x**, on 61 trades across ten
+folds. That is inside noise. **The ranker does not beat a random ranker.**
+
+**Train is *worse* than test (2.0% vs 6.0% at p@5).** That is not overfitting —
+overfitting looks like the opposite. It is a model that has learned almost
+nothing, where the train/test difference is sampling variation on small folds.
+Calling it either way would be reading noise.
+
+**Coefficients** (standardised, so magnitudes compare):
+
+| feature | coefficient |
+|---|---|
+| salary_similarity | **+0.168** |
+| value_moving | +0.130 |
+| salary_magnitude | −0.119 |
+| value_gap | −0.075 |
+| roster_slot_distance | −0.064 |
+
+All small. The largest signal is **salary similarity** — teams with comparable
+payrolls trade with each other — which is the trivial dominant signal
+anticipated, and a finding about what makes trades happen rather than a
+disappointment. It is also nearly mechanical: salary matching *requires*
+comparable outgoing and incoming money, so the feature partly encodes the
+CBA rather than a front office's preferences.
+
+**Per era.** Not reported separately. With 61 trades over ten folds the
+per-season cells are 0–20% and the 2023-CBA subset is n=13; splitting further
+would report noise with a label on it.
+
+**Stated limitations.** `record_gap` was never populated — standings were not
+wired through the capture — and is now declared absent rather than advertised.
+The completeness restriction drops 25% of positives and biases survivors toward
+established players. Both are named rather than worked around, and neither can
+encode the label.
+
+**What this leaves.** The enumerator's own result stands unchanged: **1.41x,
++1.09% normalized headroom, p<0.0001**, surviving a null built from its own
+team-activity bias. The retrieve-then-rank idea was sound; the ranking half of
+it does not work with these features at this sample size.
