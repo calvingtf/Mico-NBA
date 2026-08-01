@@ -981,3 +981,46 @@ not only base-year compensation, it is a join that loses a third of its keys.
 **What would need restating** is any future claim that rests on a join failing
 toward a *decision*. None currently does, and the helper exists so that the next
 one raises instead of producing a plausible number.
+
+---
+
+## 28. Missingness differs by class, so the ranker would detect the join
+
+Measured before fitting anything, because a model trained on this would score
+well and be measuring the wrong thing.
+
+| season | feature | missing on positives | missing on negatives | gap |
+|---|---|---|---|---|
+| 2018-19 | value | **17.3%** | **0.0%** | +17.3 |
+| 2018-19 | service years | 11.5% | 0.0% | +11.5 |
+| 2024-25 | value | **11.8%** | **0.0%** | +11.8 |
+| 2024-25 | service years | 11.8% | 0.5% | +11.3 |
+| 2021-22 | all | 0.0% | ~0.0% | ~0 |
+
+**Negatives are 0% missing by construction.** The solver only proposes players
+it can value — that is what `_will_part_with` does — so every generated negative
+carries a complete value feature *necessarily*. Positives are real trades and
+include players the join loses.
+
+So `value is missing` is very nearly a label. A ranker given these features
+would learn *"no value ⇒ real trade"*, score respectably, and be detecting the
+join's coverage rather than anything about trades. The gap here is smaller than
+feared — 12–17%, not 30–50% — because deadline-window trades skew toward
+established players, but a 12-point one-directional gap on a 1.4x effect is more
+than enough to manufacture the whole result.
+
+**Imputation cannot fix this.** The usual remedy assumes both classes have
+missing values to impute. Here one class has none by construction, so any
+imputation still leaves the *indicator* perfectly informative, and adding a
+`was_missing` flag makes it worse rather than better.
+
+**Decision: restrict positives to those with complete features, and report the
+cost.** That drops 12–17% of positives and biases the remainder toward
+established players — a real limitation, stated rather than hidden. The
+alternative, dropping value entirely, removes the only feature with a plausible
+causal story about why a trade happens.
+
+**2021-22 shows a zero gap on n=3 and is not evidence of anything.**
+
+Nothing is fitted until this is applied. The ranker harness exists; the fit does
+not, and this is why.
