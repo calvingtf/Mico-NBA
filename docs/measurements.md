@@ -1402,3 +1402,56 @@ matters would be the same error the hand-worked correction was kept out for.
 **Verdict: feasible, not yet built.** The thirty-agent run is not closed
 permanently; it is blocked on a reconstruction whose method must be written and
 validated on a season *other* than the one it will be applied to.
+
+---
+
+## 36. The boundary gate passes on aggregate and fails where it matters
+
+Gate 1 for the dated reconstruction, run before any validation and before the
+method saw a single team.
+
+**Does the source file transactions by league year, as the rule assumes?**
+
+| | rows | outside their file's league year | rate | rows near July 1 |
+|---|---|---|---|---|
+| pooled, 10 seasons | 13,760 | **77** | **0.56%** | **1,647** |
+
+**The rule is genuinely tested, not vacuously confirmed.** 1,647 rows fall within
+two weeks of a July 1 boundary, so a low disagreement rate is evidence rather
+than an artifact of nothing being near the seam. That check was worth insisting
+on: a 0% rate with no nearby rows would have looked identical and meant nothing.
+
+Worst seasons are explicable: 2019-20 at 1.8% is the COVID year whose league
+year was extended, and 2024-25 at 2.0% files late-June activity under the
+upcoming season.
+
+### But the disagreements cluster exactly where the LeBron case sits
+
+| month | disagreements |
+|---|---|
+| June | 19 |
+| **July** | **25** |
+| August | 10 |
+| all others | 23 |
+
+**June and July hold 57% of all disagreements.** The LeBron freeze is
+**2026-07-06** — inside that window.
+
+So the aggregate rate is reassuring and close to irrelevant. A mid-season
+validation on a February deadline would exercise the classes that work and
+would not touch the class that decides the July case. Passing it would be
+evidence about February.
+
+**What this means for the gate.** 0.56% pooled is trivial; 57% concentration in
+the two months that matter is not. The honest reading is that the rule is
+**sound in-season and unproven at the seam**, and the out-of-sample validation
+must therefore include an offseason date — validated against a season whose July
+outcomes are already known — rather than a deadline alone.
+
+That is a harder validation than the one specified, and specifying the easier one
+was reasonable before this distribution was visible. It is visible now.
+
+**Not stopped, not proceeded.** The disagreement rate does not meet the stated
+"non-trivial" threshold for stopping, and the clustering does not permit
+proceeding on a February validation. The next step is a July validation on a
+prior season, and it is a different test from the one currently queued.
