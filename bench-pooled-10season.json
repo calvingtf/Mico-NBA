@@ -1,0 +1,94 @@
+{
+ "rows": [
+  {
+   "season": "2016-17",
+   "proposed": 293,
+   "pairs": 272,
+   "actual": 10,
+   "matched": 9,
+   "hits": 10
+  },
+  {
+   "season": "2017-18",
+   "proposed": 209,
+   "pairs": 209,
+   "actual": 13,
+   "matched": 12,
+   "hits": 15
+  },
+  {
+   "season": "2018-19",
+   "proposed": 205,
+   "pairs": 204,
+   "actual": 16,
+   "matched": 11,
+   "hits": 13
+  },
+  {
+   "season": "2019-20",
+   "proposed": 229,
+   "pairs": 219,
+   "actual": 8,
+   "matched": 5,
+   "hits": 7
+  },
+  {
+   "season": "2020-21",
+   "proposed": 173,
+   "pairs": 172,
+   "actual": 4,
+   "matched": 2,
+   "hits": 4
+  },
+  {
+   "season": "2021-22",
+   "proposed": 128,
+   "pairs": 128,
+   "actual": 3,
+   "matched": 2,
+   "hits": 2
+  },
+  {
+   "season": "2022-23",
+   "proposed": 210,
+   "pairs": 204,
+   "actual": 4,
+   "matched": 4,
+   "hits": 6
+  },
+  {
+   "season": "2023-24",
+   "proposed": 213,
+   "pairs": 212,
+   "actual": 2,
+   "matched": 2,
+   "hits": 4
+  },
+  {
+   "season": "2024-25",
+   "proposed": 206,
+   "pairs": 203,
+   "actual": 3,
+   "matched": 3,
+   "hits": 5
+  },
+  {
+   "season": "2025-26",
+   "proposed": 252,
+   "pairs": 244,
+   "actual": 8,
+   "matched": 6,
+   "hits": 11
+  }
+ ],
+ "total": {
+  "proposed": 2118,
+  "actual": 71,
+  "matched": 56,
+  "hits": 77
+ },
+ "precision": 3.6355051935788483,
+ "null_precision": 22.988505747126435,
+ "recall": 78.87323943661971,
+ "null_recall": 60.13289277358326
+}

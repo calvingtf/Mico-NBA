@@ -889,3 +889,46 @@ What changed is the ceiling on what the metric can *say*: it can now
 distinguish "approved" from "could not tell", which it could not before. It did
 not become a skill measure and no amount of derivation would make it one on a
 test set containing no illegal trades.
+
+---
+
+## 26. The pooled null was inflated, and it ran against us
+
+**Instance #11, and the first that made a result look worse than it was.**
+
+The pooled precision null was computed as the union of qualifying team pairs
+across seasons, divided by the 435-pair space. But **a proposal made in season S
+can only hit a trade in season S.** A 2016-17 pair is not available to a 2024-25
+proposal, so unioning credits the null with pairs no proposal could ever have
+hit. The null is a per-season quantity; pooling it means weighting each season's
+null by how many proposals that season contributed.
+
+| three-season pooled | value |
+|---|---|
+| null as reported (union ÷ 435) | 6.67% |
+| **null, corrected** (proposal-weighted) | **2.40%** |
+| observed precision | 2.97% |
+| reported delta | **−3.70 pts, "below chance"** |
+| **corrected delta** | **+0.57 pts, 1.24x chance** |
+
+Per-season nulls were 1.38%, 1.61% and 3.91% — every one of them below the
+pooled figure, which is the tell. A weighted mean cannot exceed its largest
+input, and a test now pins that.
+
+**1.24x on 13 positives is not a result either.** The correction does not turn a
+failure into a success; it turns a wrong negative into an untested marginal.
+The claim "the planner does not beat a random proposer" was wrong as stated and
+is retracted, and no replacement claim is made until the pooled permutation test
+runs at n=71.
+
+### Why this one survived longest
+
+Every prior entry flattered a result, and flattering numbers get audited: they
+invite disbelief. This one said we had failed. Several rounds of work went into
+*raising* precision — a disposition fix, a value model, a supplier-side gate, a
+symmetric gate — and not one of them questioned the denominator that work was
+being measured against. A metric reporting failure is taken as a problem with
+the system rather than a problem with the metric.
+
+**Standing rule, now in the README:** a metric at or below its null gets the
+same audit as one that beats it. Failure is not self-certifying.

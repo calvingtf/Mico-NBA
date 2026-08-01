@@ -154,11 +154,18 @@ so each real trade has three chances to be hit:
 | | observed | null | |
 | --- | --- | --- | --- |
 | counterparty matches | 11 of 13 | **10.18 expected** | P(null ≥ observed) = **0.426** |
-| precision | **2.97%** | **6.67%** random proposer | below chance |
+| precision | **2.97%** | **2.40%** random proposer | **1.24x**, not significant |
 
-**Precision is below what a random proposer scores.** The counterparty metric
-is indistinguishable from chance. Both are labelled as measures of proposal
-volume, not of identifying who trades with whom.
+**Corrected.** This table read "null 6.67%, below chance" until the pooled null
+was audited. It was computed as the union of qualifying pairs across seasons
+divided by 435 — but a proposal in season S can only hit a trade in season S,
+so the null is a per-season quantity and pooling it means weighting by proposal
+count. The union credited the null with pairs no proposal could ever have hit.
+Corrected, precision is marginally *above* chance rather than 3.7 points below
+it. See measurements entry 26; 1.24x on 13 positives is not a result either.
+
+The counterparty metric remains indistinguishable from chance. Both are
+measures of proposal volume, not of identifying who trades with whom.
 
 Two named causes were fixed before this — the disposition gate and the absence
 of any player value — and precision did not move. A third refinement moved
@@ -267,6 +274,19 @@ same number in a per-scenario cell is a different assertion.
 
 > **Standing rule.** A figure carries its scope. A pooled number may not occupy
 > a per-scenario cell, and any table mixing the two states which is which.
+
+### The catalogue has a selection bias
+
+Ten of the eleven entries above **inflated** a result. That is not because
+deflating errors are rare — it is because they survive. A number that says you
+succeeded gets audited by anyone who doubts it; a number that says you failed
+invites fixing the system rather than checking the metric. The pooled-null
+error sat in the README as "precision is below chance" through several rounds
+of work aimed at *raising* precision, and none of that work questioned the
+denominator it was being measured against.
+
+> **Standing rule.** A metric at or below its null gets the same audit as one
+> that beats it. Failure is not self-certifying.
 
 ### What these produced
 

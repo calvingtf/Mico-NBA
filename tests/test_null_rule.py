@@ -90,3 +90,42 @@ class TestLegalityNull:
         assert as_reported == pytest.approx(0.7)
         assert strict == 0.0
         assert as_reported > strict, "counting UNDETERMINED as legal inflates the rate"
+
+
+class TestPooledNullIsWeightedNotUnioned:
+    """Instance #11, and the first that ran in our *disfavour*.
+
+    A proposal in season S can only hit a trade in season S, so the null is a
+    per-season quantity and pooling it means weighting by proposal count.
+    Unioning qualifying pairs across seasons credits the null with pairs no
+    proposal could ever have hit, and over three seasons inflated it from 2.40%
+    to 6.67% - turning 1.24x chance into "3.70 points below chance".
+    """
+
+    def test_pooling_two_identical_seasons_returns_that_season_s_null(self):
+        from mironba.eval.pooled_backtest import pooled_null_precision
+
+        assert pooled_null_precision([(100, 0.02), (100, 0.02)]) == pytest.approx(0.02)
+
+    def test_pooling_weights_by_proposal_count(self):
+        from mironba.eval.pooled_backtest import pooled_null_precision
+
+        # 900 proposals at 1%, 100 at 11% -> 2%, not the 6% an unweighted
+        # mean would give, and not the sum an union would imply.
+        assert pooled_null_precision([(900, 0.01), (100, 0.11)]) == pytest.approx(0.02)
+
+    def test_the_pooled_null_never_exceeds_the_largest_season_null(self):
+        from mironba.eval.pooled_backtest import pooled_null_precision
+
+        seasons = [(200, 0.014), (200, 0.016), (250, 0.039)]
+        assert pooled_null_precision(seasons) <= max(n for _, n in seasons)
+
+    def test_a_season_with_no_proposals_cannot_move_the_null(self):
+        from mironba.eval.pooled_backtest import pooled_null_precision
+
+        assert pooled_null_precision([(100, 0.02), (0, 0.90)]) == pytest.approx(0.02)
+
+    def test_empty_input_is_zero_not_a_crash(self):
+        from mironba.eval.pooled_backtest import pooled_null_precision
+
+        assert pooled_null_precision([]) == 0.0

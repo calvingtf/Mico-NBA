@@ -51,6 +51,28 @@ def read_seasons(path: Path = RESULTS) -> dict[str, dict]:
         return {r["season"]: r for r in csv.DictReader(handle)}
 
 
+def pooled_null_precision(per_season: list[tuple[int, float]]) -> float:
+    """Proposal-weighted mean of per-season nulls. NOT a union over seasons.
+
+    **A proposal made in season S can only hit a trade in season S.** So the
+    chance of a random proposal hitting is a per-season quantity, and pooling
+    it means weighting each season's null by how many proposals that season
+    contributed.
+
+    Taking the union of qualifying pairs across seasons and dividing by 435
+    instead credits the null with pairs it could never have hit: a 2016-17 pair
+    is not available to a 2024-25 proposal. Over three seasons that inflated
+    the null from 2.40% to 6.67% and turned an observed 2.97% from **1.24x
+    chance** into "3.70 points below chance".
+
+    ``per_season`` is ``[(proposals, null_fraction), ...]``.
+    """
+    total = sum(n for n, _ in per_season)
+    if not total:
+        return 0.0
+    return sum(n * null for n, null in per_season) / total
+
+
 def p_hit(qualifying: int, drawn: int, space: int = PAIR_SPACE) -> float:
     if space - qualifying < drawn:
         return 1.0
@@ -64,16 +86,18 @@ def main() -> int:
 
     total = {"proposed": 0, "actual": 0, "matched": 0, "hits": 0}
     nulls: list[float] = []
-    qualifying: set[frozenset] = set()
+    season_nulls: list[tuple[int, float]] = []
     rows = []
     for season in sorted(CALENDARS):
         result = run(season=season)
         scored = score(result, season=season)
         pairs = {frozenset(p.pair) for p in result.proposals}
         actual = actual_deadline_trades(season)
-        qualifying |= {
+        season_pairs = {
             frozenset(c) for t in actual for c in combinations(sorted(t.teams), 2)
         }
+        # Per season, and weighted at the end. Never unioned across seasons.
+        season_nulls.append((scored.proposed, len(season_pairs) / PAIR_SPACE))
         for trade in actual:
             q = len({frozenset(c) for c in combinations(sorted(trade.teams), 2)})
             nulls.append(p_hit(q, len(pairs)))
@@ -98,7 +122,7 @@ def main() -> int:
         total["matched"] += scored.actual_matched
         total["hits"] += scored.pair_hits
 
-    null_precision = len(qualifying) / PAIR_SPACE * 100
+    null_precision = pooled_null_precision(season_nulls) * 100
     precision = total["hits"] / total["proposed"] * 100 if total["proposed"] else 0.0
     recall = total["matched"] / total["actual"] * 100 if total["actual"] else 0.0
     null_recall = sum(nulls) / total["actual"] * 100 if total["actual"] else 0.0
