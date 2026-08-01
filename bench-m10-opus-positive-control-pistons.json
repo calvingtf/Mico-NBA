@@ -1,0 +1,64 @@
+{
+  "arm": "unaided",
+  "trials": 12,
+  "completed": 12,
+  "incomplete": 0,
+  "calls": 36,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 7.94,
+  "median_latency_s": 8.3,
+  "p90_latency_s": 10.44,
+  "intents": 12,
+  "intent_satisfiable_first": 1.0,
+  "intent_satisfiable_final": 1.0,
+  "revised_intents": 0,
+  "revisions_that_became_satisfiable": 0,
+  "revision_rescue_rate": null,
+  "mean_packages_per_satisfiable_intent": 2.58,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "prefilter_p50_s": 3e-05,
+  "prefilter_worst_s": 5e-05,
+  "scan_solve_p50_s": 0.034,
+  "scan_solve_worst_s": 0.037,
+  "mean_feasible_targets": 14.0,
+  "intents_naming_an_unreachable_target": 0,
+  "intents_with_a_list_available": 12,
+  "off_list_rate": 0.0,
+  "selection_indices": {
+    "0": 11,
+    "1": 1
+  },
+  "solver_p50_s": 0.0013,
+  "solver_worst_s": 0.0014,
+  "binding_constraints": {},
+  "verdicts_first": {
+    "undetermined": 12
+  },
+  "verdicts_final": {
+    "undetermined": 12
+  },
+  "outcomes": {
+    "traded": 12
+  },
+  "trials_that_retried": 0,
+  "run_ids": [
+    "positive-control-pistons-20260801T034322Z-bab1ab67",
+    "positive-control-pistons-20260801T034349Z-88df25dd",
+    "positive-control-pistons-20260801T034414Z-3b9f8ece",
+    "positive-control-pistons-20260801T034437Z-1ded0689",
+    "positive-control-pistons-20260801T034501Z-001ddcf2",
+    "positive-control-pistons-20260801T034524Z-80794715",
+    "positive-control-pistons-20260801T034549Z-a7601cc5",
+    "positive-control-pistons-20260801T034611Z-8f8500bb",
+    "positive-control-pistons-20260801T034645Z-b4f71d58",
+    "positive-control-pistons-20260801T034730Z-cf095478",
+    "positive-control-pistons-20260801T034754Z-99190af0",
+    "positive-control-pistons-20260801T034824Z-3528d7d3"
+  ]
+}

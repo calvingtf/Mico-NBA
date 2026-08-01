@@ -151,7 +151,20 @@ class RunManifest:
                 "A run that cannot say what produced it is not comparable in "
                 "M5, and an artifact from it cannot be trusted."
             )
-        if self.seed is None and self.temperature > 0:
+        # temperature is None when the provider would not accept one - Sonnet 5
+        # and Opus 5 reject it outright. That is *less* reproducible than a
+        # known temperature, not more: the sampling behaviour is whatever the
+        # server chose and we cannot state it.
+        if self.temperature is None:
+            object.__setattr__(
+                self,
+                "notes",
+                (self.notes + " | " if self.notes else "")
+                + "temperature not settable on this model: sampling is the "
+                "provider's default and is not recorded, so the run is not "
+                "reproducible and not sampling-matched to the local arms",
+            )
+        elif self.seed is None and self.temperature > 0:
             # Not fatal: some servers ignore seed. But it must be visible.
             object.__setattr__(
                 self,
@@ -166,6 +179,7 @@ class RunManifest:
         return (
             not self.git_dirty
             and self.git_commit_sha != "unknown"
+            and self.temperature is not None
             and (self.seed is not None or self.temperature == 0)
         )
 

@@ -115,19 +115,19 @@ class TestTheArmsDiffer:
         always printed them. What the blind arm must not carry is any statement
         that a particular player is *gettable*.
         """
-        _, client, _ = run("blind", FEASIBLE, log)
+        _, client, _ = run("unaided", FEASIBLE, log)
         intent_prompt = client.prompts[1]
         assert "legally acquire" not in intent_prompt
         assert "ways, from" not in intent_prompt
         assert "cannot be acquired" not in intent_prompt
 
-    def test_the_blind_prompt_is_the_pre_m16_prompt_unchanged(self, log):
+    def test_the_unaided_prompt_is_the_pre_m16_prompt_unchanged(self, log):
         """The baseline has to be the old thing, not a near-copy of it.
 
         If the blind arm drifted, the delta would be measuring two changes at
         once and attributing both to the feasible list.
         """
-        _, client, ctx = run("blind", FEASIBLE, log)
+        _, client, ctx = run("unaided", FEASIBLE, log)
         expected = INTENT_TEMPLATE.format(
             context=render_context(ctx, PERSONA),
             reason="upgrade",
@@ -179,7 +179,7 @@ class TestEmptyListFallsBack:
 
     def test_shows_feasible_needs_both_the_arm_and_a_list(self, log):
         assert run("feasible", FEASIBLE, log)[0].shows_feasible(context(FEASIBLE))
-        assert not run("blind", FEASIBLE, log)[0].shows_feasible(context(FEASIBLE))
+        assert not run("unaided", FEASIBLE, log)[0].shows_feasible(context(FEASIBLE))
         assert not run("feasible", (), log)[0].shows_feasible(context(()))
 
 
@@ -194,10 +194,10 @@ class TestTheArmIsRecorded:
         assert prompted[0].payload["feasible_shown"] is True
         assert prompted[0].payload["feasible_count"] == 2
 
-    def test_a_blind_run_still_records_the_list_it_withheld(self, log):
+    def test_an_unaided_run_still_records_the_list_it_withheld(self, log):
         """Without this the blind arm cannot report how often its model asked
         for someone unreachable, and that baseline is the whole comparison."""
-        run("blind", FEASIBLE, log)
+        run("unaided", FEASIBLE, log)
         prompted = [
             e for e in log.of_type(EventType.AGENT_PROMPTED)
             if e.payload.get("step") == "trade_intent"
@@ -212,5 +212,5 @@ class TestTheArmIsRecorded:
     def test_the_default_arm_is_the_old_behaviour(self, log):
         """A caller that has not been updated keeps measuring what it was."""
         agent = GMAgent("CHI", PERSONA, FakeClient([]), log)
-        assert agent.arm == "blind"
-        assert ARMS[0] == "blind"
+        assert agent.arm == "unaided"
+        assert ARMS[0] == "unaided"

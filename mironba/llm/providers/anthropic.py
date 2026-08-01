@@ -57,6 +57,21 @@ API_VERSION = "2023-06-01"
 #: forced ``tool_choice`` can refer to it.
 SCHEMA_TOOL = "emit_result"
 
+#: Models that reject a temperature parameter outright (HTTP 400,
+#: "`temperature` is deprecated for this model"). Measured against the live API
+#: on 2026-08-01, not assumed: Haiku 4.5 accepts it, Sonnet 5 and Opus 5 do not.
+#:
+#: The consequence is methodological, not cosmetic. Qwen's arms ran at
+#: temperature 0.8; these models cannot be given a temperature at all, so those
+#: comparisons are not sampling-matched and the manifest says so rather than
+#: implying a match.
+TEMPERATURE_DEPRECATED = ("claude-sonnet-5", "claude-opus-5")
+
+
+def rejects_temperature(model: str) -> bool:
+    return any(model.startswith(m) for m in TEMPERATURE_DEPRECATED)
+
+
 #: Why the hardware fields are empty. Recorded in the manifest verbatim, so a
 #: reader never sees a blank and guesses.
 NOT_APPLICABLE = (
@@ -164,10 +179,14 @@ class AnthropicProvider:
         }
         if system:
             body["system"] = system
-        # Anthropic rejects temperature and top_p together. Temperature is the
-        # one the experiment varies, so top_p is dropped rather than both being
-        # sent and the request 400ing.
-        body["temperature"] = params.temperature
+        # Anthropic rejects temperature and top_p together, so top_p is dropped.
+        # And the newest models reject temperature outright - Sonnet 5 and
+        # Opus 5 answer "`temperature` is deprecated for this model" with a 400.
+        # Sending it anyway would fail every call; silently substituting a
+        # default would put a sampling value in the manifest that was never set.
+        # So it is omitted and recorded null, like seed and top_p.
+        if not rejects_temperature(model):
+            body["temperature"] = params.temperature
 
         if schema is not None:
             body["tools"] = [{

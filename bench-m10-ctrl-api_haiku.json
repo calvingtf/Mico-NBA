@@ -1,0 +1,72 @@
+{
+  "arm": "unaided",
+  "trials": 12,
+  "completed": 12,
+  "incomplete": 0,
+  "calls": 40,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 3.02,
+  "median_latency_s": 3.03,
+  "p90_latency_s": 3.87,
+  "intents": 11,
+  "intent_satisfiable_first": 0.1818,
+  "intent_satisfiable_final": 0.7273,
+  "revised_intents": 9,
+  "revisions_that_became_satisfiable": 6,
+  "revision_rescue_rate": 0.6667,
+  "mean_packages_per_satisfiable_intent": 1.12,
+  "declined_all_count": 1,
+  "decline_reasons": [
+    "This trade does not align with DET's competitive window and roster construction. Trading Tobias Harris ($25.4M) for Cameron Johnson ($22.5M) swaps a proven two-way forward and veteran presence for a p"
+  ],
+  "prefilter_p50_s": 4e-05,
+  "prefilter_worst_s": 5e-05,
+  "scan_solve_p50_s": 0.0383,
+  "scan_solve_worst_s": 0.0512,
+  "mean_feasible_targets": 14.0,
+  "intents_naming_an_unreachable_target": 0,
+  "intents_with_a_list_available": 11,
+  "off_list_rate": 0.0,
+  "selection_indices": {
+    "0": 6,
+    "1": 1
+  },
+  "solver_p50_s": 0.0004,
+  "solver_worst_s": 0.0016,
+  "binding_constraints": {
+    "SALARY_MATCH": 11,
+    "ROSTER_LIMIT": 1
+  },
+  "verdicts_first": {
+    "undetermined": 7
+  },
+  "verdicts_final": {
+    "undetermined": 7
+  },
+  "outcomes": {
+    "declined_all": 1,
+    "traded": 7,
+    "unsatisfiable": 3,
+    "stood_pat": 1
+  },
+  "trials_that_retried": 9,
+  "run_ids": [
+    "positive-control-pistons-20260801T031851Z-bddf6c44",
+    "positive-control-pistons-20260801T031907Z-1a28be05",
+    "positive-control-pistons-20260801T031921Z-d857f49e",
+    "positive-control-pistons-20260801T031932Z-8ebba6ec",
+    "positive-control-pistons-20260801T031943Z-4270e62e",
+    "positive-control-pistons-20260801T031952Z-2a44644a",
+    "positive-control-pistons-20260801T032004Z-f84ec8ad",
+    "positive-control-pistons-20260801T032017Z-d348011f",
+    "positive-control-pistons-20260801T032028Z-e41d3e16",
+    "positive-control-pistons-20260801T032032Z-37d81416",
+    "positive-control-pistons-20260801T032044Z-e93b0bfb",
+    "positive-control-pistons-20260801T032057Z-8036ba64"
+  ]
+}

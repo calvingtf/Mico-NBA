@@ -25,7 +25,7 @@ import copy
 import sys
 from pathlib import Path
 
-from mironba.agents.gm import ARM_TEMPLATES, ARMS, TEMPLATES, GMAgent
+from mironba.agents.gm import canonical_arm, ARM_TEMPLATES, ARMS, TEMPLATES, GMAgent
 from mironba.llm.client import (
     DEFAULT_CONFIG,
     SCHEMA_VERSION,
@@ -64,7 +64,7 @@ class TickResult:
         self.solver_seconds: list[float] = []
         self.binding_constraints: list[str] = []
         #: Which arm this trial ran in, and what the pre-filter found.
-        self.arm: str = "blind"
+        self.arm: str = "unaided"
         self.feasible_count: int = 0
         self.feasible_shown: bool = False
         self.unlocks_shown: bool = False
@@ -82,6 +82,12 @@ class TickResult:
         return self.verdicts[-1] if self.verdicts else None
 
 
+def _rejects_temp(model: str) -> bool:
+    from mironba.llm.providers.anthropic import rejects_temperature
+
+    return rejects_temperature(model)
+
+
 def run_tick(
     scenario_path: Path | str,
     *,
@@ -90,7 +96,7 @@ def run_tick(
     config_path: Path | str | None = None,
     quiet: bool = False,
     seed: int | None = None,
-    arm: str = "blind",
+    arm: str = "unaided",
     strict_throughput: bool = False,
 ) -> tuple[TickResult, Run, LLMClient]:
     scenario = load_scenario(scenario_path)
@@ -156,7 +162,11 @@ def run_tick(
         quantization=info.quantization,
         prompt_template_hash=template_hash(*TEMPLATES),
         snapshot_date=staged.snapshot_date,
-        temperature=cfg.temperature,
+        temperature=(
+            None
+            if cfg.server == "anthropic" and _rejects_temp(cfg.model)
+            else cfg.temperature
+        ),
         # Anthropic rejects temperature and top_p together, so the provider
         # sends temperature only; and the Messages API takes no seed at all.
         # Recording either here would put a value in the manifest that was
@@ -521,7 +531,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default=None, type=Path)
     parser.add_argument("--seed", type=int, default=None,
                         help="override the profile seed for this run")
-    parser.add_argument("--arm", default="blind", choices=list(ARMS),
+    parser.add_argument("--arm", default="unaided",
+                        type=canonical_arm, choices=list(ARMS),
                         help="blind = M1.5 behaviour; feasible = show the "
                              "solver-computed acquirable targets")
     args = parser.parse_args(argv)

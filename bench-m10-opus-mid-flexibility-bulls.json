@@ -1,0 +1,70 @@
+{
+  "arm": "unaided",
+  "trials": 12,
+  "completed": 12,
+  "incomplete": 0,
+  "calls": 45,
+  "schema_failure_rate_first_attempt": 0.0222,
+  "first_attempt_failures": 1,
+  "repairs_succeeded": 1,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 8.25,
+  "median_latency_s": 8.87,
+  "p90_latency_s": 10.62,
+  "intents": 12,
+  "intent_satisfiable_first": 0.25,
+  "intent_satisfiable_final": 1.0,
+  "revised_intents": 9,
+  "revisions_that_became_satisfiable": 9,
+  "revision_rescue_rate": 1.0,
+  "mean_packages_per_satisfiable_intent": 8.25,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "prefilter_p50_s": 3e-05,
+  "prefilter_worst_s": 6e-05,
+  "scan_solve_p50_s": 0.0237,
+  "scan_solve_worst_s": 0.0272,
+  "mean_feasible_targets": 13.0,
+  "intents_naming_an_unreachable_target": 4,
+  "intents_with_a_list_available": 12,
+  "off_list_rate": 0.3333,
+  "selection_indices": {
+    "0": 7,
+    "1": 2,
+    "3": 1,
+    "4": 2
+  },
+  "solver_p50_s": 0.0011,
+  "solver_worst_s": 0.002,
+  "binding_constraints": {
+    "SALARY_MATCH": 5,
+    "SALARY_MATCH_PARTNER": 3,
+    "ROSTER_LIMIT": 1
+  },
+  "verdicts_first": {
+    "approved": 12
+  },
+  "verdicts_final": {
+    "approved": 12
+  },
+  "outcomes": {
+    "traded": 12
+  },
+  "trials_that_retried": 9,
+  "run_ids": [
+    "mid-flexibility-bulls-20260801T033634Z-e7951c63",
+    "mid-flexibility-bulls-20260801T033711Z-6f965d43",
+    "mid-flexibility-bulls-20260801T033746Z-be735fed",
+    "mid-flexibility-bulls-20260801T033827Z-e4139550",
+    "mid-flexibility-bulls-20260801T033900Z-6e002103",
+    "mid-flexibility-bulls-20260801T033934Z-6271db26",
+    "mid-flexibility-bulls-20260801T034009Z-82b9aca3",
+    "mid-flexibility-bulls-20260801T034055Z-c4f50809",
+    "mid-flexibility-bulls-20260801T034130Z-a1817191",
+    "mid-flexibility-bulls-20260801T034153Z-d6bca0ef",
+    "mid-flexibility-bulls-20260801T034219Z-589d3c35",
+    "mid-flexibility-bulls-20260801T034248Z-8b68e882"
+  ]
+}

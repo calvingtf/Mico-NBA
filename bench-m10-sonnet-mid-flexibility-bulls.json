@@ -1,0 +1,69 @@
+{
+  "arm": "unaided",
+  "trials": 12,
+  "completed": 12,
+  "incomplete": 0,
+  "calls": 37,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 5.61,
+  "median_latency_s": 5.21,
+  "p90_latency_s": 6.86,
+  "intents": 12,
+  "intent_satisfiable_first": 0.8333,
+  "intent_satisfiable_final": 0.9167,
+  "revised_intents": 2,
+  "revisions_that_became_satisfiable": 1,
+  "revision_rescue_rate": 0.5,
+  "mean_packages_per_satisfiable_intent": 1.91,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "prefilter_p50_s": 3e-05,
+  "prefilter_worst_s": 4e-05,
+  "scan_solve_p50_s": 0.0225,
+  "scan_solve_worst_s": 0.0241,
+  "mean_feasible_targets": 13.0,
+  "intents_naming_an_unreachable_target": 0,
+  "intents_with_a_list_available": 12,
+  "off_list_rate": 0.0,
+  "selection_indices": {
+    "0": 8,
+    "1": 2,
+    "3": 1
+  },
+  "solver_p50_s": 0.0005,
+  "solver_worst_s": 0.0009,
+  "binding_constraints": {
+    "SALARY_MATCH": 2,
+    "SALARY_MATCH_PARTNER": 1
+  },
+  "verdicts_first": {
+    "approved": 11
+  },
+  "verdicts_final": {
+    "approved": 11
+  },
+  "outcomes": {
+    "traded": 11,
+    "unsatisfiable": 1
+  },
+  "trials_that_retried": 2,
+  "run_ids": [
+    "mid-flexibility-bulls-20260801T001732Z-7eb810b7",
+    "mid-flexibility-bulls-20260801T001751Z-c5bc5c09",
+    "mid-flexibility-bulls-20260801T001816Z-fbcceff9",
+    "mid-flexibility-bulls-20260801T001835Z-08747afa",
+    "mid-flexibility-bulls-20260801T001854Z-c54a6312",
+    "mid-flexibility-bulls-20260801T001911Z-4d51828c",
+    "mid-flexibility-bulls-20260801T001929Z-bd1d6e53",
+    "mid-flexibility-bulls-20260801T001946Z-2d5fafbd",
+    "mid-flexibility-bulls-20260801T002010Z-d858cd44",
+    "mid-flexibility-bulls-20260801T002026Z-d1bd27db",
+    "mid-flexibility-bulls-20260801T002045Z-e2a1d5d5",
+    "mid-flexibility-bulls-20260801T002102Z-beac5014"
+  ]
+}

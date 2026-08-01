@@ -49,7 +49,24 @@ from mironba.world.events import EventType, Visibility
 #: next change to the prompt would have no baseline either. Keeping `blind`
 #: earned itself at M1.6: Detroit measured 80% there against M1.5's 0%, and
 #: almost all of that was the model switch rather than the intervention.
-ARMS = ("blind", "feasible", "unlock")
+#: The experiment's arms. Each names what the model is *told*, not what it is
+#: denied access to in general.
+#:
+#: ``unaided`` was called ``blind`` for four milestones and the name was a lie
+#: in the code as well as the README: it means "without the feasible-target
+#: list", never "without money". The rendered context carries team payroll,
+#: apron status and every contract on both rosters in all arms - see
+#: measurements entry 21.
+ARMS = ("unaided", "feasible", "unlock")
+
+#: Recorded manifests say ``blind``. They are evidence and are never rewritten,
+#: so the old name resolves forever.
+ARM_ALIASES = {"blind": "unaided"}
+
+
+def canonical_arm(arm: str) -> str:
+    """Resolve a recorded arm name to its current one."""
+    return ARM_ALIASES.get(arm, arm)
 
 #: Arms that show the acquirable-target list at all.
 ARMS_WITH_LIST = ("feasible", "unlock")
@@ -314,7 +331,7 @@ TEMPLATES = (
 #: reusable against M2's unlock arm, and makes that reuse checkable rather than
 #: asserted.
 ARM_TEMPLATES: dict[str, tuple[str, ...]] = {
-    "blind": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
+    "unaided": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
               INTENT_TEMPLATE, SELECT_TEMPLATE, REVISE_INTENT_TEMPLATE),
     "feasible": (SYSTEM_TEMPLATE, CONTEXT_TEMPLATE, ACTION_TEMPLATE,
                  INTENT_TEMPLATE, INTENT_FEASIBLE_TEMPLATE, SELECT_TEMPLATE,
@@ -361,7 +378,7 @@ class GMAgent(Agent):
         client,
         log,
         profile=None,
-        arm: str = "blind",
+        arm: str = "unaided",
     ):
         super().__init__(agent_id, persona, client, log, profile)
         self.persona: GMPersona = persona

@@ -32,7 +32,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from mironba.agents.gm import ARMS
+from mironba.agents.gm import canonical_arm, ARMS
 from mironba.llm.providers import ProviderError
 from mironba.rules.trade_validator import Verdict
 from mironba.sim.tick import run_tick, use_utf8_console
@@ -46,7 +46,7 @@ def bench(
     runs_dir: Path | str = "runs",
     vary_seed: bool = True,
     base_seed: int = 20260730,
-    arm: str = "blind",
+    arm: str = "unaided",
 ) -> dict:
     """Run ``trials`` independent ticks and aggregate what happened."""
     verdict_first: Counter[str] = Counter()
@@ -207,7 +207,7 @@ def _summarise(
     latencies, retried, verdict_first, verdict_final, outcomes, incomplete=0,
     intents=0, satisfiable_first=0, satisfiable_final=0, revised=0,
     revision_rescued=0, packages_per_intent=None, decline_reasons=None,
-    solver_times=None, binding=None, arm="blind", prefilter_times=None,
+    solver_times=None, binding=None, arm="unaided", prefilter_times=None,
     scan_times=None, feasible_counts=None, off_list=0, off_list_trials=0,
     selections=None,
 ) -> dict:
@@ -446,7 +446,7 @@ def aggregate_runs(
         decline_reasons=decline_reasons,
         solver_times=solver_times,
         binding=binding,
-        arm=arm or ("mixed" if len(arms) > 1 else next(iter(arms), "blind")),
+        arm=arm or ("mixed" if len(arms) > 1 else next(iter(arms), "unaided")),
         prefilter_times=prefilter_times,
         scan_times=scan_times,
         feasible_counts=feasible_counts,
@@ -602,7 +602,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="aggregate existing run artifacts instead of calling the model")
     parser.add_argument("--scenario-id", default=None,
                         help="with --from-runs, restrict to one scenario id")
-    parser.add_argument("--arm", default="blind", choices=list(ARMS),
+    parser.add_argument("--arm", default="unaided",
+                        type=canonical_arm, choices=list(ARMS),
                         help="blind = M1.5 behaviour; feasible = show the "
                              "solver-computed acquirable targets")
     parser.add_argument("--ab", action="store_true",

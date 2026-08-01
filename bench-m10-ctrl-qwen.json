@@ -1,0 +1,66 @@
+{
+  "arm": "unaided",
+  "trials": 12,
+  "completed": 10,
+  "incomplete": 0,
+  "calls": 32,
+  "schema_failure_rate_first_attempt": 0.0,
+  "first_attempt_failures": 0,
+  "repairs_succeeded": 0,
+  "unrecovered_schema_failures": 0,
+  "unrecovered_rate": 0.0,
+  "truncations": 0,
+  "mean_latency_s": 102.32,
+  "median_latency_s": 93.9,
+  "p90_latency_s": 150.21,
+  "intents": 10,
+  "intent_satisfiable_first": 0.3,
+  "intent_satisfiable_final": 0.5,
+  "revised_intents": 7,
+  "revisions_that_became_satisfiable": 2,
+  "revision_rescue_rate": 0.2857,
+  "mean_packages_per_satisfiable_intent": 1.0,
+  "declined_all_count": 0,
+  "decline_reasons": [],
+  "prefilter_p50_s": 4e-05,
+  "prefilter_worst_s": 0.00023,
+  "scan_solve_p50_s": 0.0338,
+  "scan_solve_worst_s": 0.0406,
+  "mean_feasible_targets": 14.0,
+  "intents_naming_an_unreachable_target": 2,
+  "intents_with_a_list_available": 10,
+  "off_list_rate": 0.2,
+  "selection_indices": {
+    "0": 5
+  },
+  "solver_p50_s": 0.0002,
+  "solver_worst_s": 0.0002,
+  "binding_constraints": {
+    "SALARY_MATCH": 11,
+    "NO_VALID_TARGET": 1
+  },
+  "verdicts_first": {
+    "undetermined": 5
+  },
+  "verdicts_final": {
+    "undetermined": 5
+  },
+  "outcomes": {
+    "traded": 5,
+    "unsatisfiable": 5,
+    "server_error": 1
+  },
+  "trials_that_retried": 7,
+  "run_ids": [
+    "positive-control-pistons-20260801T031631Z-51217c88",
+    "positive-control-pistons-20260801T032306Z-a9f71666",
+    "positive-control-pistons-20260801T033318Z-06885061",
+    "positive-control-pistons-20260801T033827Z-80996405",
+    "positive-control-pistons-20260801T034424Z-c83f099e",
+    "positive-control-pistons-20260801T034823Z-68108bfb",
+    "positive-control-pistons-20260801T035314Z-f7c89644",
+    "positive-control-pistons-20260801T035843Z-48397d51",
+    "positive-control-pistons-20260801T040432Z-c12aae57",
+    "positive-control-pistons-20260801T040859Z-b982be8d"
+  ]
+}

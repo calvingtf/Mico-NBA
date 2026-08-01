@@ -1,0 +1,79 @@
+id: positive-control-pistons
+season: "2024-25"
+snapshot: bbref-2024-25
+team: DET
+partner: BKN
+trade_date: "2025-02-06"
+
+seed: >
+  Brooklyn is selling before the deadline and will talk about anyone. You are
+  the Pistons' GM: under the salary cap with room to absorb, a young team that
+  has outperformed expectations and can use a proven starter. Anything you send
+  must satisfy the CBA's salary-matching rules, which a separate engine will
+  check.
+
+# WHY THIS SCENARIO EXISTS: IT IS A POSITIVE CONTROL
+#
+# The other three scenarios cannot distinguish a model with good judgment from
+# a model that always refuses. Declining a bad trade is correct, and most
+# available trades are bad — so a 12/12 stand-pat rate is consistent with
+# excellent judgment *and* with a refusal prior, and nothing in the setup
+# separates them. Claude Haiku 4.5 went 0/24 across Los Angeles and Chicago and
+# the result was uninterpretable for exactly this reason.
+#
+# This scenario contains a clearly good, clearly legal trade. A model that
+# stands pat HERE is refusing, not judging.
+#
+# VERIFIED WITH THE SOLVER BEFORE ANY MODEL SAW IT:
+#
+#   Detroit payroll     $140,380,549
+#   salary cap          $140,588,000   -> under it, tier UNDER_CAP
+#   first apron         $178,132,000   -> $37.75M of headroom
+#   second apron        $188,931,000   -> not remotely in play
+#
+#   target: D'Angelo Russell (BKN), $18,692,307
+#   prior-season value  box_pm36 = 4.48, against a league median of 1.04
+#   LEGAL PACKAGES FOUND: 10
+#
+# So the constraint is not binding in any direction: Detroit has cap room, is
+# nowhere near an apron, and the solver enumerates ten different legal ways to
+# make the deal. There is no cap-mechanics reason to decline, and the target is
+# four times the median player by the project's own value model.
+#
+# Recomputed by tests/test_positive_control.py rather than trusted from this
+# comment — the whole point is that the control is verified, and a comment can
+# rot while a test cannot.
+#
+# WHAT IT DOES NOT SETTLE
+#
+# "Good" here means high measured value at a legal price. It does not mean the
+# trade is wise: Detroit is young, Russell was on an expiring deal, and a real
+# front office might reasonably pass. A model declining WITH THAT REASONING is
+# judging. What this scenario detects is a model that declines without engaging
+# — or one that declines everywhere regardless of what is offered.
+
+persona:
+  label: opportunistic
+  risk_tolerance: 0.6
+  win_now_horizon: 2
+  asset_hoarding: 0.4
+
+# BASE-YEAR COMPENSATION
+#
+# Suppressed, deliberately. BYC lowers a sending team's outgoing match value
+# and can turn a legal package illegal, which is exactly the ambiguity this
+# scenario must not contain: a control whose trade might or might not be legal
+# is not a control. `undetermined-byc.yaml` owns that path and exercises it
+# properly.
+#
+# Detroit is under the cap in any case, so it absorbs into cap room rather than
+# relying on outgoing match value, and the ten legal packages the solver found
+# do not depend on the BYC reading.
+byc_resolution:
+  mode: assume_not_re_signed
+  sourced: false
+  note: >
+    Suppressed so the control's premise is unambiguous. A positive control
+    whose legality depends on an unresolved BYC question cannot distinguish a
+    model that refuses from a model that judges, which is the one thing this
+    scenario exists to do.

@@ -700,3 +700,87 @@ valid — all three arms shared this context, so the contrast between them is
 unaffected. What is wrong is the word "blind", which never meant salary-blind,
 and the M10 question as posed. A genuinely salary-free fourth arm is the way to
 ask it properly.
+
+---
+
+## 22. M10: on the constrained scenario, no model succeeds unaided
+
+**First reported wrong.** The M10 table put Qwen's *pooled three-arm* figures
+(31% satisfiable, 65.5% unreachable) in a column against *per-scenario* hosted
+numbers, and concluded that capability substitutes for scaffolding. Rebuilt per
+scenario from the recorded manifests:
+
+### curry-to-lakers — Los Angeles, above the first apron
+
+| model | arm | acted | 1st-attempt satisfiable | final |
+|---|---|---|---|---|
+| Qwen 27B | unaided | 12/12 | **0/12** | **0/12** |
+| Sonnet 5 | unaided | 12/12 | **0/12** | **0/12** |
+| Opus 5 | unaided | 12/12 | **0/12** | **0/12** |
+| **Qwen 27B** | **unlock** | **21/21** | **21/21** | **21/21** |
+
+**No model succeeds unaided. Not one, at any capability.** The frontier models
+are not better than the 27B here — all three are at zero. The scaffolding takes
+the *same weak model* to 100%.
+
+### mid-flexibility-bulls — Chicago, over the cap, clear of the aprons
+
+| model | arm | 1st-attempt | final |
+|---|---|---|---|
+| Qwen 27B | unaided | 5/12 | 12/12 |
+| Sonnet 5 | unaided | 11/13 | 12/13 |
+| Opus 5 | unaided | 9/24 | 23/24 |
+
+### positive-control-pistons — under the cap, ten legal packages verified
+
+| model | acted | 1st-attempt | final |
+|---|---|---|---|
+| Haiku 4.5 | 11/12 | 2/12 | 8/12 |
+| Qwen 27B | 14/14 | 5/14 | 8/14 |
+| Sonnet 5 | 12/12 | 0/12 | 12/12 |
+| Opus 5 | 12/12 | **12/12** | **12/12** |
+
+**The conclusion, corrected.** Capability substitutes for scaffolding where
+constraints do not bind — Opus goes 12/12 first-attempt on the control where
+Qwen manages 5/14. **Where constraints bind, only the scaffolding works.** Every
+model is at 0/12 unaided on the apron scenario and Qwen+unlock is at 21/21.
+
+That is the stronger claim for the architecture, and it is the opposite of what
+was first reported. The error made the flattering-to-capability reading look
+true; the correction makes the flattering-to-the-design reading true. Both were
+found by rebuilding from manifests rather than by re-reading the summary.
+
+**Seventh instance of the pattern**, and a new species of it: not a check
+certifying the wrong surface, but **a number valid at one scope quoted at
+another**. Pooled across three arms, 31% is correct. Placed in a per-scenario
+column it asserts something the data never said. After the 200% recall, the
+UNDETERMINED-as-legal legality rate, the counterparty match, the canary on a
+hosted model, sampling params never sent, and the salary-blindness claim.
+
+## 23. Personas may be text the model recites, not a disposition it acts from
+
+Rate at which stated reasons cite a persona parameter by name
+(`asset_hoarding`, `risk_tolerance`, `win_now_horizon`):
+
+| model | rate |
+|---|---|
+| Qwen 27B | **78.3%** (317/405) |
+| Sonnet 5 | 67.7% (84/124) |
+| Haiku 4.5 | 61.2% (41/67) |
+| Opus 5 | **50.6%** (80/158) |
+
+Every model cites them, so this is not a Qwen artifact. But the rate falls
+monotonically with capability, and the *content* differs: Qwen restates the
+numbers as the justification — *"With an asset_hoarding of 0.8 and
+risk_tolerance of 0.3, preserving our young core is paramount"* — while Haiku
+and Opus reason about cap state and roster fit and mention the parameters less.
+
+Those are different objects, not different thresholds on one axis.
+
+**What it implies.** Every persona-driven result in this project assumes the
+persona is a disposition the model acts *from*. On the evidence it may be, for
+the weaker model, text it recites *at* the decision it was going to make
+anyway. Nothing here separates the two, and the charter's anti-goal on prose
+personas was aimed at a different failure than this one. Any future claim that
+a persona changed behaviour needs a control where the parameters are permuted
+and the outcome is measured — which has not been run.
