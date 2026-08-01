@@ -932,3 +932,52 @@ the system rather than a problem with the metric.
 
 **Standing rule, now in the README:** a metric at or below its null gets the
 same audit as one that beats it. Failure is not self-certifying.
+
+---
+
+## 27. Join hit-rate audit: no silent 100% miss, but the joins are lossy
+
+Instance #13 was a lookup whose default fired on **100%** of keys and produced a
+plausible number. `data/joins.py` now records matched/total for any lookup with
+a fallback and raises past a *declared* tolerance — a declaration, not a tuning
+knob, so a join that legitimately misses 40% declares 45% and a regression to
+90% still raises.
+
+Audited on the keys that matter: **players actually in trades**, since those are
+the rows whose verdicts get published.
+
+| join | 2018-19 | 2021-22 | 2024-25 |
+|---|---|---|---|
+| service years (nba_api → bbref, by normalised name) | 72.5% | 67.9% | **62.3%** |
+| re-sign status (year-over-year contracts) | 76.3% | 51.3% | **50.6%** |
+| player values (stats → bbref) | 67.2% | 48.7% | **46.8%** |
+
+**No join is silently missing everything**, which was the specific failure mode
+#13 represented. League-wide the service-years join runs 92.6–93.4%.
+
+**But on traded players it is far worse**, and that is the population that
+matters. Roughly a third to a half of traded players carry no service years, no
+derived re-sign status, or no value. Traded players skew toward the recently
+signed, the two-way, and the just-waived — exactly the players a
+year-over-year or name-normalised join loses.
+
+### Does anything need restating?
+
+**Not the legality figures, and the reason is structural rather than lucky.**
+Every one of these joins fails *toward* `UNKNOWN`, not toward a permission:
+
+* Missing service years → the minimum-salary exception cannot be evaluated →
+  the player is matched normally, which is the conservative direction, and the
+  trade returns `UNDETERMINED` rather than approved.
+* Missing re-sign status → `ReSignStatus.UNKNOWN` → BYC stays open →
+  `UNDETERMINED`.
+* Missing value → the player is not preferred by the planner, so a proposal is
+  not made rather than made wrongly.
+
+So the 23.5% false-rejection rate and the APPROVED 0 → 33 movement stand. What
+the audit *does* explain is why `UNDETERMINED` remains large at 42 of 98: it is
+not only base-year compensation, it is a join that loses a third of its keys.
+
+**What would need restating** is any future claim that rests on a join failing
+toward a *decision*. None currently does, and the helper exists so that the next
+one raises instead of producing a plausible number.
