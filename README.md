@@ -415,6 +415,21 @@ rather than a confabulation.
   confidence rating. Contract structure could not be sourced for historical
   seasons, so it is absent for them rather than recalled.
 
+## Reading a verdict correctly
+
+**`BYC never rejects.`** Base-year compensation emits `UNDETERMINED` and
+nothing else — it says the outgoing match value *might* be lower than the cap
+hit and that the data cannot settle it. A trade fails later, at salary
+matching, if the reduced value is supplied and does not match. So *"BYC
+rejected this trade"* describes something the code cannot do, and a finding
+that names `BASE_YEAR_COMPENSATION` is a statement about what is unknown, not
+about what is illegal.
+
+**`UNDETERMINED` is not a soft rejection.** It is the third verdict, and it
+means the question was not answerable on the inputs available. Counting it as
+legal inflated the validator's rate to 5 of 5 for a milestone; counting it as
+illegal would be equally wrong in the other direction.
+
 ## Limitations, in order of how much they cost
 
 1. **There is no market model, and the planner does not beat a random one.**

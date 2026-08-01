@@ -8,6 +8,7 @@ data, and the delta. A number without its null does not go in the README.
 
 from __future__ import annotations
 
+import csv
 import json
 import sys
 from itertools import combinations
@@ -15,6 +16,39 @@ from math import comb
 from pathlib import Path
 
 PAIR_SPACE = 435
+
+#: Per-season results, written incrementally. A 2.5-hour run that only writes
+#: on completion loses everything to a crash at season nine, and this project
+#: has already lost two tables to writers that replaced instead of merging.
+#: Seasons already present are kept; a re-run of one season replaces its row.
+RESULTS = Path("bench-pooled-10season.csv")
+FIELDS = ("season", "proposed", "pairs", "actual", "matched", "hits")
+
+
+def write_season(row: dict, path: Path = RESULTS) -> None:
+    """Merge one season's row into the results table.
+
+    Partitioned by season, so it obeys the same rule as every other writer
+    here: write partition B, partition A survives.
+    """
+    stored: dict[str, dict] = {}
+    if path.is_file():
+        with path.open(encoding="utf-8", newline="") as handle:
+            for stored_row in csv.DictReader(handle):
+                stored[stored_row["season"]] = stored_row
+    stored[row["season"]] = {k: str(row[k]) for k in FIELDS}
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDS)
+        writer.writeheader()
+        for season in sorted(stored):
+            writer.writerow(stored[season])
+
+
+def read_seasons(path: Path = RESULTS) -> dict[str, dict]:
+    if not path.is_file():
+        return {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        return {r["season"]: r for r in csv.DictReader(handle)}
 
 
 def p_hit(qualifying: int, drawn: int, space: int = PAIR_SPACE) -> float:
@@ -43,11 +77,13 @@ def main() -> int:
         for trade in actual:
             q = len({frozenset(c) for c in combinations(sorted(trade.teams), 2)})
             nulls.append(p_hit(q, len(pairs)))
-        rows.append({
+        row = {
             "season": season, "proposed": scored.proposed,
             "pairs": len(pairs), "actual": scored.actual,
             "matched": scored.actual_matched, "hits": scored.pair_hits,
-        })
+        }
+        rows.append(row)
+        write_season(row)   # on disk before the next season starts
         # The first line is the check: proposed=0 against actual>0 means
         # something upstream is empty, and the run is not worth finishing.
         print(f"{season} proposed={scored.proposed} pairs={len(pairs)} "

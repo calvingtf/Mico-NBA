@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 
 from mironba.data.ingest import nba_stats
+from mironba.eval import pooled_backtest
 
 #: Writers that take season-partitioned data. Discovered, not listed.
 WRITERS = sorted(
@@ -104,6 +105,46 @@ class TestPartitionedWritersMerge:
         with path.open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
         assert len(rows) == 1, f"re-ingest duplicated rows: {len(rows)}"
+
+
+class TestResultWritersMergeToo:
+    """A results writer is a partitioned writer.
+
+    ``bench-pooled-10season`` accumulates one row per season over a 2.5-hour
+    run. The first version wrote once on completion, so a crash at season nine
+    lost seasons one to eight - a different failure from the ingest writers but
+    the same lesson, and the reason this class enumerates beyond data/ingest.
+    """
+
+    def test_a_second_season_does_not_erase_the_first(self, tmp_path):
+        path = tmp_path / "results.csv"
+        pooled_backtest.write_season(
+            {"season": "A", "proposed": 1, "pairs": 1, "actual": 1,
+             "matched": 1, "hits": 1}, path)
+        pooled_backtest.write_season(
+            {"season": "B", "proposed": 2, "pairs": 2, "actual": 2,
+             "matched": 2, "hits": 2}, path)
+        assert set(pooled_backtest.read_seasons(path)) == {"A", "B"}
+
+    def test_re_running_a_season_replaces_rather_than_duplicates(self, tmp_path):
+        path = tmp_path / "results.csv"
+        for proposed in (1, 9):
+            pooled_backtest.write_season(
+                {"season": "A", "proposed": proposed, "pairs": 1, "actual": 1,
+                 "matched": 1, "hits": 1}, path)
+        stored = pooled_backtest.read_seasons(path)
+        assert len(stored) == 1
+        assert stored["A"]["proposed"] == "9"
+
+    def test_results_survive_an_interrupted_run(self, tmp_path):
+        """The property that matters: work done is work kept."""
+        path = tmp_path / "results.csv"
+        for season in ("A", "B", "C"):
+            pooled_backtest.write_season(
+                {"season": season, "proposed": 1, "pairs": 1, "actual": 1,
+                 "matched": 1, "hits": 1}, path)
+        # Simulate a crash: nothing further is written.
+        assert set(pooled_backtest.read_seasons(path)) == {"A", "B", "C"}
 
 
 class TestTheRealSnapshotIsIntact:
