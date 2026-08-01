@@ -1119,3 +1119,55 @@ real (r=+0.342) and it is not doing the work.
 This is the first claim in the project to survive a null it was designed to
 fail. It is also, on the headroom, a very small effect — and both halves of that
 sentence belong in the README.
+
+---
+
+## 31. Representability, defined blind, disagrees with the scorer
+
+The rule was written from `deadline.py`'s constraints — pairs only, both teams
+need a disposition, every moving player needs a value, one side must be a
+supplier — **without reference to which trades were hit.** That was the point,
+and it immediately paid for itself.
+
+| positives | count |
+|---|---|
+| all | 71 |
+| representable | **34 (47.9%)** |
+| excluded | 37 |
+
+| exclusion reason | n |
+|---|---|
+| 3-team trade; the planner emits pairs only | 20 |
+| 1 player with no value | 10 |
+| neither side is a supplier | 4 |
+| 2 players with no value | 3 |
+
+**And then the arithmetic broke: recall over representable positives came out
+56/34 = 165%.**
+
+A ratio above 1 is not a result, it is a contradiction, and it localises
+exactly: the scorer counts a two-team proposal as hitting a three-team trade
+when both its teams were really in it — a decision recorded when three-team
+parsing landed, and one that makes the number *easier*. The representability
+rule says a three-team trade is unreachable. Both statements are defensible and
+they cannot both govern the same denominator.
+
+**Which is wrong?** The rule, on this specific point. The planner cannot
+*construct* a three-team deal, but under the scorer it can *hit* one, and
+recall's denominator must contain what the scorer can credit. The rule is
+right about value and disposition and wrong about team count.
+
+**Not corrected here.** Adjusting a blind-defined rule immediately after seeing
+which trades it excludes is precisely what defining it blind was meant to
+prevent. The fix is to align the *scorer* and the rule deliberately — either the
+scorer stops crediting three-team hits, or representability admits them — and
+that is a decision about what recall means, not a patch.
+
+**So the headline recall stands unchanged at 78.9% over all 71 positives**, and
+no representable-only figure is reported. What is reported is that **52% of
+positives are unreachable by the enumerator for stated structural reasons**,
+of which the largest single cause is that half the real deadline market is
+multi-team and the planner is not.
+
+Sixteenth entry. The first found by a rule refusing to agree with a number that
+had already been published.

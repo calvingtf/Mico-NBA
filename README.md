@@ -171,6 +171,19 @@ kill it. The headroom says how small it is: **+1.09%** of the distance between
 chance and perfection. Ratio and headroom are quoted together everywhere —
 1.41x sounds like a finding, +1.09% says how much of one.
 
+**Statistically clear, practically small.** Those two things are both true and
+neither cancels the other. The p<0.0001 reflects 2118 proposals — with a sample
+that size, a 1-point difference is easy to establish. The **+1.09% normalized
+headroom** is the size of the thing established. A reader who takes only the
+p-value away has the wrong impression, and so has one who takes only the
+headroom.
+
+**The test's power is bounded in both directions by coverage breadth.** At ~50%
+of the 435-pair space, the null is dominated by how wide the enumerator casts
+rather than by what it selects — which is why the team-activity bias could not
+express itself, and equally why a genuinely good selector would struggle to
+separate from the null here. The comparison is honest but not sensitive.
+
 **Two independent full runs produced byte-identical per-season figures.**
 
 The counterparty metric remains indistinguishable from chance.

@@ -56,3 +56,84 @@ class TestHitRateIsRecorded:
             join.get(key)
         assert len(join.missed_keys) <= 20
         assert join.total == 500
+
+
+# ---------------------------------------------------------------------------
+# The property the join audit's conclusion rests on.
+# ---------------------------------------------------------------------------
+
+#: Every cross-source join feeding a verdict, with the field it populates.
+#: Enumerated so a new join is covered by default rather than by memory.
+VERDICT_JOINS = {
+    "service_years": "years_of_service",
+    "re_sign_status": "re_sign_status",
+    "previous_salary": "previous_salary",
+}
+
+
+class TestJoinsFailTowardUnknown:
+    """Measurements entry 27 concluded that no published figure needed
+    restating *because* every join fails toward UNKNOWN rather than toward a
+    permission. That was an argument. This is the mechanism.
+
+    Dropping a key must move a verdict toward UNDETERMINED and never toward
+    APPROVED. A join that failed the other way would silently convert missing
+    data into legality, and on an all-legal real-trade set nothing would notice.
+    """
+
+    @staticmethod
+    def _trade(**overrides):
+        from datetime import date
+
+        from mironba.rules.constants import environment_for
+        from mironba.rules.trade_validator import (
+            PlayerAsset, ReSignStatus, TeamTradeState, Trade,
+        )
+
+        env = environment_for("2024-25")
+        over_cap = env.salary_cap + 15_000_000
+        fields = {
+            "re_sign_status": ReSignStatus.NOT_RE_SIGNED,
+            "years_of_service": 6,
+            "previous_salary": 19_000_000,
+        }
+        fields.update(overrides)
+        return Trade(
+            season="2024-25", trade_date=date(2025, 2, 1),
+            teams=(TeamTradeState("AAA", over_cap, 14),
+                   TeamTradeState("BBB", over_cap, 14)),
+            players=(
+                PlayerAsset("out01", "Out", 20_000_000, "AAA", "BBB", **fields),
+                PlayerAsset("in01", "In", 21_000_000, "BBB", "AAA",
+                            re_sign_status=ReSignStatus.NOT_RE_SIGNED),
+            ),
+        ), env
+
+    def test_the_join_inventory_is_not_empty(self):
+        assert VERDICT_JOINS, "no verdict-feeding joins enumerated"
+
+    @pytest.mark.parametrize("field", sorted(VERDICT_JOINS.values()))
+    def test_dropping_a_key_never_moves_the_verdict_toward_approved(self, field):
+        from mironba.rules.trade_validator import ReSignStatus, Verdict, validate_trade
+
+        complete, env = self._trade()
+        baseline = validate_trade(complete, env).verdict
+
+        missing_value = ReSignStatus.UNKNOWN if field == "re_sign_status" else None
+        degraded, env = self._trade(**{field: missing_value})
+        after = validate_trade(degraded, env).verdict
+
+        rank = {Verdict.REJECTED: 0, Verdict.UNDETERMINED: 1, Verdict.APPROVED: 2}
+        assert rank[after] <= rank[baseline], (
+            f"dropping {field} moved the verdict from {baseline.name} to "
+            f"{after.name} - a join failing toward a permission converts "
+            "missing data into legality, and on an all-legal test set nothing "
+            "would notice"
+        )
+
+    def test_dropping_re_sign_status_specifically_yields_undetermined(self):
+        from mironba.rules.trade_validator import ReSignStatus, Verdict, validate_trade
+
+        degraded, env = self._trade(re_sign_status=ReSignStatus.UNKNOWN,
+                                    previous_salary=None)
+        assert validate_trade(degraded, env).verdict is Verdict.UNDETERMINED

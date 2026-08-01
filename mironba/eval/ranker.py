@@ -318,3 +318,54 @@ def normalized_headroom(observed: float, null: float) -> float:
     was covered, which for these figures is about 1%.
     """
     return (observed - null) / (1 - null) if null < 1 else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Representability. Written from the enumerator's constraints, DEFINED BLIND:
+# no reference to which trades were hit, and the rule below was derived by
+# reading deadline.py rather than by inspecting misses.
+# ---------------------------------------------------------------------------
+
+def representability_reasons(
+    trade,
+    *,
+    values: dict[str, float],
+    dispositions: dict,
+) -> tuple[str, ...]:
+    """Why the enumerator could never have proposed this trade.
+
+    Derived from what the planner requires, in order:
+
+    1. **Two teams.** ``ProposedTrade`` carries one pair; a three-team deal is
+       not constructible however good the ranking.
+    2. **Both teams have a disposition.** No standings, no disposition, no
+       participation - the planner iterates acquirers and suppliers.
+    3. **Every player moving has a value.** ``_will_part_with`` compares against
+       ``FRINGE_VALUE``, and a player with no value is never parted with. This
+       is the constraint that also drives the missingness gap in entry 28.
+    4. **At least one side is a supplier.** Acquirer-to-acquirer is not a pair
+       the planner forms.
+
+    A trade failing any of these is a **coverage** failure, not a ranking
+    failure, and counting it against the ranker measures the ingest.
+    """
+    from mironba.models.disposition import AMBIGUOUS, SELLER
+
+    reasons: list[str] = []
+    if trade.n_teams != 2:
+        reasons.append(f"{trade.n_teams}-team trade; the planner emits pairs only")
+    missing = [m.player_id for m in trade.moves if m.player_id not in values]
+    if missing:
+        reasons.append(f"{len(missing)} player(s) with no value; never parted with")
+    absent = [t for t in trade.teams if t not in dispositions]
+    if absent:
+        reasons.append(f"no disposition for {', '.join(absent)}")
+    elif not any(dispositions[t].side in (SELLER, AMBIGUOUS) for t in trade.teams):
+        reasons.append("neither side is a supplier")
+    return tuple(reasons)
+
+
+def is_representable(trade, *, values, dispositions) -> bool:
+    return not representability_reasons(
+        trade, values=values, dispositions=dispositions
+    )
