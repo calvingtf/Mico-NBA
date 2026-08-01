@@ -201,3 +201,120 @@ def report_line(label: str, observed: float, null: float, p: float) -> str:
         f"  {label:<16} {observed * 100:>6.2f}%   null {null * 100:>5.2f}%   "
         f"{ratio:>5.1f}x   p={p:.3f}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Proposal-level permutation, with two nulls.
+# ---------------------------------------------------------------------------
+
+def team_trade_frequency(seasons: list[str]) -> dict[str, int]:
+    """How often each team appears in a real trade. The degree-preserving null.
+
+    A planner that learned only *which teams are active* — sellers trade, good
+    teams stand pat — would beat a uniform null without knowing anything about
+    who trades with whom. Weighting the null by this frequency takes that away
+    and leaves only the pairing.
+    """
+    from mironba.sim.deadline import actual_deadline_trades
+
+    freq: dict[str, int] = {}
+    for season in seasons:
+        for trade in actual_deadline_trades(season):
+            for team in trade.teams:
+                freq[team] = freq.get(team, 0) + 1
+    return freq
+
+
+def _draw_qualifying(universe, k, rng, weights=None):
+    if not weights:
+        return set(rng.sample(universe, min(k, len(universe))))
+    chosen: set = set()
+    pool = list(universe)
+    w = [weights.get(pair, 1e-9) for pair in pool]
+    while len(chosen) < min(k, len(pool)):
+        pick = rng.choices(pool, weights=w, k=1)[0]
+        chosen.add(pick)
+    return chosen
+
+
+def proposal_level_null(
+    per_season: list[dict],
+    *,
+    degree_weights: dict[str, int] | None = None,
+    trials: int = 4000,
+    seed: int = 20260801,
+) -> dict:
+    """Redraw which pairs qualify; score every proposal against them.
+
+    ``per_season`` items need ``pairs`` (the multiset of team pairs, one entry
+    per proposal), ``n_qualifying`` and ``proposed``.
+
+    Proposals sharing a team pair hit or miss **together**, which is the whole
+    point: instance #12 was a null that computed each season's *expectation*
+    instead of drawing outcomes, so it had almost no variance and returned
+    p<0.0001 for a 1.41x effect. ``spread`` is returned so that cannot recur
+    silently.
+    """
+    import random
+    from itertools import combinations
+
+    rng = random.Random(seed)
+    universe = [frozenset(c) for c in combinations(range(30), 2)]
+    # The universe is pairs of integers 0-29; degree_weights is keyed by team
+    # abbreviation. Mapping between them is required, and its absence is not
+    # visible at runtime - the weights silently all become 1 and the
+    # "degree-preserving" null is the uniform null wearing a label. Caught
+    # because both nulls returned byte-identical figures.
+    weights = None
+    if degree_weights:
+        ordered = sorted(degree_weights)
+        if len(ordered) < 2:
+            raise ValueError(
+                "degree_weights needs at least two teams; with fewer, the "
+                "weighted null degenerates to the uniform one silently."
+            )
+        index = {i: ordered[i % len(ordered)] for i in range(30)}
+        weights = {
+            pair: degree_weights.get(index[a], 1) * degree_weights.get(index[b], 1)
+            for pair in universe
+            for a, b in [tuple(pair)]
+        }
+        if len(set(weights.values())) == 1:
+            raise ValueError(
+                "every pair weight is identical - this is the uniform null, "
+                "not a degree-preserving one. Refusing to report it as the latter."
+            )
+
+    total_proposals = sum(s["proposed"] for s in per_season)
+    scores = []
+    for _ in range(trials):
+        hits = 0
+        for season in per_season:
+            qualifying = _draw_qualifying(
+                universe, season["n_qualifying"], rng, weights
+            )
+            # Map this season's real pairs onto the drawn universe positionally,
+            # preserving how many proposals sit on each pair.
+            slots = list(universe)
+            rng.shuffle(slots)
+            assignment = {p: slots[i % len(slots)] for i, p in enumerate(season["pairs"])}
+            hits += sum(1 for p in season["pairs"] if assignment[p] in qualifying)
+        scores.append(hits / total_proposals if total_proposals else 0.0)
+
+    mean = sum(scores) / len(scores)
+    spread = (sum((s - mean) ** 2 for s in scores) / len(scores)) ** 0.5
+    return {"mean": mean, "sd": spread, "scores": scores}
+
+
+def p_value(scores: list[float], observed: float) -> float:
+    return sum(1 for s in scores if s >= observed) / len(scores)
+
+
+def normalized_headroom(observed: float, null: float) -> float:
+    """(observed - null) / (1 - null). How much of the *available* gap was closed.
+
+    A ratio flatters a small null: 1.41x sounds larger than moving 2.58% to
+    3.64% actually is. This says what fraction of the distance to perfection
+    was covered, which for these figures is about 1%.
+    """
+    return (observed - null) / (1 - null) if null < 1 else 0.0
