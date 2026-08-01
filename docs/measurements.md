@@ -1344,3 +1344,61 @@ excludes a meaningful share of the league. It excludes a meaningful share — 24
 
 **The thirty-agent run does not proceed.** What it needs is a dated contracts
 ingest, which is a data-collection task and not a modelling one.
+
+---
+
+## 35. Dated contract state: feasible from the transaction log, with a caveat
+
+Scoped before building, and the answer is **positive** — which was not the
+expected outcome.
+
+### Route 1: transaction log + season-end contracts, worked backwards
+
+Basketball-Reference's `/contracts/` pages are live views with no archive, so no
+fetch produces a dated snapshot. But the transaction log **is** dated, and every
+contract row falls into one of two classes:
+
+| class | n (2025-26) | share | dateable? |
+|---|---|---|---|
+| has a dated transaction | 306 | 58.6% | yes — arrival/departure known |
+| has no transaction at all | 216 | 41.4% | yes — present all season by construction |
+
+**Potentially 100%.** A player with no transaction in a season's log was on that
+roster for the whole season; a player with one has his movements dated. The
+reconstruction is: take the season-end table and, for each player, decide
+presence at date *D* from his transaction history.
+
+### The size of what it fixes
+
+**48 players were signed after the 2026-02-05 deadline and still appear in the
+season contracts table**, carrying **$126,157,001** — **2.27%** of league
+payroll, concentrated on the teams that were active.
+
+That is the inflation the leakage audit calls its weakest link, quantified for
+the first time. It is small in aggregate and decisive at the margin: a team
+$3M over an apron line is misclassified by it, which is exactly how
+Philadelphia lost every signing route in entry 34.
+
+### Route 2: nba_api
+
+Its roster endpoints are season-level (`CommonTeamRoster` takes a season, not a
+date) and it exposes no contract or salary data at all — salaries come from
+Basketball-Reference precisely because the league API does not publish them. So
+nba_api does not solve this, though it is unaffected by the BBRef limitation for
+the things it does cover.
+
+### The caveat, which is why this is scoped and not built
+
+The 41.4% "no transaction, therefore present all season" inference is sound
+*within* a season, but a player signed in the offseason **before** the season may
+have his transaction filed in either league year depending on how the source
+dates it. That has not been verified, and it is the class that would silently
+misdate a July freeze — which is exactly the LeBron case.
+
+**Method must be defined before it touches the LeBron freeze**, and it has not
+been defined yet. Defining it after seeing that Philadelphia is the team that
+matters would be the same error the hand-worked correction was kept out for.
+
+**Verdict: feasible, not yet built.** The thirty-agent run is not closed
+permanently; it is blocked on a reconstruction whose method must be written and
+validated on a season *other* than the one it will be applied to.
