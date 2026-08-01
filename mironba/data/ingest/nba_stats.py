@@ -231,10 +231,32 @@ def write_snapshot(pulls: list[SeasonPull], root: Path = SNAPSHOT_ROOT) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
 
     def dump(name: str, fields: tuple[str, ...], rows: list[tuple[str, dict]]) -> None:
-        with (directory / name).open("w", newline="", encoding="utf-8") as handle:
+        """Write, **merging** with seasons already on disk.
+
+        This opened "w" with only the seasons just pulled, so
+        ``--seasons 2012-13 2013-14`` replaced an eleven-season table with a
+        two-season one. Nothing raised: the file still parsed, the value model
+        still loaded, and every season silently returned zero valued players.
+        The same defect was fixed in write_game_logs and not looked for here.
+
+        Seasons in this pull replace their stored version; seasons absent from
+        it are carried through untouched.
+        """
+        target = directory / name
+        stored: dict[str, list[dict]] = {}
+        if target.is_file():
+            with target.open(encoding="utf-8", newline="") as handle:
+                for row in csv.DictReader(handle):
+                    stored.setdefault(row["season"], []).append(row)
+        for season in {s for s, _ in rows}:
+            stored.pop(season, None)
+        merged = [(season, row) for season, rs in stored.items() for row in rs]
+        merged += rows
+        merged.sort(key=lambda pair: pair[0])
+        with target.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
             writer.writerow(("season", *fields))
-            for season, row in rows:
+            for season, row in merged:
                 writer.writerow((season, *(row.get(f) for f in fields)))
 
     dump("player_seasons.csv", PLAYER_FIELDS,
