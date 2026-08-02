@@ -315,7 +315,43 @@ def _rows(path: Path) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
+#: Every sim-side fact DERIVED from the 2026-27 table rather than read from a
+#: pre-freeze source, with its direction. tests/test_derived_facts.py walks the
+#: AST and fails on any contracts_2627 consumer missing from this registry, the
+#: way the writer test enumerates writers - a new derivation is covered by
+#: default. "Could this be computed at the freeze with only pre-freeze
+#: information?" is the question each entry answers.
+DERIVED_FACTS = {
+    "load": dict(freeze_computable=False, direction="constructor",
+                 note="loads the table; consumers below decide what leaks"),
+    "arrivals": dict(freeze_computable=False, direction="cleaning+target",
+                     note="ground truth. As eval target: allowed. As freeze-"
+                          "state subtraction: cleaning, but misses re-signings "
+                          "by definition (an arrival needs a team change)"),
+    "freeze_state": dict(freeze_computable=False, direction="mixed",
+                         note="'freeze' books are 2026-27 salaries minus "
+                              "arrivals - so every post-freeze RE-SIGNING "
+                              "(Green $27.7M et al.) is inside the freeze "
+                              "payroll. Embeds real capacity use: blocks the "
+                              "counterfactual spend it should be simulating"),
+    "free_agent_pool": dict(freeze_computable=False, direction="hurts",
+                            note="excludes everyone holding a 2026-27 deal = "
+                                 "every actual re-signee. Deflates acquisition "
+                                 "recall, shields incumbents from contention. "
+                                 "Entry 43; expiring_pool() is the repair"),
+    "expiring_pool": dict(freeze_computable=True, direction="repair",
+                          note="expiry-validated pool; residual occupy-bias "
+                               "measured at ~0.6% false frees, stated"),
+    "project_wins": dict(freeze_computable=False, direction="helps",
+                         note="roster tiers for contested resolution are "
+                              "built from 2026-27 rosters - the resolver "
+                              "separates contenders using outcome rosters"),
+}
+
+
 @dataclass
+
+
 class LeagueState:
     contracts_2627: list[dict]
     contracts_2526: list[dict]
@@ -375,6 +411,32 @@ class LeagueState:
         signed = {r["player_id"] for r in self.contracts_2627}
         return {r["player_id"] for r in self.contracts_2526} - signed
 
+    def expiring_pool(self, freeze) -> set[str]:
+        """The market, freeze-computable: 2025-26 players whose deal expires.
+
+        WRITTEN BEFORE being run against the Golden State actuals, per the
+        discipline that admitted Philadelphia. Uses the out-of-sample-validated
+        expiry machinery (world/contract_expiry.py) instead of 2026-27
+        presence: a player enters the market iff his contract is called
+        EXPIRED at the freeze. The conservative rules apply - a re-signing the
+        leaked July rows cannot date stays EXTENDS and out of the pool - so the
+        residual is the machinery's measured ~0.6% false-free rate plus its
+        stated occupy bias, not an unbounded leak.
+        """
+        from mironba.world.contract_expiry import (
+            EXPIRED, _july_signings, extends_into, year_source,
+        )
+
+        source = year_source("2026-27")
+        signings = _july_signings("2026-27", "2025-26")
+        out: set[str] = set()
+        for row in self.contracts_2526:
+            call = extends_into(row["player_id"], row["team_id"], "2025-26",
+                                freeze, _source=source, _signings=signings)
+            if call.verdict == EXPIRED:
+                out.add(row["player_id"])
+        return out
+
     def rights(self, pid: str, team: str) -> int:
         key = (pid, team)
         if key in self._rights_cache:
@@ -410,7 +472,7 @@ class TeamResult:
     notes: list = field(default_factory=list)
 
 
-def run_branch(outcome_key, league, commitments, *, seed=20260731):
+def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None):
     """One branch: every team plans, contested players resolve, losers react."""
     env = environment_for(SEASON)
     rng = random.Random(seed)
@@ -432,7 +494,8 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731):
         for t in TEAMS
     }
 
-    pool = (league.free_agent_pool() | all_added) - {"jamesle01"}
+    base_pool = pool_ids if pool_ids is not None else league.free_agent_pool()
+    pool = (base_pool | all_added) - {"jamesle01"}
 
     def agent_for(pid, team):
         return FreeAgent(
