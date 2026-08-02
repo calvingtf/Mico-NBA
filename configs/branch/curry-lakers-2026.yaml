@@ -1,0 +1,38 @@
+id: curry-lakers-2026
+kind: stipulated
+season: "2025-26"
+freeze: 2026-07-06
+freeze_rationale: >
+  The end of the July moratorium, the same boundary the pending-decision
+  scenarios use: every input to the reaction is a contract or transaction
+  dated on or before this instant, and the stipulated trade is inserted at
+  the boundary itself.
+subjects:
+  - curryst01
+  - GSW
+  - LAL
+decision: >
+  STIPULATED, NOT PENDING: Stephen Curry is traded to the Lakers - the
+  project's founding example. There is no open question about whether it
+  happens and no branches; the event is asserted, and the only question the
+  run answers is what the rest of the league does next. There is no ground
+  truth for a world where this trade occurred, so the output is a
+  demonstration and is labelled unfalsifiable.
+decision_subject: curryst01
+next_season: "2026-27"
+scored_teams: []
+stipulation:
+  label: Stephen Curry to the Los Angeles Lakers
+  # Player salaries and team payrolls are NOT restated here - the runner
+  # derives them from the contract snapshot, and the trade stands or falls
+  # in rules/trade_validator.py. The declared facts are only WHO moves WHERE.
+  players:
+    - player_id: curryst01
+      from: GSW
+      to: LAL
+    - player_id: reaveau01
+      from: LAL
+      to: GSW
+    - player_id: grimequ01
+      from: LAL
+      to: GSW

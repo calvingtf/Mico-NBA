@@ -571,6 +571,40 @@ Ask it a reasoning question instead and it answers from the option set it was
 actually shown, which is in the run — so "why did you decline" has a referent
 rather than a confabulation.
 
+### The canonical scenario: a demonstration, not a measurement
+
+The project's founding example - *Stephen Curry traded to the Lakers* - is a
+different shape from the backtests above: nothing is pending and nothing
+forks. The event is **stipulated** and the only question is what follows.
+
+```bash
+python -m mironba.sim.stipulated --scenario curry-lakers-2026
+```
+
+Three things about that run, in order of importance:
+
+1. **The stipulated trade goes through `rules/` before anything else.** The
+   scenario file declares only who moves where; salaries and payrolls are
+   derived from the contract snapshot, and the package must pass
+   `rules/trade_validator.py`. The first two packages tried failed apron
+   matching (a team over the first apron matches at 100%, and Curry earns
+   $62.6M); the declared package - Reaves and Grimes for Curry - is LEGAL,
+   with the validator's own findings printed (the Lakers come out
+   hard-capped at the first apron). If a stipulation is illegal the runner
+   prints why and exits; it never bypasses the rules to make a premise
+   happen.
+2. **The output is labelled UNFALSIFIABLE, in that word.** There is no world
+   where this trade occurred, so there is no ground truth, no score, and no
+   null - and unlike everywhere else in this README, none is stated, because
+   there is nothing to compare against. What survives is provenance: dated
+   inputs, a deterministic seed, a manifest. The run is reproducible even
+   though it is not checkable. **It is a demonstration, not a measurement.**
+3. **Thirty teams react through the same machinery the backtests exercise** -
+   the market loop, the solver, the contention model. That machinery's error
+   rates are the measured ones above; the demonstration inherits them and
+   adds an unmeasurable premise on top. Read its output as "what this
+   system does with the premise", never as "what would have happened".
+
 ---
 
 ## How it is put together
