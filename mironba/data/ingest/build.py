@@ -258,6 +258,14 @@ def ingest_contracts(*, force: bool = False) -> tuple[list[bbref.ContractYear], 
     return rows, sources, failures
 
 
+#: Writer declaration for the enumerated writer test. This writer creates a
+#: whole directory keyed by its own season (bbref-contracts-<season>/), so a
+#: second season lands beside the first rather than inside the same file -
+#: partition-by-directory, declared as such.
+PARTITIONED = frozenset({"write_contract_snapshot"})
+WHOLE_TABLE: frozenset = frozenset()
+
+
 def write_contract_snapshot(
     rows: list[bbref.ContractYear], sources: list[list[str]]
 ) -> Path:

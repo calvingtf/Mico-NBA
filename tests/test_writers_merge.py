@@ -25,14 +25,30 @@ from pathlib import Path
 
 import pytest
 
+import importlib
+import pkgutil
+
+import mironba.data.ingest as ingest_pkg
 from mironba.data.ingest import nba_stats
 from mironba.eval import pooled_backtest
 
-#: Writers that take season-partitioned data. Discovered, not listed.
-WRITERS = sorted(
-    name for name, obj in vars(nba_stats).items()
-    if name.startswith("write_") and inspect.isfunction(obj)
+#: Every module in data/ingest, so a new ingest module's writers are covered
+#: without anyone remembering to add them - the enumeration IS the coverage.
+INGEST_MODULES = [
+    importlib.import_module(f"mironba.data.ingest.{m.name}")
+    for m in pkgutil.iter_modules(ingest_pkg.__path__)
+]
+
+#: (module, writer-name) pairs. Discovered, not listed.
+DISCOVERED = sorted(
+    ((mod, name)
+     for mod in INGEST_MODULES
+     for name, obj in vars(mod).items()
+     if name.startswith("write_") and inspect.isfunction(obj)
+     and obj.__module__ == mod.__name__),
+    key=lambda pair: (pair[0].__name__, pair[1]),
 )
+WRITERS = sorted(name for _, name in DISCOVERED)
 
 
 def _scopes(path: Path, column: str) -> set[str]:
@@ -49,10 +65,13 @@ def test_the_writer_inventory_is_not_empty():
     assert "write_game_logs" in WRITERS
 
 
-@pytest.mark.parametrize("writer", WRITERS)
-def test_every_writer_is_declared_partitioned_or_not(writer):
+@pytest.mark.parametrize(
+    "mod,writer", DISCOVERED, ids=[f"{m.__name__}.{n}" for m, n in DISCOVERED])
+def test_every_writer_is_declared_partitioned_or_not(mod, writer):
     """A writer must say which it is, so a new one cannot be ambiguous."""
-    assert writer in nba_stats.PARTITIONED or writer in nba_stats.WHOLE_TABLE, (
+    declared = (getattr(mod, "PARTITIONED", frozenset())
+                | getattr(mod, "WHOLE_TABLE", frozenset()))
+    assert writer in declared, (
         f"{writer} is neither in PARTITIONED nor WHOLE_TABLE. A new writer must "
         "declare whether it takes season-partitioned data: if it does and it "
         "opens 'w' with only the current pull, it destroys every other season."

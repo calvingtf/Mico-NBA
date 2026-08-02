@@ -352,19 +352,25 @@ date, source link and anchor. That display *is* the claim: not prediction -
 provenance.
 
 **What generalises, stated exactly.** The deadline path runs across ten
-seasons. The scenario, evidence and surface layers run across *declared*
-scenarios - a second one (davis-2026, outcome verified against the contract
-snapshot) ran through all three with zero code changes. The branch
-*simulation* does not yet: eight modules still hold scenario identifiers,
-enumerated in SCENARIO_DEBT and fenced by test, and the claim "any NBA
-scenario" is not made until that list is empty and a second scenario runs the
-sim end to end unchanged. Curation is assisted but never automatic: RSS
+seasons. Every layer now runs across *declared* scenarios: SCENARIO_DEBT
+went from eight enumerated modules to zero, the fence and stale checks admit
+no module, and davis-2026 (outcome verified against the contract snapshot)
+runs the full sim end to end with zero code changes. What that supports is
+still a bounded claim - two pending-decision scenarios and one stipulated
+demonstration have run, not "any NBA scenario" - and two hardcodes the fence
+could not see (they were plain strings, not identifiers) were found and fixed
+only after the gate. Curation is assisted but never automatic: RSS
 supplies real publication timestamps (feeds without them are excluded), an
 LLM drafts typed rows into a review queue with the source sentence quoted, and
 the store has exactly one writer, which refuses anything a human has not
-explicitly confirmed. The live feeds reach back about two days - so the news
-layer generalises to current and future scenarios, not backwards to the 2016
-history the ranker would need.
+explicitly confirmed. The live feeds reach back about two days. A **standing
+archiver** (`python -m mironba.data.ingest.archive`, scheduled daily) now
+appends every dated item to `archive/rss/YYYY-MM-DD.csv` partitions -
+append-only, one writer, under the enumerated writer test, with
+`published_at` and `fetched_at` recorded separately - so a scenario declared
+months from now can read history captured as it happened. That serves
+scenarios **forward only**: nothing can be archived retroactively, and
+historical scenarios remain hand-curated.
 
 ## Seven results that weren't
 
