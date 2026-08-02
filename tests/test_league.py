@@ -271,7 +271,7 @@ class TestTheRealRun:
         from mironba.sim.league import LeagueState, run_branch, score
         from mironba.world.evidence import load_ledger
 
-        docs = Path(__file__).resolve().parents[1] / "docs" / "backtests"
+        docs = Path(__file__).resolve().parents[1] / "evidence" / "lebron-2026"
         league = LeagueState.load()
         commitments = load_ledger(docs, "lebron-2026", __import__("datetime").date(2026, 7, 6)).open_conditionals()
 

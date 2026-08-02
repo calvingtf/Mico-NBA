@@ -1,0 +1,31 @@
+id: lebron-2026
+season: "2025-26"
+freeze: 2026-07-06
+freeze_rationale: >
+  The moratorium boundary: free agents may sign officially from 12:01 p.m. ET
+  on July 6 (FA-03). Freezing at this instant means most July movement is
+  dated on or after the freeze by construction, which is what made the
+  boundary-class validation tractable. A scenario must state its own instant
+  and why; this one is the moratorium's end.
+subjects:
+  - jamesle01
+  - davisan02
+  - greendr01
+  - GSW
+  - CLE
+  - MIA
+  - MIN
+  - PHI
+decision: >
+  Where does LeBron James sign? Unresolved at the freeze; his agent had spoken
+  with 27 teams (LBJ-03) and five were reported tied (LBJ-04).
+branches:
+  - signs_elsewhere
+  - signs_with_blocker
+actual_branch: signs_elsewhere
+scored_teams:
+  - GSW
+  - MIA
+  - MIN
+  - CLE
+  - PHI

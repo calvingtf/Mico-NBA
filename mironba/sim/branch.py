@@ -53,7 +53,7 @@ from mironba.world.pending import (
     build_branches,
 )
 
-DOCS = Path(__file__).resolve().parents[2] / "docs" / "backtests"
+DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 BACKTEST = "lebron-2026"
 FREEZE = date(2026, 7, 6)

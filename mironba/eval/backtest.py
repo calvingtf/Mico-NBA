@@ -14,7 +14,7 @@ import argparse
 from datetime import date
 from pathlib import Path
 
-DOCS = Path(__file__).resolve().parents[2] / "docs" / "backtests"
+DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
 FREEZE = date(2026, 7, 6)
 
 

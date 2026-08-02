@@ -216,7 +216,7 @@ class TestAgainstTheRealEvidence:
 
         from mironba.world.evidence import load_ledger
 
-        docs = Path(__file__).resolve().parents[1] / "docs" / "backtests"
+        docs = Path(__file__).resolve().parents[1] / "evidence" / "lebron-2026"
         ledger = load_ledger(docs, "lebron-2026", date(2026, 7, 6))
         branches = build_branches(
             PendingDecision(

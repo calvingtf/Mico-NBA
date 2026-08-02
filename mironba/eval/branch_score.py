@@ -26,7 +26,7 @@ from mironba.rules.signing import BIRD, MINIMUM, NON_BIRD
 from mironba.rules.signing_solver import check_signing
 from mironba.world.evidence import SCORING_UNLOCK, load_ledger
 
-DOCS = Path(__file__).resolve().parents[2] / "docs" / "backtests"
+DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
 
 #: Which route each actual signing used. This is a *reading* of the contract,
 #: not a figure: the salaries themselves are pulled from the evidence file.

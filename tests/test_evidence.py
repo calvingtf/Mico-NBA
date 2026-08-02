@@ -26,7 +26,7 @@ from mironba.world.evidence import (
     redact_after,
 )
 
-DOCS = Path(__file__).resolve().parents[1] / "docs" / "backtests"
+DOCS = Path(__file__).resolve().parents[1] / "evidence" / "lebron-2026"
 BACKTEST = "lebron-2026"
 FREEZE = date(2026, 7, 6)
 PACKAGE = Path(__file__).resolve().parents[1] / "mironba"
