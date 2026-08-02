@@ -318,12 +318,12 @@ retired as a scored metric** — once the set is an input, identifying it is
 stipulated, not predicted, the same rule as the LeBron→PHI branch premise. A
 test asserts no scored output is computable without POST-freeze access. What
 gets scored instead, each with its null: who *wins* given the set (sim said GSW
-by an arbitrary resolution, actual PHI — miss against a 25% null); what losers
+by an arbitrary resolution, actual PHI — uninformative at n=1: a chance proposer misses 75% of the time, and the resolver itself called the choice arbitrary); what losers
 did with held capacity (sim had GSW chasing Paul George and Jerami Grant; real
 GSW re-signed Green at $27,678,571 and retained four others — 0 of 6 against a
-0.14-hit null, and the miss is structural: *re-sign your own capacity* is not in
+recall ceiling of 1 in 6: the league planner's pool is built from the 2026-27 table, which had already excluded every re-signee, so the metric had no power by construction. The branch planner's move set is precisely retention, and it is scored separately - not in
 the planner's move set); and whether conditional commitments attach to the
-branch matching their condition (4 of 4, against a random-attachment null of 2).
+branch matching their condition (4 of 4, p=0.0625 - suggestive, not significant, the same threshold refused on the era gap).
 
 **The limit, stated:** this works for one scenario. The ranker would need
 reported interest across 71 deadline trades over ten seasons — hundreds of

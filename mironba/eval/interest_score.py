@@ -23,7 +23,11 @@ from __future__ import annotations
 import random
 import sys
 
-SCORED_OUTPUTS = ("suitor_won", "capacity_use", "conditionals_fire")
+#: capacity_use was renamed after entry 43: it measured the league planner's
+#: EXTERNAL-acquisition list against actuals that were mostly retentions - and
+#: retentions are outside that planner's pool by construction, so the recall
+#: ceiling was 1/6 before the metric ran. The name now says what is measured.
+SCORED_OUTPUTS = ("suitor_won", "external_acquisition_overlap", "conditionals_fire")
 
 
 def main() -> int:
@@ -72,9 +76,13 @@ def main() -> int:
     actual = "PHI"   # LBJ-07, read via the POST partition it lives in
     post_items = ledger.ground_truth(unlock=SCORING_UNLOCK)
     assert any("Philadelphia" in i.fact and i.id == "LBJ-07" for i in post_items)
-    print(f"\nSUITOR_WON: sim {winner} ({reason}) vs actual {actual} "
-          f"-> {'HIT' if winner == actual else 'MISS'}   null 1/{len(contenders)} "
-          f"= {1/len(contenders):.0%}")
+    outcome = "HIT" if winner == actual else "MISS"
+    print()
+    print(f"SUITOR_WON: sim {winner} ({reason}) vs actual {actual} -> {outcome}")
+    print(f"  UNINFORMATIVE: n=1 against a 1/{len(contenders)} null - a chance "
+          f"proposer misses {1 - 1/len(contenders):.0%} of the time - and the "
+          "resolver itself declared the decision arbitrary. Reported as "
+          "uninformative, not as a miss.")
     print(f"  POST narrowing (LBJ-06, withheld from inputs): {sorted(truth)}")
 
     # -- capacity_use -----------------------------------------------------
@@ -86,11 +94,19 @@ def main() -> int:
                               "GSW-15", "GSW-16")}
     pool = league.free_agent_pool()
     hits = gsw_sim & gsw_actual
-    null = len(gsw_sim) * len(gsw_actual) / max(len(pool), 1)
-    print(f"\nCAPACITY_USE (GSW, signs_elsewhere): sim {sorted(gsw_sim)}")
+    reachable = gsw_actual & pool
+    null = len(gsw_sim) * len(reachable) / max(len(pool), 1)
+    print()
+    print(f"EXTERNAL_ACQUISITION_OVERLAP (GSW, signs_elsewhere): sim {sorted(gsw_sim)}")
     print(f"  actual {sorted(gsw_actual)}")
+    print(f"  RECALL CEILING {len(reachable)}/{len(gsw_actual)}: the league planner "
+          "draws from free_agent_pool(), which excludes every player holding a "
+          "2026-27 deal - i.e. everyone who actually re-signed. Retention is the "
+          "branch planner's move set (sim/branch.py), not this one's.")
     print(f"  hits {len(hits)}/{len(gsw_sim)} proposed, recall {len(hits)}/{len(gsw_actual)}"
-          f"   null expects {null:.2f} hits (pool {len(pool)})")
+          f"   null {null:.2f} expected hits on the reachable set")
+    print("  NO POWER BY CONSTRUCTION: with that ceiling and those chance hits, "
+          "this metric could not have registered a success either.")
 
     # -- conditionals_fire --------------------------------------------------
     fired_ok = 0
@@ -100,8 +116,14 @@ def main() -> int:
         attached = "signs_with_blocker" if gsw_branch else "signs_elsewhere"
         correct = gsw_branch == (attached == "signs_with_blocker")
         fired_ok += correct
-    print(f"\nCONDITIONALS_FIRE: {fired_ok}/{len(conds)} attach to the branch "
-          f"matching their condition   null (random attachment) {len(conds)/2:.1f}")
+    p_value = 0.5 ** len(conds)
+    print()
+    print(f"CONDITIONALS_FIRE: {fired_ok}/{len(conds)} attach to the branch "
+          f"matching their condition   null (random) {len(conds)/2:.1f}   "
+          f"p = {p_value:.4f}")
+    print("  SUGGESTIVE, NOT SIGNIFICANT: p=0.0625 is the threshold this project "
+          "refused on the era gap (p=0.064). A mechanism check this small "
+          "belongs in the test suite as well, and it is there.")
     return 0
 
 

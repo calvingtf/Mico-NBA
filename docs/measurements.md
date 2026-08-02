@@ -1749,3 +1749,74 @@ contention with its blocked-route map quoted in full.
 **The limit:** one scenario. The ranker would need hundreds of dated interest
 items across ten seasons, with dating unreliable toward 2016, and would still
 lack its named orthogonal features. Recorded in the README in those terms.
+
+---
+
+## 43. The 5/5 vs 0/6 contradiction: two planners, and a pool built from the answer
+
+M4.5 scored Golden State's retentions 5/5; entry 42's capacity_use scored the
+same team, offseason and outcomes 0/6. Resolved by reading what each counted
+**at the time it was written** - neither definition was adjusted after seeing
+the numbers.
+
+**Not a regression. Two different planners.**
+
+* `sim/branch.py` (M4) plans over Golden State's **own free agents** -
+  retention *is* its move set. Its per-move score has three parts: `retain`
+  (was the player in the plan - a planner check, near-tautological until the
+  second-apron ceiling forced drops, as its own output notes), `route` (does
+  `check_signing` reproduce the actual route - a **rules** check), `terms`
+  (actual salary within the route's maximum, exact where the mechanism
+  determines a figure - a rules check). The remembered "5/5" is a retention
+  planner scored on retention outcomes, plus the rules reproducing them.
+* `sim/league.py` (M5, commit 450b8d5) is **acquisition-only** and was born
+  that way: retention never left its move set, because it was never in it.
+
+**The pool consumed the answer.** `free_agent_pool()` = a 2025-26 contract and
+no 2026-27 deal *anywhere* - and the 2026-27 table is ground truth. Every
+player who actually re-signed is excluded from the sim's market before any
+planner runs: of capacity_use's six actuals, five were unreachable and the
+recall ceiling was **1/6** (Payton), with 0.02 expected chance hits.
+
+So entry 42's "re-signing your own capacity is not in the planner's move set"
+named the wrong mechanism and the wrong scope: true of the league planner via
+pool construction, false of the branch planner, which does nothing else. The
+metric is renamed `external_acquisition_overlap` - the name now says what is
+measured - and its report states the ceiling.
+
+The pool construction itself is a leakage finding, same family as the
+`arrivals()` caveat the module already carries: a POST-freeze table shaping sim
+inputs, here removing re-signees from everyone's market - depressing
+acquisition recall and shielding incumbents from contention at once. The fix
+(an expiry-based pool; the validated machinery exists) is a deliberate separate
+change, not a patch made while the number is on the table.
+
+**Power labels applied, per the standing rules:**
+
+| metric | label |
+|---|---|
+| suitor_won | **UNINFORMATIVE** - n=1 against a 25% null, on a choice the resolver itself called arbitrary |
+| external_acquisition_overlap | **NO POWER BY CONSTRUCTION** - ceiling 1/6, 0.02 chance hits |
+| conditionals_fire | **SUGGESTIVE, NOT SIGNIFICANT** - 4/4, p=0.0625, the threshold refused on the era gap |
+
+*Tooling coda:* four silent text-replace failures this week - a README no-op
+the pre-commit hook caught, two anchor no-ops, and an f-string corruption -
+trace to one cause: heredoc quoting is not honoured in this shell, so doubled
+backslashes halve in transit. Working rule now: boundary-asserted line surgery,
+and no backslashes in patch payloads. Nothing broken reached a commit.
+
+## 44. A departure fact was a suitor for three entries
+
+LBJ-01 says LeBron's Lakers tenure is **over**. Substring matching over prose
+counted the mention as interest, LAL entered the reported-suitor set, and "six
+reported suitors" ran through entries 33, 37 and 38 - every survival fraction
+keyed on the set inherited the phantom sixth. Corrected denominators: the
+stage-3 suitor check admitted **4 of 5** true reported suitors (not 5 of 6);
+CLE remains the one real exclusion. Prior entries stand as written; this entry
+is the correction.
+
+**What caught it: imposing a schema on data that had been read loosely.** A
+typed `reported_interest` row demands a team and a player per claim, and a
+departure fact cannot fill them. Nothing about the correction required new
+information - the corpus said "five" all along (LBJ-04 names them); the reader
+added the sixth.
