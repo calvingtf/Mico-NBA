@@ -160,11 +160,60 @@ def fetch_game_log(season: str, *, timeout: int = 120) -> list[dict]:
     return frame[list(GAME_FIELDS)].to_dict("records")
 
 
+PLAYER_GAME_FIELDS = ("PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION",
+                      "GAME_ID", "GAME_DATE", "MIN")
+
+
+def fetch_player_game_log(season: str, *, timeout: int = 120) -> list[dict]:
+    """Every regular-season player appearance, dated. Same source, new table.
+
+    This is what as-of availability derives from: a player with zero
+    appearances in his team's last N games before a date was unavailable,
+    whatever the reason. The team log cannot say that - it has no player
+    column - and no new *source* is involved: it is the same stats endpoint
+    the team log already uses, asked for player rows.
+    """
+    from nba_api.stats.endpoints import leaguegamelog
+
+    _throttle()
+    try:
+        frame = leaguegamelog.LeagueGameLog(
+            season=season, season_type_all_star="Regular Season",
+            player_or_team_abbreviation="P", timeout=timeout,
+        ).get_data_frames()[0]
+    except Exception as exc:  # noqa: BLE001
+        raise StatsFetchError(f"{season} player games: {type(exc).__name__}: {exc}") from exc
+    if len(frame) < 10000:
+        raise StatsFetchError(f"{season}: only {len(frame)} player-game rows")
+    return frame[list(PLAYER_GAME_FIELDS)].to_dict("records")
+
+
+def write_player_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
+    """Write player game logs, **merging** with seasons already on disk."""
+    directory = root / "nba-stats"
+    directory.mkdir(parents=True, exist_ok=True)
+    existing = directory / "player_game_logs.csv"
+    merged: dict[str, list[dict]] = {}
+    if existing.is_file():
+        with existing.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                merged.setdefault(row["season"], []).append(row)
+    merged.update(logs)
+
+    with existing.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(("season", *PLAYER_GAME_FIELDS))
+        for season, rows in sorted(merged.items()):
+            for row in rows:
+                writer.writerow((season, *(row.get(f) for f in PLAYER_GAME_FIELDS)))
+    return directory
+
+
 #: Writers whose input is season-partitioned. These MUST merge with what is
 #: already stored: opening "w" with only the current pull destroys every other
 #: season, and does it silently - the file still parses and the loader still
 #: loads. Three writers here had that defect, found one at a time.
-PARTITIONED = frozenset({"write_game_logs", "write_snapshot"})
+PARTITIONED = frozenset({"write_game_logs", "write_player_game_logs", "write_snapshot"})
 
 #: Writers that legitimately replace the whole table, because their input is
 #: the whole table. Declared so a new writer cannot be ambiguous about which

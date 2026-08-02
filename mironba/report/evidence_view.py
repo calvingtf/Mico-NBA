@@ -103,3 +103,41 @@ def render_known_text(ledger, width: int = 78) -> str:
     lines.append(f"  {INPUT_MARKER}")
     lines.append("-" * width)
     return chr(10).join(lines)
+
+
+def scenario_availability_blocks(scenario, n: int = 10) -> list[str]:
+    """Availability beside the teams involved. Context only, marked as such.
+
+    Team subjects are the scenario's declared three-letter codes; rosters come
+    from the scenario season's contract snapshot, names from its player table.
+    """
+    import csv
+    import re
+    from pathlib import Path
+
+    from mironba.world.availability import load_player_logs, render_availability
+
+    snapshots = Path(__file__).resolve().parents[1] / "data" / "snapshots"
+    season_dir = snapshots / f"bbref-{scenario.season}"
+    contracts = season_dir / "contracts.csv"
+    players = season_dir / "players.csv"
+    if not contracts.is_file():
+        return []
+    names = {}
+    if players.is_file():
+        with players.open(encoding="utf-8", newline="") as handle:
+            names = {r["player_id"]: r["name"] for r in csv.DictReader(handle)}
+    logs = load_player_logs(scenario.season)
+    if not logs:
+        return []
+    blocks = []
+    for subject in scenario.subjects:
+        if not re.fullmatch(r"[A-Z]{3}", subject):
+            continue
+        with contracts.open(encoding="utf-8", newline="") as handle:
+            roster = {r["player_id"]: names.get(r["player_id"], r["player_id"])
+                      for r in csv.DictReader(handle) if r["team_id"] == subject}
+        block = render_availability(subject, scenario.freeze, roster, logs, n)
+        if block:
+            blocks.append(block)
+    return blocks

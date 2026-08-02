@@ -256,6 +256,15 @@ def main(argv=None) -> int:
         ledger = load_scenario_ledger(args.backtest)
         if ledger:
             print(render_known_text(ledger))
+        from mironba.report.evidence_view import scenario_availability_blocks
+        from mironba.world.scenario import load_scenario
+
+        try:
+            for block in scenario_availability_blocks(load_scenario(args.backtest)):
+                print(block)
+                print()
+        except Exception as exc:  # noqa: BLE001 - context must not kill the feed
+            print(f"  (availability context unavailable: {exc})")
     print(render(load_run(args.run)))
     return 0
 
