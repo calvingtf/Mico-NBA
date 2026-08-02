@@ -2026,3 +2026,56 @@ execution, and both predictions held - one exactly, one with an informative
 half-miss. The two rounds of leak-closing produced no better headline number
 anywhere, and that is the point: they produced numbers whose meaning is now
 enumerable.
+
+---
+
+## 49. Assisted curation and the scenario gate: what generalised, named exactly
+
+### The enumeration first: 89 occurrences, 14 files
+
+Freeze dates, subject ids, branch names, scored-team tuples, evidence paths -
+the LeBron scenario was a constellation of constants. Now: one declared object
+(configs/branch/lebron-2026.yaml) carrying id, season, freeze **with its own
+stated rationale**, subjects, decision, branches and scored teams; evidence
+keyed by scenario id under evidence/<id>/; a loader with **no default**; and a
+fence test that fails on any identifier outside a scenario file or the declared
+SCENARIO_DEBT - eight named modules, tracked, with a stale-debt check so a
+paid-off module must leave the list.
+
+### The second-scenario gate: NOT passed, and here is the exact boundary
+
+davis-2026 - does Davis end up with Golden State? - was declared and curated
+to standard (typed, dated, sourced, anchored, PRE/POST from its own freeze;
+outcome verified against the contract snapshot: WAS, $58,456,566).
+
+| layer | ran with zero code changes? |
+|---|---|
+| scenario load + validation | **yes** |
+| evidence ledger + partition + POST gating | **yes** |
+| surface (known-at-freeze, provenance, input marker) | **yes** |
+| **branch simulation + scoring** | **no - blocked by the eight debt modules** |
+
+The README claims exactly that split and does not claim "any NBA scenario".
+
+### RSS ingest: real timestamps, and the limit demonstrating itself
+
+| feed | items | dated | oldest | in scope of the freeze |
+|---|---|---|---|---|
+| espn-nba | 12 | 12 | 2026-07-31 | **0** |
+| yahoo-nba | 50 | 50 | 2026-07-31 | **0** |
+| nba-com | excluded | - | - | HTTP 404, reported not patched |
+
+Every retained item carries a real publication timestamp - the thing the
+partition needs and a screenshot destroys. And the in-scope column is the
+stated limit made concrete: the feeds reach back about two days, the freeze
+was 27 days ago, so zero items reach it. **RSS generalises forward across
+current and future scenarios, not backwards** - historical news to 2016, what
+the ranker's missing features would need, is not reachable this way.
+
+### The confirmation gate
+
+Drafts land in evidence/<id>/review-queue.csv with the source sentence quoted;
+the store has **exactly one writer**, it raises without an explicit human
+confirmed=True, phase is computed from the scenario's freeze rather than
+declared by the row, and a test greps the package for any other write path.
+The phantom sixth suitor, made mechanical.

@@ -1,0 +1,23 @@
+id: davis-2026
+season: "2025-26"
+freeze: 2026-07-06
+freeze_rationale: >
+  The same moratorium boundary as lebron-2026, stated as this scenario's own:
+  Golden State's reported pursuit of Davis was open at the moratorium's end,
+  and the outcome is observable in the July-31 contract snapshot. A freeze
+  after July 6 would sit inside the window where the decision resolves.
+subjects:
+  - davisan02
+  - GSW
+  - WAS
+decision: >
+  Does Anthony Davis end up with Golden State for 2026-27? Reported pursued
+  alongside James (DAV-01); at the freeze he is on Washington's books with the
+  question of a Golden State move open in the reporting.
+branches:
+  - joins_gsw
+  - stays_elsewhere
+actual_branch: stays_elsewhere
+scored_teams:
+  - GSW
+  - WAS

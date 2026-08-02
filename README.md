@@ -351,6 +351,21 @@ appears above the feed marked as an input, and every rendered item carries its
 date, source link and anchor. That display *is* the claim: not prediction -
 provenance.
 
+**What generalises, stated exactly.** The deadline path runs across ten
+seasons. The scenario, evidence and surface layers run across *declared*
+scenarios - a second one (davis-2026, outcome verified against the contract
+snapshot) ran through all three with zero code changes. The branch
+*simulation* does not yet: eight modules still hold scenario identifiers,
+enumerated in SCENARIO_DEBT and fenced by test, and the claim "any NBA
+scenario" is not made until that list is empty and a second scenario runs the
+sim end to end unchanged. Curation is assisted but never automatic: RSS
+supplies real publication timestamps (feeds without them are excluded), an
+LLM drafts typed rows into a review queue with the source sentence quoted, and
+the store has exactly one writer, which refuses anything a human has not
+explicitly confirmed. The live feeds reach back about two days - so the news
+layer generalises to current and future scenarios, not backwards to the 2016
+history the ranker would need.
+
 ## Seven results that weren't
 
 Every headline number below survived at least one revision, and seven were
