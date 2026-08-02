@@ -439,15 +439,16 @@ def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
         lines.append(AuditLine(
             "contract snapshot (GSW roster)", len(gsw), len(seeded),
             f"{len(seeded)} post-freeze signing(s) present in the file and "
-            "excluded from the freeze state by gsw_freeze_state(); the "
-            "snapshot has no date column, but world/dated_roster.py now "
-            "reconstructs dated presence from the transaction log (validated "
-            "138/138 must-present, seam quantified at 4-9 departures per "
-            "July 1-6 window). Measured season-table inflation: 48 "
-            "post-deadline signings carrying $126,157,001, 2.27% of league "
-            "payroll. Residual: contract EXPIRY is still invisible to the "
-            "season table, so a July roster may count deals that ended "
-            "June 30 - that, not dating, is now the weakest link",
+            "excluded from the freeze state by gsw_freeze_state(); "
+            "world/dated_roster.py reconstructs dated presence (validated "
+            "138/138 must-present) and world/contract_expiry.py resolves "
+            "June-30 expiry (validated, ~0.6% false-free). Season-table "
+            "inflation measured at $126,157,001 / 2.27% - real, but NOT what "
+            "bound the suitor check: the binding constraint was ROSTER COUNT "
+            "read off table bloat, a diagnosis corrected only when the "
+            "route-blocked reasons were finally read. Remaining unmodelled: "
+            "cap holds of expired contracts, and rosters a GM could clear "
+            "but has not - the filter tests the roster as it stands",
         ))
     return lines
 

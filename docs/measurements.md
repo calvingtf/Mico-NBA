@@ -1527,3 +1527,61 @@ Representability re-checked: **34 of 71, unchanged** - its inputs are
 prior-season values and standings-based dispositions, neither consumes payroll,
 confirmed by rerun rather than assertion. Leakage audit line updated: dating is
 no longer the weakest link; contract expiry is.
+
+---
+
+## 38. Expiry validated; the hard filter barely filters in July; the payroll story corrected
+
+### The method held out of sample
+
+3,084 player-slots classified at July-10 dates across six seasons none of which
+is 2025-26. EXTENDS 1,251, EXPIRED 875 (3.1-7.1 slots freed per team - exactly
+expiring-contract-sized), UNRESOLVED 958, every one occupying by design.
+
+| check | result |
+|---|---|
+| demonstrably-expired (Y-signing after D) wrongly called EXTENDS | **0 of 908** |
+| of those, correctly freed / occupied-safe | 489 / 419 |
+| false frees under the one freeing rule | **5 of ~875 (~0.6%)** |
+| undateable | 0 |
+
+The conservative shape shows exactly where designed: 419 signed-elsewhere
+players occupy their old slot as UNRESOLVED rather than free it on ambiguity.
+
+### The three-stage suitor check
+
+| stage | admits | reported suitors admitted |
+|---|---|---|
+| 1 raw season table | 6/30 | LAL, MIN |
+| 2 + dated presence | 8/30 | LAL, MIN, **PHI** |
+| 3 + contract expiry | **24/30** | **GSW**, LAL, MIA, MIN, PHI |
+
+**GSW is admitted (bird, taxpayer MLE, minimum): the branch scenario is
+runnable.** CLE alone stays out - 15 occupied slots at $212.0M - and the filter
+tests the roster *as it stands*; that a GM could clear a slot by waiving a
+non-guaranteed deal is not modelled, and is now the stated reason a reported
+suitor can still be excluded.
+
+**And the honest headline: 24/30 means the hard filter barely filters at a
+July freeze.** With slots open, almost any team can legally sign a 22-year
+veteran to the minimum. The apparent selectivity of stages 1-2 was data
+artifact, not signal - legal feasibility discriminates in-season, where rosters
+are genuinely full, and the earlier standing rule applies verbatim: a filter
+that nominates most of the league is not filtering, and the suitor question
+belongs to the soft filter (record) and reported interest.
+
+### The payroll story, corrected (the diagnosis-by-plausibility failure)
+
+Entries 33 and 35 said Philadelphia lost every route because undated contracts
+*inflated its payroll* past the aprons. The measured inflation ($126,157,001 /
+2.27%) is real. **The binding constraint was never payroll: it was roster
+count.** PHI's payroll moved $727,637 under dating; its roster count moved
+16 -> 14, and 16 >= 15 blocks every signing route before money is consulted.
+
+The mechanism was checkable the whole time - the solver's blocked-route reasons
+say "roster is full" in so many words - and nobody read them, because the
+payroll story was plausible and the metric said the right team was excluded.
+Same family as a check certifying the wrong surface: **a diagnosis certifying a
+plausible mechanism while the actual reasons sat unread in the scan output.**
+Audit text in sim/branch.py corrected; entries 33/35 stand as written, wrong
+mechanism and all, per the no-rewriting rule - this entry is the correction.
