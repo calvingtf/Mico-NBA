@@ -1820,3 +1820,61 @@ typed `reported_interest` row demands a team and a player per claim, and a
 departure fact cannot fill them. Nothing about the correction required new
 information - the corpus said "five" all along (LBJ-04 names them); the reader
 added the sixth.
+
+---
+
+## 45. The derivation audit: two more leaks, one repair that changes nothing
+
+The leakage audit checked inputs for post-freeze **content**. free_agent_pool()
+leaked by **derivation** - a legitimate table computing something only the
+future knows - so the audit was re-run for derivation: every sim-side consumer
+of the 2026-27 table, each answering *could this be computed at the freeze from
+pre-freeze information?*, each with its direction. The surface is now
+enumerated by AST in tests/test_derived_facts.py, the writer-test pattern, so
+the next derivation is declared or the suite fails.
+
+| derivation | freeze-computable? | direction |
+|---|---|---|
+| free_agent_pool() | no | **hurts** - excluded every actual re-signee from the market |
+| freeze_state() | no | **mixed** - post-freeze *re-signings* sit inside the "freeze" payroll (an arrival needs a team change, so subtraction misses them); the sim's books already contain the capacity use it exists to counterfactualise |
+| project_wins() | no | **helps** - contested-resolution roster tiers are built from 2026-27 rosters, i.e. outcome rosters |
+| arrivals() | no | cleaning + eval target |
+| expiring_pool() | yes | repair |
+| rights() | yes (2025-26 back) | none |
+
+**The enumeration found freeze_state() and project_wins() before any metric
+did.** The helping one matters most: entry 41's contested resolutions ("5 by
+clearly stronger roster, zero arbitrary") rested partly on tiers computed from
+outcome rosters. The 5-vs-30 *composition* conclusion survives - it never
+depended on resolution quality - but the resolution-quality claim is weakened
+and is hereby caveated.
+
+### The repair changed nothing, and that is the finding
+
+expiring_pool(), written and committed blind, produces a pool **identical** to
+the leaky one on this scenario: 130 = 130, zero new members. The four unleaked
+July re-signings stay EXTENDS by the conservative rules; Bassey's leaked row
+yields EXPIRED but he has no 2025-26 contract row to enter the base from. So
+the external_acquisition_overlap ceiling is **1/6 under any sound
+freeze-computable pool**, the observed value cannot move, and re-running the
+30-team sim with the new pool would reproduce it byte for byte.
+
+**The metric is retired** - moved from SCORED_OUTPUTS to RETIRED_OUTPUTS with
+the reason attached. A score whose ceiling is one reachable outcome in six is a
+diagnostic, not a measurement.
+
+### Downstream of the pool: which figures move
+
+None. run_branch's market, entry 41's composition figures, interest_score's
+null - all inherit the pool, and the pools coincide, so every published figure
+stands. The leak's *direction* was real; its realised effect on this scenario's
+numbers is nil, which is exactly the kind of statement the enumeration makes
+checkable rather than hopeful.
+
+### The deflating-leak pattern, now a rule about inputs
+
+Second confirmed instance after #11's pooled null. The mechanism, stated: **an
+error that lowers a result is not audited, because failure reads as a system
+problem rather than a measurement problem.** The standing rule extends to
+inputs: an input that constrains the sim away from the observed outcome gets
+the same scrutiny as one that points at it. In the README beside its sibling.

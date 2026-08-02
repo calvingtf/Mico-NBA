@@ -422,6 +422,14 @@ denominator it was being measured against.
 > **Standing rule.** A metric at or below its null gets the same audit as one
 > that beats it. Failure is not self-certifying.
 
+> **Extended to inputs.** An input that constrains the sim *away* from the
+> observed outcome deserves the same scrutiny as one that points at it. Two
+> confirmed deflating instances: the pooled null (#11) and a free-agent pool
+> built from the answer's own table, which excluded every actual re-signee
+> from the market and hid for three milestones (entries 43/45). An error that
+> lowers a result survives because failure reads as a system problem rather
+> than a measurement problem.
+
 
 ### The power rule
 

@@ -27,7 +27,13 @@ import sys
 #: EXTERNAL-acquisition list against actuals that were mostly retentions - and
 #: retentions are outside that planner's pool by construction, so the recall
 #: ceiling was 1/6 before the metric ran. The name now says what is measured.
-SCORED_OUTPUTS = ("suitor_won", "external_acquisition_overlap", "conditionals_fire")
+SCORED_OUTPUTS = ("suitor_won", "conditionals_fire")
+
+#: Retired at entry 45: its recall ceiling is 1/6 under ANY sound
+#: freeze-computable pool - the expiry-based repair produced a pool identical
+#: to the leaky one on this scenario - so the metric cannot register success
+#: and is kept only as a diagnostic print, not a score.
+RETIRED_OUTPUTS = ("external_acquisition_overlap",)
 
 
 def main() -> int:
