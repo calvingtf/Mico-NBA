@@ -1,0 +1,1617 @@
+{
+  "all_arrivals": {
+    "proposed": 115,
+    "actual": 128,
+    "hits": 1,
+    "recall": 0.0078125,
+    "precision": 0.008695652173913044
+  },
+  "scores": [
+    {
+      "team": "ATL",
+      "proposed": [
+        "djurini01",
+        "houstca01",
+        "nfalyda01",
+        "reathdu01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "BKN",
+      "proposed": [
+        "agbajoc01",
+        "bufkiko01",
+        "claxtni01",
+        "highsha01",
+        "johnske07"
+      ],
+      "actual": []
+    },
+    {
+      "team": "BOS",
+      "proposed": [
+        "bantoda01",
+        "bassech01",
+        "davisjd01",
+        "shulgma01",
+        "tonjejo01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "CHA",
+      "proposed": [
+        "branhma01",
+        "bridgmi02",
+        "conlemi01",
+        "smithni01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "CHI",
+      "proposed": [
+        "carteje01",
+        "gueyemo01",
+        "iveyja01",
+        "richani01",
+        "sextoco01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "CLE",
+      "proposed": [],
+      "actual": []
+    },
+    {
+      "team": "DAL",
+      "proposed": [
+        "baglema01",
+        "johnsaj01",
+        "jonesty01",
+        "mcgeeja01",
+        "nembhry01",
+        "poweldw01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "DEN",
+      "proposed": [
+        "brownbr01",
+        "hardati02"
+      ],
+      "actual": []
+    },
+    {
+      "team": "DET",
+      "proposed": [
+        "durenja01",
+        "harrito02",
+        "jonesis01",
+        "klintbo01",
+        "leverca01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "GSW",
+      "proposed": [
+        "curryse01",
+        "georgpa01",
+        "grantje01"
+      ],
+      "actual": [
+        "bassech01"
+      ]
+    },
+    {
+      "team": "HOU",
+      "proposed": [
+        "finnedo01",
+        "greenje02",
+        "holidaa01",
+        "okogijo01",
+        "moranja01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "IND",
+      "proposed": [
+        "bradlto01",
+        "brownko01",
+        "jacksqu01",
+        "joneska03"
+      ],
+      "actual": []
+    },
+    {
+      "team": "LAC",
+      "proposed": [
+        "baldwpa01",
+        "bogdabo01",
+        "collijo01",
+        "mathube01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "LAL",
+      "proposed": [
+        "hachiru01",
+        "hayesja02",
+        "kennalu01",
+        "klebima01",
+        "middlkh01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "MEM",
+      "proposed": [
+        "aldamsa01",
+        "anderky01",
+        "anthoco01",
+        "caldwke01",
+        "diakima01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "MIA",
+      "proposed": [
+        "jakucka01",
+        "jaqueja01",
+        "johnske10",
+        "powelno01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "MIL",
+      "proposed": [
+        "antetth01",
+        "harriga01",
+        "hayesni01",
+        "lillada01",
+        "livinch01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "MIN",
+      "proposed": [
+        "inglejo01",
+        "phillju01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "NOP",
+      "proposed": [
+        "looneke01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "NYK",
+      "proposed": [
+        "hukpoar01",
+        "robinmi01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "OKC",
+      "proposed": [
+        "dortlu01",
+        "joeis01",
+        "plumlma01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "ORL",
+      "proposed": [
+        "howarje01",
+        "wagnemo01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "PHI",
+      "proposed": [
+        "jamesle01",
+        "batesem01",
+        "broomjo01",
+        "drumman01",
+        "grimequ01"
+      ],
+      "actual": [
+        "jamesle01"
+      ]
+    },
+    {
+      "team": "PHX",
+      "proposed": [
+        "allengr01",
+        "bealbr01",
+        "coffeam01",
+        "liddeej01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "POR",
+      "proposed": [
+        "aytonde01",
+        "louzama01",
+        "murrakr01",
+        "ruperra01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "SAC",
+      "proposed": [
+        "cartede02",
+        "derozde01",
+        "eubandr01",
+        "hayeski01",
+        "jeffrda01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "SAS",
+      "proposed": [
+        "biyombi01",
+        "olynyke01",
+        "sochaje01",
+        "waterli01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "TOR",
+      "proposed": [
+        "bambamo01",
+        "fultzma01",
+        "keyty01",
+        "lawsoaj01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "UTA",
+      "proposed": [
+        "balllo01",
+        "bouchch01",
+        "chandke01",
+        "clarkjo01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "WAS",
+      "proposed": [
+        "exumda01",
+        "gillan01",
+        "hardyja02",
+        "jonesdi01"
+      ],
+      "actual": []
+    }
+  ],
+  "pooled": {
+    "proposed": 115,
+    "actual": 2,
+    "hits": 1,
+    "recall": 0.5,
+    "precision": 0.008695652173913044
+  },
+  "contested": {
+    "contested": 8,
+    "resolvable": 7,
+    "correct": 0,
+    "accuracy": 0.0,
+    "arbitrary": 0,
+    "rows": [
+      {
+        "player_id": "georgpa01",
+        "name": "Paul George",
+        "winner": "GSW",
+        "actual": "BOS",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "grantje01",
+        "name": "Jerami Grant",
+        "winner": "GSW",
+        "actual": "MEM",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "herroty01",
+        "name": "Tyler Herro",
+        "winner": "GSW",
+        "actual": "MIL",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "middlkh01",
+        "name": "Khris Middleton",
+        "winner": "GSW",
+        "actual": "WAS",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "moranja01",
+        "name": "Ja Morant",
+        "winner": "GSW",
+        "actual": "POR",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "randlju01",
+        "name": "Julius Randle",
+        "winner": "LAC",
+        "actual": "BKN",
+        "reason": "higher offer",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "roziete01",
+        "name": "Terry Rozier",
+        "winner": "MIA",
+        "actual": null,
+        "reason": "higher offer",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "simonan01",
+        "name": "Anfernee Simons",
+        "winner": "CHI",
+        "actual": "PHI",
+        "reason": "higher offer",
+        "correct": false,
+        "resolvable": true
+      }
+    ]
+  },
+  "signs_elsewhere": {
+    "teams": {
+      "ATL": {
+        "team": "ATL",
+        "persona": "balanced-default",
+        "committed_start": 174362931,
+        "committed_end": 216578931,
+        "signed": [
+          "djurini01",
+          "houstca01",
+          "nfalyda01",
+          "reathdu01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Zaccharie Risacher",
+          "could no longer afford Gabe Vincent",
+          "could no longer afford Keaton Wallace"
+        ]
+      },
+      "BKN": {
+        "team": "BKN",
+        "persona": "balanced-default",
+        "committed_start": 96966504,
+        "committed_end": 219004450,
+        "signed": [
+          "agbajoc01",
+          "bufkiko01",
+          "claxtni01",
+          "highsha01",
+          "johnske07"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Cam Thomas",
+          "could no longer afford Hunter Tyson",
+          "could no longer afford Dariq Whitehead",
+          "could no longer afford Ziaire Williams",
+          "could no longer afford Jalen Wilson"
+        ]
+      },
+      "BOS": {
+        "team": "BOS",
+        "persona": "balanced-default",
+        "committed_start": 124114485,
+        "committed_end": 215079000,
+        "signed": [
+          "bantoda01",
+          "bassech01",
+          "davisjd01",
+          "shulgma01",
+          "tonjejo01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Nikola Vu\u010devi\u0107",
+          "could no longer afford Amari Williams"
+        ]
+      },
+      "CHA": {
+        "team": "CHA",
+        "persona": "balanced-default",
+        "committed_start": 92965905,
+        "committed_end": 205534405,
+        "signed": [
+          "branhma01",
+          "bridgmi02",
+          "conlemi01",
+          "smithni01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Xavier Tillman"
+        ]
+      },
+      "CHI": {
+        "team": "CHI",
+        "persona": "balanced-default",
+        "committed_start": 101248153,
+        "committed_end": 217819000,
+        "signed": [
+          "carteje01",
+          "gueyemo01",
+          "iveyja01",
+          "richani01",
+          "sextoco01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Anfernee Simons",
+          "could no longer afford Guerschon Yabusele"
+        ]
+      },
+      "CLE": {
+        "team": "CLE",
+        "persona": "all-in",
+        "committed_start": 224235507,
+        "committed_end": 224235507,
+        "signed": [],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "DAL": {
+        "team": "DAL",
+        "persona": "balanced-default",
+        "committed_start": 143500616,
+        "committed_end": 221143000,
+        "signed": [
+          "baglema01",
+          "johnsaj01",
+          "jonesty01",
+          "mcgeeja01",
+          "nembhry01",
+          "poweldw01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Olivier-Maxence Prosper",
+          "could no longer afford Brandon Williams"
+        ]
+      },
+      "DEN": {
+        "team": "DEN",
+        "persona": "balanced-default",
+        "committed_start": 211336587,
+        "committed_end": 221686000,
+        "signed": [
+          "brownbr01",
+          "hardati02"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Jonas Valan\u010di\u016bnas",
+          "could no longer afford Peyton Watson"
+        ]
+      },
+      "DET": {
+        "team": "DET",
+        "persona": "balanced-default",
+        "committed_start": 112727818,
+        "committed_end": 221143000,
+        "signed": [
+          "durenja01",
+          "harrito02",
+          "jonesis01",
+          "klintbo01",
+          "leverca01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Dario \u0160ari\u0107",
+          "could no longer afford Marcus Sasser",
+          "could no longer afford Isaiah Stewart"
+        ]
+      },
+      "GSW": {
+        "team": "GSW",
+        "persona": "win-now-veteran",
+        "committed_start": 207940722,
+        "committed_end": 221686000,
+        "signed": [
+          "curryse01",
+          "georgpa01",
+          "grantje01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Tyler Herro",
+          "could no longer afford Khris Middleton",
+          "could no longer afford Ja Morant",
+          "could no longer afford Gary Payton",
+          "could no longer afford Quinten Post",
+          "could no longer afford Pat Spencer",
+          "could no longer afford Omer Yurtseven"
+        ]
+      },
+      "HOU": {
+        "team": "HOU",
+        "persona": "balanced-default",
+        "committed_start": 188091686,
+        "committed_end": 221686000,
+        "signed": [
+          "finnedo01",
+          "greenje02",
+          "holidaa01",
+          "okogijo01",
+          "moranja01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [
+          "moranja01"
+        ],
+        "notes": []
+      },
+      "IND": {
+        "team": "IND",
+        "persona": "balanced-default",
+        "committed_start": 193215974,
+        "committed_end": 221686000,
+        "signed": [
+          "bradlto01",
+          "brownko01",
+          "jacksqu01",
+          "joneska03"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Garrison Mathews",
+          "could no longer afford Mac McClung",
+          "could no longer afford Monte Morris",
+          "could no longer afford Micah Potter",
+          "could no longer afford Jeremiah Robinson-Earl",
+          "could no longer afford James Wiseman"
+        ]
+      },
+      "LAC": {
+        "team": "LAC",
+        "persona": "balanced-default",
+        "committed_start": 143796050,
+        "committed_end": 219065087,
+        "signed": [
+          "baldwpa01",
+          "bogdabo01",
+          "collijo01",
+          "mathube01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Julius Randle"
+        ]
+      },
+      "LAL": {
+        "team": "LAL",
+        "persona": "balanced-default",
+        "committed_start": 118117089,
+        "committed_end": 221686000,
+        "signed": [
+          "hachiru01",
+          "hayesja02",
+          "kennalu01",
+          "klebima01",
+          "middlkh01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [
+          "middlkh01"
+        ],
+        "notes": []
+      },
+      "MEM": {
+        "team": "MEM",
+        "persona": "balanced-default",
+        "committed_start": 55625338,
+        "committed_end": 205950800,
+        "signed": [
+          "aldamsa01",
+          "anderky01",
+          "anthoco01",
+          "caldwke01",
+          "diakima01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Taj Gibson",
+          "could no longer afford Eric Gordon",
+          "could no longer afford DeJon Jarreau",
+          "could no longer afford Georges Niang"
+        ]
+      },
+      "MIA": {
+        "team": "MIA",
+        "persona": "disciplined",
+        "committed_start": 191028772,
+        "committed_end": 221686000,
+        "signed": [
+          "jakucka01",
+          "jaqueja01",
+          "johnske10",
+          "powelno01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Terry Rozier",
+          "could no longer afford Kel'el Ware",
+          "could no longer afford Jahmir Young"
+        ]
+      },
+      "MIL": {
+        "team": "MIL",
+        "persona": "balanced-default",
+        "committed_start": 95059737,
+        "committed_end": 221686000,
+        "signed": [
+          "antetth01",
+          "harriga01",
+          "hayesni01",
+          "lillada01",
+          "livinch01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Vasilije Mici\u0107",
+          "could no longer afford Taurean Prince",
+          "could no longer afford Tyler Smith"
+        ]
+      },
+      "MIN": {
+        "team": "MIN",
+        "persona": "balanced",
+        "committed_start": 212064645,
+        "committed_end": 221686000,
+        "signed": [
+          "inglejo01",
+          "phillju01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Naz Reid"
+        ]
+      },
+      "NOP": {
+        "team": "NOP",
+        "persona": "balanced-default",
+        "committed_start": 192090918,
+        "committed_end": 207134918,
+        "signed": [
+          "looneke01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Jaden Springer",
+          "could no longer afford Dalen Terry"
+        ]
+      },
+      "NYK": {
+        "team": "NYK",
+        "persona": "balanced-default",
+        "committed_start": 213049914,
+        "committed_end": 221686000,
+        "signed": [
+          "hukpoar01",
+          "robinmi01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "OKC": {
+        "team": "OKC",
+        "persona": "balanced-default",
+        "committed_start": 204289992,
+        "committed_end": 221686000,
+        "signed": [
+          "dortlu01",
+          "joeis01",
+          "plumlma01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Aaron Wiggins"
+        ]
+      },
+      "ORL": {
+        "team": "ORL",
+        "persona": "balanced-default",
+        "committed_start": 213226229,
+        "committed_end": 221686000,
+        "signed": [
+          "howarje01",
+          "wagnemo01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "PHI": {
+        "team": "PHI",
+        "persona": "star-hunting",
+        "committed_start": 181121374,
+        "committed_end": 221686000,
+        "signed": [
+          "jamesle01",
+          "batesem01",
+          "broomjo01",
+          "drumman01",
+          "grimequ01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "signed LeBron James via non_taxpayer_mle at $15,044,000",
+          "could no longer afford Kyle Lowry",
+          "could no longer afford Kelly Oubre",
+          "could no longer afford Cameron Payne"
+        ]
+      },
+      "PHX": {
+        "team": "PHX",
+        "persona": "balanced-default",
+        "committed_start": 157762147,
+        "committed_end": 221143000,
+        "signed": [
+          "allengr01",
+          "bealbr01",
+          "coffeam01",
+          "liddeej01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Nassir Little",
+          "could no longer afford Royce O'Neale"
+        ]
+      },
+      "POR": {
+        "team": "POR",
+        "persona": "balanced-default",
+        "committed_start": 130977618,
+        "committed_end": 221686000,
+        "signed": [
+          "aytonde01",
+          "louzama01",
+          "murrakr01",
+          "ruperra01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Matisse Thybulle"
+        ]
+      },
+      "SAC": {
+        "team": "SAC",
+        "persona": "balanced-default",
+        "committed_start": 174569382,
+        "committed_end": 221686000,
+        "signed": [
+          "cartede02",
+          "derozde01",
+          "eubandr01",
+          "hayeski01",
+          "jeffrda01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Doug McDermott",
+          "could no longer afford Russell Westbrook"
+        ]
+      },
+      "SAS": {
+        "team": "SAS",
+        "persona": "balanced-default",
+        "committed_start": 174106876,
+        "committed_end": 217413022,
+        "signed": [
+          "biyombi01",
+          "olynyke01",
+          "sochaje01",
+          "waterli01"
+        ],
+        "lost_contests": [
+          "georgpa01",
+          "grantje01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "TOR": {
+        "team": "TOR",
+        "persona": "balanced-default",
+        "committed_start": 187962379,
+        "committed_end": 221198379,
+        "signed": [
+          "bambamo01",
+          "fultzma01",
+          "keyty01",
+          "lawsoaj01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Sandro Mamukelashvili",
+          "could no longer afford Jonathan Mogbo",
+          "could no longer afford Chris Paul",
+          "could no longer afford Garrett Temple"
+        ]
+      },
+      "UTA": {
+        "team": "UTA",
+        "persona": "balanced-default",
+        "committed_start": 148433879,
+        "committed_end": 209015000,
+        "signed": [
+          "balllo01",
+          "bouchch01",
+          "chandke01",
+          "clarkjo01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Andersson Garcia",
+          "could no longer afford Hayden Gray",
+          "could no longer afford Walker Kessler",
+          "could no longer afford Kevin Love",
+          "could no longer afford Bez Mbeng",
+          "could no longer afford Vince Williams"
+        ]
+      },
+      "WAS": {
+        "team": "WAS",
+        "persona": "balanced-default",
+        "committed_start": 158028292,
+        "committed_end": 221686000,
+        "signed": [
+          "exumda01",
+          "gillan01",
+          "hardyja02",
+          "jonesdi01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford D'Angelo Russell",
+          "could no longer afford Marcus Smart",
+          "could no longer afford Tristan Vukcevic",
+          "could no longer afford Jamir Watkins",
+          "could no longer afford Blake Wesley",
+          "could no longer afford Alondes Williams"
+        ]
+      }
+    },
+    "scheduler": {
+      "events": 113,
+      "wakes": 67,
+      "polled": 3390,
+      "saving": 0.98023598820059
+    }
+  },
+  "signs_with_blocker": {
+    "teams": {
+      "ATL": {
+        "team": "ATL",
+        "persona": "balanced-default",
+        "committed_start": 174362931,
+        "committed_end": 216578931,
+        "signed": [
+          "djurini01",
+          "houstca01",
+          "nfalyda01",
+          "reathdu01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Zaccharie Risacher",
+          "could no longer afford Gabe Vincent",
+          "could no longer afford Keaton Wallace"
+        ]
+      },
+      "BKN": {
+        "team": "BKN",
+        "persona": "balanced-default",
+        "committed_start": 96966504,
+        "committed_end": 219004450,
+        "signed": [
+          "agbajoc01",
+          "bufkiko01",
+          "claxtni01",
+          "highsha01",
+          "johnske07"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Cam Thomas",
+          "could no longer afford Hunter Tyson",
+          "could no longer afford Dariq Whitehead",
+          "could no longer afford Ziaire Williams",
+          "could no longer afford Jalen Wilson"
+        ]
+      },
+      "BOS": {
+        "team": "BOS",
+        "persona": "balanced-default",
+        "committed_start": 124114485,
+        "committed_end": 215079000,
+        "signed": [
+          "bantoda01",
+          "bassech01",
+          "davisjd01",
+          "shulgma01",
+          "tonjejo01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Nikola Vu\u010devi\u0107",
+          "could no longer afford Amari Williams"
+        ]
+      },
+      "CHA": {
+        "team": "CHA",
+        "persona": "balanced-default",
+        "committed_start": 92965905,
+        "committed_end": 205534405,
+        "signed": [
+          "branhma01",
+          "bridgmi02",
+          "conlemi01",
+          "smithni01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Xavier Tillman"
+        ]
+      },
+      "CHI": {
+        "team": "CHI",
+        "persona": "balanced-default",
+        "committed_start": 101248153,
+        "committed_end": 217819000,
+        "signed": [
+          "carteje01",
+          "gueyemo01",
+          "iveyja01",
+          "richani01",
+          "sextoco01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Anfernee Simons",
+          "could no longer afford Guerschon Yabusele"
+        ]
+      },
+      "CLE": {
+        "team": "CLE",
+        "persona": "all-in",
+        "committed_start": 224235507,
+        "committed_end": 224235507,
+        "signed": [],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "DAL": {
+        "team": "DAL",
+        "persona": "balanced-default",
+        "committed_start": 143500616,
+        "committed_end": 221143000,
+        "signed": [
+          "baglema01",
+          "johnsaj01",
+          "jonesty01",
+          "mcgeeja01",
+          "nembhry01",
+          "poweldw01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Olivier-Maxence Prosper",
+          "could no longer afford Brandon Williams"
+        ]
+      },
+      "DEN": {
+        "team": "DEN",
+        "persona": "balanced-default",
+        "committed_start": 211336587,
+        "committed_end": 221686000,
+        "signed": [
+          "brownbr01",
+          "hardati02"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Jonas Valan\u010di\u016bnas",
+          "could no longer afford Peyton Watson"
+        ]
+      },
+      "DET": {
+        "team": "DET",
+        "persona": "balanced-default",
+        "committed_start": 112727818,
+        "committed_end": 221143000,
+        "signed": [
+          "durenja01",
+          "harrito02",
+          "jonesis01",
+          "klintbo01",
+          "leverca01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Dario \u0160ari\u0107",
+          "could no longer afford Marcus Sasser",
+          "could no longer afford Isaiah Stewart"
+        ]
+      },
+      "GSW": {
+        "team": "GSW",
+        "persona": "win-now-veteran",
+        "committed_start": 207940722,
+        "committed_end": 221686000,
+        "signed": [
+          "jamesle01",
+          "curryse01",
+          "georgpa01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "signed LeBron James via taxpayer_mle at $6,064,000",
+          "could no longer afford Jerami Grant",
+          "could no longer afford Tyler Herro",
+          "could no longer afford Khris Middleton",
+          "could no longer afford Ja Morant",
+          "could no longer afford Gary Payton",
+          "could no longer afford Quinten Post",
+          "could no longer afford Pat Spencer",
+          "could no longer afford Omer Yurtseven"
+        ]
+      },
+      "HOU": {
+        "team": "HOU",
+        "persona": "balanced-default",
+        "committed_start": 188091686,
+        "committed_end": 221686000,
+        "signed": [
+          "finnedo01",
+          "greenje02",
+          "holidaa01",
+          "okogijo01",
+          "moranja01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [
+          "moranja01"
+        ],
+        "notes": []
+      },
+      "IND": {
+        "team": "IND",
+        "persona": "balanced-default",
+        "committed_start": 193215974,
+        "committed_end": 221686000,
+        "signed": [
+          "bradlto01",
+          "brownko01",
+          "jacksqu01",
+          "joneska03"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Garrison Mathews",
+          "could no longer afford Mac McClung",
+          "could no longer afford Monte Morris",
+          "could no longer afford Micah Potter",
+          "could no longer afford Jeremiah Robinson-Earl",
+          "could no longer afford James Wiseman"
+        ]
+      },
+      "LAC": {
+        "team": "LAC",
+        "persona": "balanced-default",
+        "committed_start": 143796050,
+        "committed_end": 219065087,
+        "signed": [
+          "baldwpa01",
+          "bogdabo01",
+          "collijo01",
+          "mathube01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Julius Randle"
+        ]
+      },
+      "LAL": {
+        "team": "LAL",
+        "persona": "balanced-default",
+        "committed_start": 118117089,
+        "committed_end": 221686000,
+        "signed": [
+          "hachiru01",
+          "hayesja02",
+          "kennalu01",
+          "klebima01",
+          "middlkh01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [
+          "middlkh01"
+        ],
+        "notes": []
+      },
+      "MEM": {
+        "team": "MEM",
+        "persona": "balanced-default",
+        "committed_start": 55625338,
+        "committed_end": 205950800,
+        "signed": [
+          "aldamsa01",
+          "anderky01",
+          "anthoco01",
+          "caldwke01",
+          "diakima01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Taj Gibson",
+          "could no longer afford Eric Gordon",
+          "could no longer afford DeJon Jarreau",
+          "could no longer afford Georges Niang"
+        ]
+      },
+      "MIA": {
+        "team": "MIA",
+        "persona": "disciplined",
+        "committed_start": 191028772,
+        "committed_end": 221686000,
+        "signed": [
+          "jakucka01",
+          "jaqueja01",
+          "johnske10",
+          "powelno01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Terry Rozier",
+          "could no longer afford Kel'el Ware",
+          "could no longer afford Jahmir Young"
+        ]
+      },
+      "MIL": {
+        "team": "MIL",
+        "persona": "balanced-default",
+        "committed_start": 95059737,
+        "committed_end": 221686000,
+        "signed": [
+          "antetth01",
+          "harriga01",
+          "hayesni01",
+          "lillada01",
+          "livinch01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Vasilije Mici\u0107",
+          "could no longer afford Taurean Prince",
+          "could no longer afford Tyler Smith"
+        ]
+      },
+      "MIN": {
+        "team": "MIN",
+        "persona": "balanced",
+        "committed_start": 212064645,
+        "committed_end": 221686000,
+        "signed": [
+          "inglejo01",
+          "phillju01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Naz Reid"
+        ]
+      },
+      "NOP": {
+        "team": "NOP",
+        "persona": "balanced-default",
+        "committed_start": 192090918,
+        "committed_end": 207134918,
+        "signed": [
+          "looneke01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Jaden Springer",
+          "could no longer afford Dalen Terry"
+        ]
+      },
+      "NYK": {
+        "team": "NYK",
+        "persona": "balanced-default",
+        "committed_start": 213049914,
+        "committed_end": 221686000,
+        "signed": [
+          "hukpoar01",
+          "robinmi01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "OKC": {
+        "team": "OKC",
+        "persona": "balanced-default",
+        "committed_start": 204289992,
+        "committed_end": 221686000,
+        "signed": [
+          "dortlu01",
+          "joeis01",
+          "plumlma01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Aaron Wiggins"
+        ]
+      },
+      "ORL": {
+        "team": "ORL",
+        "persona": "balanced-default",
+        "committed_start": 213226229,
+        "committed_end": 221686000,
+        "signed": [
+          "howarje01",
+          "wagnemo01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "PHI": {
+        "team": "PHI",
+        "persona": "star-hunting",
+        "committed_start": 181121374,
+        "committed_end": 221686000,
+        "signed": [
+          "batesem01",
+          "broomjo01",
+          "drumman01",
+          "grimequ01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Kyle Lowry",
+          "could no longer afford Kelly Oubre",
+          "could no longer afford Cameron Payne"
+        ]
+      },
+      "PHX": {
+        "team": "PHX",
+        "persona": "balanced-default",
+        "committed_start": 157762147,
+        "committed_end": 221143000,
+        "signed": [
+          "allengr01",
+          "bealbr01",
+          "coffeam01",
+          "liddeej01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Nassir Little",
+          "could no longer afford Royce O'Neale"
+        ]
+      },
+      "POR": {
+        "team": "POR",
+        "persona": "balanced-default",
+        "committed_start": 130977618,
+        "committed_end": 221686000,
+        "signed": [
+          "aytonde01",
+          "louzama01",
+          "murrakr01",
+          "ruperra01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Matisse Thybulle"
+        ]
+      },
+      "SAC": {
+        "team": "SAC",
+        "persona": "balanced-default",
+        "committed_start": 174569382,
+        "committed_end": 221686000,
+        "signed": [
+          "cartede02",
+          "derozde01",
+          "eubandr01",
+          "hayeski01",
+          "jeffrda01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Doug McDermott",
+          "could no longer afford Russell Westbrook"
+        ]
+      },
+      "SAS": {
+        "team": "SAS",
+        "persona": "balanced-default",
+        "committed_start": 174106876,
+        "committed_end": 217413022,
+        "signed": [
+          "biyombi01",
+          "olynyke01",
+          "sochaje01",
+          "waterli01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "TOR": {
+        "team": "TOR",
+        "persona": "balanced-default",
+        "committed_start": 187962379,
+        "committed_end": 221198379,
+        "signed": [
+          "bambamo01",
+          "fultzma01",
+          "keyty01",
+          "lawsoaj01"
+        ],
+        "lost_contests": [
+          "georgpa01"
+        ],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Sandro Mamukelashvili",
+          "could no longer afford Jonathan Mogbo",
+          "could no longer afford Chris Paul",
+          "could no longer afford Garrett Temple"
+        ]
+      },
+      "UTA": {
+        "team": "UTA",
+        "persona": "balanced-default",
+        "committed_start": 148433879,
+        "committed_end": 209015000,
+        "signed": [
+          "balllo01",
+          "bouchch01",
+          "chandke01",
+          "clarkjo01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Andersson Garcia",
+          "could no longer afford Hayden Gray",
+          "could no longer afford Walker Kessler",
+          "could no longer afford Kevin Love",
+          "could no longer afford Bez Mbeng",
+          "could no longer afford Vince Williams"
+        ]
+      },
+      "WAS": {
+        "team": "WAS",
+        "persona": "balanced-default",
+        "committed_start": 158028292,
+        "committed_end": 221686000,
+        "signed": [
+          "exumda01",
+          "gillan01",
+          "hardyja02",
+          "jonesdi01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford D'Angelo Russell",
+          "could no longer afford Marcus Smart",
+          "could no longer afford Tristan Vukcevic",
+          "could no longer afford Jamir Watkins",
+          "could no longer afford Blake Wesley",
+          "could no longer afford Alondes Williams"
+        ]
+      }
+    },
+    "scheduler": {
+      "events": 112,
+      "wakes": 53,
+      "polled": 3360,
+      "saving": 0.9842261904761904
+    }
+  }
+}

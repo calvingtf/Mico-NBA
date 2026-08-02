@@ -1,0 +1,355 @@
+{
+  "all_arrivals": {
+    "proposed": 14,
+    "actual": 11,
+    "hits": 2,
+    "recall": 0.18181818181818182,
+    "precision": 0.14285714285714285
+  },
+  "scores": [
+    {
+      "team": "GSW",
+      "proposed": [
+        "caldwke01",
+        "curryse01",
+        "derozde01"
+      ],
+      "actual": [
+        "bassech01"
+      ]
+    },
+    {
+      "team": "MIA",
+      "proposed": [
+        "johnske10",
+        "klebima01",
+        "valanjo01",
+        "youngja05"
+      ],
+      "actual": []
+    },
+    {
+      "team": "MIN",
+      "proposed": [
+        "inglejo01",
+        "iveyja01"
+      ],
+      "actual": []
+    },
+    {
+      "team": "CLE",
+      "proposed": [],
+      "actual": []
+    },
+    {
+      "team": "PHI",
+      "proposed": [
+        "jamesle01",
+        "batesem01",
+        "lowryky01",
+        "payneca01",
+        "simonan01"
+      ],
+      "actual": [
+        "jamesle01"
+      ]
+    }
+  ],
+  "pooled": {
+    "proposed": 14,
+    "actual": 2,
+    "hits": 1,
+    "recall": 0.5,
+    "precision": 0.07142857142857142
+  },
+  "contested": {
+    "contested": 8,
+    "resolvable": 1,
+    "correct": 0,
+    "accuracy": 0.0,
+    "arbitrary": 0,
+    "rows": [
+      {
+        "player_id": "caldwke01",
+        "name": "Kentavious Caldwell-Pope",
+        "winner": "GSW",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "derozde01",
+        "name": "DeMar DeRozan",
+        "winner": "GSW",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "klebima01",
+        "name": "Maxi Kleber",
+        "winner": "MIA",
+        "actual": null,
+        "reason": "higher offer",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "olynyke01",
+        "name": "Kelly Olynyk",
+        "winner": "GSW",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "roziete01",
+        "name": "Terry Rozier",
+        "winner": "GSW",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "simonan01",
+        "name": "Anfernee Simons",
+        "winner": "GSW",
+        "actual": "PHI",
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": true
+      },
+      {
+        "player_id": "valanjo01",
+        "name": "Jonas Valan\u010di\u016bnas",
+        "winner": "MIA",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      },
+      {
+        "player_id": "vincega01",
+        "name": "Gabe Vincent",
+        "winner": "GSW",
+        "actual": null,
+        "reason": "clearly stronger roster",
+        "correct": false,
+        "resolvable": false
+      }
+    ]
+  },
+  "signs_elsewhere": {
+    "teams": {
+      "GSW": {
+        "team": "GSW",
+        "persona": "win-now-veteran",
+        "committed_start": 207940722,
+        "committed_end": 221686000,
+        "signed": [
+          "caldwke01",
+          "curryse01",
+          "derozde01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "could no longer afford Kelly Olynyk",
+          "could no longer afford Gary Payton",
+          "could no longer afford Terry Rozier",
+          "could no longer afford Anfernee Simons",
+          "could no longer afford Pat Spencer",
+          "could no longer afford Gabe Vincent",
+          "could no longer afford Omer Yurtseven"
+        ]
+      },
+      "MIA": {
+        "team": "MIA",
+        "persona": "disciplined",
+        "committed_start": 191028772,
+        "committed_end": 221686000,
+        "signed": [
+          "johnske10",
+          "klebima01",
+          "valanjo01",
+          "youngja05"
+        ],
+        "lost_contests": [
+          "caldwke01",
+          "derozde01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "MIN": {
+        "team": "MIN",
+        "persona": "balanced",
+        "committed_start": 212064645,
+        "committed_end": 221686000,
+        "signed": [
+          "inglejo01",
+          "iveyja01"
+        ],
+        "lost_contests": [
+          "caldwke01",
+          "derozde01",
+          "klebima01",
+          "valanjo01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "CLE": {
+        "team": "CLE",
+        "persona": "all-in",
+        "committed_start": 224235507,
+        "committed_end": 224235507,
+        "signed": [],
+        "lost_contests": [
+          "caldwke01",
+          "derozde01",
+          "klebima01",
+          "valanjo01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "PHI": {
+        "team": "PHI",
+        "persona": "star-hunting",
+        "committed_start": 181121374,
+        "committed_end": 221686000,
+        "signed": [
+          "jamesle01",
+          "batesem01",
+          "lowryky01",
+          "payneca01",
+          "simonan01"
+        ],
+        "lost_contests": [
+          "caldwke01",
+          "derozde01",
+          "klebima01"
+        ],
+        "cascade": [
+          "simonan01"
+        ],
+        "notes": [
+          "signed LeBron James via non_taxpayer_mle at $15,044,000"
+        ]
+      }
+    },
+    "scheduler": {
+      "events": 13,
+      "wakes": 17,
+      "polled": 65,
+      "saving": 0.7384615384615385
+    }
+  },
+  "signs_with_blocker": {
+    "teams": {
+      "GSW": {
+        "team": "GSW",
+        "persona": "win-now-veteran",
+        "committed_start": 207940722,
+        "committed_end": 221686000,
+        "signed": [
+          "jamesle01",
+          "caldwke01",
+          "curryse01"
+        ],
+        "lost_contests": [],
+        "cascade": [],
+        "notes": [
+          "signed LeBron James via taxpayer_mle at $6,064,000",
+          "could no longer afford DeMar DeRozan",
+          "could no longer afford Kelly Olynyk",
+          "could no longer afford Gary Payton",
+          "could no longer afford Terry Rozier",
+          "could no longer afford Anfernee Simons",
+          "could no longer afford Pat Spencer",
+          "could no longer afford Gabe Vincent",
+          "could no longer afford Omer Yurtseven"
+        ]
+      },
+      "MIA": {
+        "team": "MIA",
+        "persona": "disciplined",
+        "committed_start": 191028772,
+        "committed_end": 221686000,
+        "signed": [
+          "johnske10",
+          "klebima01",
+          "valanjo01",
+          "youngja05"
+        ],
+        "lost_contests": [
+          "caldwke01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "MIN": {
+        "team": "MIN",
+        "persona": "balanced",
+        "committed_start": 212064645,
+        "committed_end": 221686000,
+        "signed": [
+          "inglejo01",
+          "iveyja01"
+        ],
+        "lost_contests": [
+          "caldwke01",
+          "klebima01",
+          "valanjo01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "CLE": {
+        "team": "CLE",
+        "persona": "all-in",
+        "committed_start": 224235507,
+        "committed_end": 224235507,
+        "signed": [],
+        "lost_contests": [
+          "caldwke01",
+          "klebima01",
+          "valanjo01"
+        ],
+        "cascade": [],
+        "notes": []
+      },
+      "PHI": {
+        "team": "PHI",
+        "persona": "star-hunting",
+        "committed_start": 181121374,
+        "committed_end": 221143000,
+        "signed": [
+          "batesem01",
+          "lowryky01",
+          "payneca01",
+          "simonan01"
+        ],
+        "lost_contests": [
+          "caldwke01",
+          "klebima01"
+        ],
+        "cascade": [
+          "simonan01"
+        ],
+        "notes": []
+      }
+    },
+    "scheduler": {
+      "events": 12,
+      "wakes": 13,
+      "polled": 60,
+      "saving": 0.7833333333333333
+    }
+  }
+}

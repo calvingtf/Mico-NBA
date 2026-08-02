@@ -105,6 +105,20 @@ PERSONAS = {
 #: service. Used for pool members whose service is not separately sourced.
 MINIMUM_CAP_HIT_TIER = 2
 
+#: The 25 unscored teams share one persona, and that is a stated
+#: simplification, not an oversight: the 5-vs-30 comparison is scored on the
+#: five teams whose personas are unchanged, so the 25 are *competition*, and
+#: giving them one persona measures "more competitors", not "diverse
+#: competitors". Entry 23 (personas may be text the model recites) caveats
+#: any stronger design anyway.
+DEFAULT_PERSONA = GMPersona("balanced-default", risk_tolerance=0.5,
+                            win_now_horizon=2, asset_hoarding=0.5)
+
+
+def persona_for(team: str) -> GMPersona:
+    return PERSONAS.get(team, DEFAULT_PERSONA)
+
+
 SERVICE_YEARS = {
     "greendr01": 14, "horfoal01": 19, "porzikr01": 11,
     "bassech01": 2, "meltode01": 8, "jamesle01": 23,
@@ -413,7 +427,7 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731):
     all_added = set().union(*added.values())
     states = {t: league.freeze_state(t, added[t]) for t in TEAMS}
     results = {
-        t: TeamResult(t, PERSONAS[t].label,
+        t: TeamResult(t, persona_for(t).label,
                       states[t].committed_salary, states[t].committed_salary)
         for t in TEAMS
     }
@@ -701,6 +715,13 @@ def contested_accuracy(contests, league):
     }
 
 
+def _all_teams() -> tuple[str, ...]:
+    import csv as _csv
+    path = Path(__file__).resolve().parents[1] / "data" / "snapshots" / "bbref-2025-26" / "contracts.csv"
+    with path.open(encoding="utf-8", newline="") as handle:
+        return tuple(sorted({r["team_id"] for r in _csv.DictReader(handle)}))
+
+
 def main(argv=None) -> int:
     from mironba.sim.tick import use_utf8_console
     from mironba.world.evidence import load_ledger
@@ -712,7 +733,17 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Multi-team branch simulation.")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--seed", type=int, default=20260731)
+    parser.add_argument("--teams", choices=("five", "league"), default="five",
+                        help="five = the M5 scored teams; league = all 30. "
+                        "Per-event relevance stays derived either way: a team "
+                        "contends for a player only where feasible_signings() "
+                        "finds it a legal route, so the LeBron-style events "
+                        "fan out to the teams the hard filter admits, while "
+                        "every team still plans its own offseason.")
     args = parser.parse_args(argv)
+    if args.teams == "league":
+        global TEAMS
+        TEAMS = _all_teams()
 
     league = LeagueState.load()
     commitments = load_ledger(DOCS, BACKTEST, FREEZE).open_conditionals()

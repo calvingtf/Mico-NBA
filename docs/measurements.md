@@ -1585,3 +1585,59 @@ Same family as a check certifying the wrong surface: **a diagnosis certifying a
 plausible mechanism while the actual reasons sat unread in the scan output.**
 Audit text in sim/branch.py corrected; entries 33/35 stand as written, wrong
 mechanism and all, per the no-rewriting rule - this entry is the correction.
+
+---
+
+## 39. The soft filter does not filter, and that is the finding
+
+Written blind, committed before first run, threshold computed from precedent
+rather than chosen — because the author knows the reported suitor list, and any
+hand-picked number could have been tuned to it undetectably.
+
+**The measurement:** 43 star-priced veteran signings (10+ years of service,
+prior salary >= 20% of that season's cap) across nine offseasons, 3 candidates
+dropped for unresolvable service years.
+
+| precedent floor | median | max |
+|---|---|---|
+| **0.171** | 0.561 | 0.793 |
+
+The floor is the 2024-25 Pistons signing a star-priced veteran off a .171
+season. **When the worst team in the sample has done it, no record excludes
+anyone**: the soft filter admits 30/30. Per the standing rule it is reported as
+not filtering rather than tuned until it looks selective.
+
+| filter | admits | reported suitors excluded |
+|---|---|---|
+| hard (dated + expiry) | 24/30 | CLE (roster as-it-stands) |
+| soft (record precedent) | **30/30** | none |
+| both | 24/30 | CLE |
+
+Combined with the hard filter's July result (24/30), the two-round conclusion
+is symmetric and real: **in July, neither cap feasibility nor record excludes
+teams from star-veteran pursuit.** Rebuilding teams sign star veterans;
+near-anyone can afford a minimum. Suitor identification at the moratorium is
+not derivable from constraints - it lives in reported interest, which is
+evidence, not derivation. Both filters stay, as documentation of that negative.
+
+## 40. The unread output: a new failure family
+
+Entry 38 corrected the payroll story; this entry names what let it live. The
+signing solver's scan carries a ``blocked`` map whose values said **"roster is
+full"** for Philadelphia the entire time entries 33-35 were attributing the
+exclusion to payroll inflation. Nothing was miscomputed, mislabelled or
+wrongly scoped. **The diagnostic output existed, was correct, and was not
+read.**
+
+That is distinct from the wrong-surface family (a check certifying something
+other than its claim) and from scope mismatches (a number valid at one scope
+quoted at another). Here every mechanism worked. The failure was narrative:
+a plausible story arrived first, the excluded team was the expected one, and
+no one consulted the machine's own stated reasons.
+
+**Standing rule.** When a mechanism excludes, rejects or blocks, quote its
+stated reason in the report - not a paraphrase, not an inference from which
+inputs changed. If the mechanism does not expose a reason, that is a defect in
+the mechanism. The expiry method's ``ExpiryCall.reason``, the joins' miss
+samples and the solver's ``blocked`` map all exist so this rule is satisfiable;
+the failure was not consulting them.
