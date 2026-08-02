@@ -1945,3 +1945,45 @@ Repair deferred deliberately, like the pool repair before it: freeze_state is
 the next blind-commit candidate, and it is not patched while the number is on
 the table. Entry 41's GSW rows stand as written with this entry as their
 caveat.
+
+---
+
+## 48. freeze_state repaired: the prediction held to the dollar, and half the movers moved
+
+The rule, committed before it saw the numbers: a 2026-27 row stays in the
+freeze books unless a **pre-freeze signal** removes it - a dated post-freeze
+signing through the validated expiry rules, or a PRE-evidence option decline
+matched on typed subjects plus a declared verbal rule. Never by identity: the
+contaminating players were found via POST evidence, and a hand-list from the
+answer is the same leak reversed.
+
+**Per player, and by what signal:**
+
+| player | removed? | pre-freeze signal |
+|---|---|---|
+| Green | **yes** | GSW-01, the June 29 opt-out (PRE) |
+| Horford | no | none - stays, floor |
+| Porzingis | no | none - stays, floor |
+| Melton | no | none - stays, floor |
+
+**Prediction vs outcome:** committed **$180,262,151 - exact**. Tier OVER_CAP -
+exact. Roster 10 - exact. Reach Green-only - exact. non_taxpayer_mle opened,
+cap_space stayed closed - exact. **Residual floor: 3 players, $29,785,974**,
+in the books and stated.
+
+**The movers: half held.** Compositions moved - the freed $27.7M let sim-GSW
+add two signings (Post, Spencer) on top of its previous three; the other four
+scored teams are unchanged. The contested table did **not** move: same eight
+players, same winners, same 1 roster / 4 offer / 3 arbitrary, because GSW's
+contest offers were exception-scale under either payroll. Predicting "the
+contested table" as a mover was wrong, and the reason it was wrong is itself
+informative: the contamination bound GSW's *volume* of moves, not its *bids*.
+
+**Observed residual, noted not chased:** sim-GSW's new signing Quinten Post is
+recorded by POST evidence (GSW-18) as under contract with Memphis - a pool
+coverage gap where the structure snapshot lacks a row the evidence has.
+
+The input-circularity mirror (no sim input computable only with POST access)
+passed across all seven input packages on its first run, and the derived-facts
+registry now shows two repairs, one hurts-leak retired with its metric, and
+one cleaning entry - with freeze_state the last "mixed" resolved.
