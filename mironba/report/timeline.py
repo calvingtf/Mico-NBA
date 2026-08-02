@@ -244,8 +244,18 @@ def render(feed: Feed, width: int = 78) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("run", help="path to a run directory containing events.jsonl")
+    parser.add_argument("--backtest", default=None,
+                        help="render the named backtest's dated PRE-freeze "
+                        "interest above the feed, so a reader sees what was "
+                        "known when. Inputs, not predictions.")
     args = parser.parse_args(argv)
     use_utf8_stdout()
+    if args.backtest:
+        from mironba.report.evidence_view import load_lebron_ledger, render_known_text
+
+        ledger = load_lebron_ledger()
+        if ledger:
+            print(render_known_text(ledger))
     print(render(load_run(args.run)))
     return 0
 

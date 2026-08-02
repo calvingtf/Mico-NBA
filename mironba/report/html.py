@@ -101,7 +101,44 @@ def _feed_html(feed: Feed) -> str:
     return '<ol class="feed">' + "".join(items) + "</ol>"
 
 
-def _branch_html(name: str, feed: Feed, unfalsifiable: bool) -> str:
+def _conditionals_html(conds: list[dict]) -> str:
+    if not conds:
+        return ""
+    items = []
+    for c in conds:
+        status = ("<span class=\"tag actual\">FIRED in this branch</span>"
+                  if c["fired"] else
+                  "<span class=\"tag\">did not fire here</span>")
+        items.append(
+            "<li>" + status + f"<br><strong>{e(c['subject'])}</strong> - "
+            f"{e(c['condition'])}<br>{e(c['commitment'])}"
+            f"<br><span class=\"meta\">{e(c['date'])} &middot; "
+            f"<a href=\"{e(c['url'])}\">{e(c['source'])}</a> "
+            f"&middot; {e(c['id'])}</span></li>"
+        )
+    return ("<p class=\"meta\">Conditional commitments - the reported facts "
+            "that make the branches differ:</p><ul>" + "".join(items) + "</ul>")
+
+
+def _known_html(rows: list[dict]) -> str:
+    if not rows:
+        return ""
+    items = []
+    for r in rows:
+        items.append(
+            f"<li><span class=\"meta\">{e(r['date'])}</span> "
+            f"<strong>{e(r['team'])}</strong> reported in on "
+            f"{e(r['player'])} <span class=\"meta\">&middot; "
+            f"<a href=\"{e(r['url'])}\">{e(r['source'])}</a> &middot; "
+            f"{e(r['id'])} &larr; {e(r['anchors'])}</span></li>"
+        )
+    from mironba.report.evidence_view import INPUT_MARKER
+    return ("<h2>Known at the freeze</h2><div class=\"band\">"
+            f"<strong>Inputs, not predictions.</strong> {e(INPUT_MARKER)}"
+            "<ul>" + "".join(items) + "</ul></div>")
+
+
+def _branch_html(name: str, feed: Feed, unfalsifiable: bool, conds=None) -> str:
     tag = (
         '<span class="tag cf">counterfactual &mdash; unfalsifiable, never scored</span>'
         if unfalsifiable
@@ -117,6 +154,7 @@ def _branch_html(name: str, feed: Feed, unfalsifiable: bool) -> str:
         f"<h3>{e(name)}{tag}</h3>{note}"
         f'<p class="meta">{len(feed.entries)} events, '
         f"<strong>{len(feed.refusals)}</strong> refusals or failures</p>"
+        f"{_conditionals_html(conds or [])}"
         f"{_feed_html(feed)}</div>"
     )
 
@@ -127,6 +165,7 @@ def render_html(
     report: Report | None = None,
     unfalsifiable: tuple[str, ...] = (),
     headline: dict | None = None,
+    ledger=None,
 ) -> str:
     numbers = headline or {
         "Deadline planner precision": "1 matched proposal in 421",
@@ -153,9 +192,14 @@ def render_html(
         "<h2>Branches</h2>",
         '<div class="cols">',
     ]
+    from mironba.report.evidence_view import branch_conditionals, known_at_freeze
+
     for name, feed in branches.items():
-        body.append(_branch_html(name, feed, name in unfalsifiable))
+        conds = branch_conditionals(ledger, name) if ledger else []
+        body.append(_branch_html(name, feed, name in unfalsifiable, conds))
     body.append("</div>")
+    if ledger:
+        body.insert(body.index("<h2>Branches</h2>"), _known_html(known_at_freeze(ledger)))
 
     if report is not None:
         body.append("<h2>Report</h2>")
@@ -231,8 +275,12 @@ def main(argv=None) -> int:
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    from mironba.report.evidence_view import load_lebron_ledger
+
+    ledger = load_lebron_ledger()
     out.write_text(
-        render_html(args.title, branches, report, unfalsifiable), encoding="utf-8"
+        render_html(args.title, branches, report, unfalsifiable, ledger=ledger),
+        encoding="utf-8",
     )
     print(f"  wrote {out}  ({out.stat().st_size:,} bytes, self-contained)")
     return 0

@@ -226,3 +226,76 @@ class TestHtmlIsSelfContained:
         page = render_html("t", {"b": build_feed(hostile)})
         assert "<script>alert" not in page
         assert "&lt;script&gt;" in page
+
+
+class TestEvidenceOnTheSurface:
+    """The news layer's one honest claim, rendered and enforced.
+
+    Not that it predicts - that every input is dated, sourced, anchored, and
+    on the correct side of the freeze. Interest is displayed as an input, the
+    branch fork shows which commitments fired where, and POST rows never reach
+    a surface that renders inputs.
+    """
+
+    @pytest.fixture(scope="class")
+    def ledger(self):
+        from mironba.report.evidence_view import load_lebron_ledger
+
+        ledger = load_lebron_ledger()
+        if ledger is None:
+            pytest.skip("lebron-2026 ledger not present")
+        return ledger
+
+    def test_known_rows_are_pre_dated_sourced_anchored(self, ledger):
+        from mironba.report.evidence_view import known_at_freeze
+
+        rows = known_at_freeze(ledger)
+        assert rows, "no PRE interest rows rendered"
+        for row in rows:
+            assert row["date"] <= "2026-07-06"
+            assert row["source"] and row["url"].startswith("http")
+            assert row["anchors"], f"{row['id']} rendered without its anchor"
+
+    def test_post_interest_never_reaches_the_surface(self, ledger):
+        """LBJ-06's narrowing is the answer; the surface renders inputs."""
+        from mironba.report.evidence_view import known_at_freeze
+
+        assert all(r["id"] not in ("RI-07", "RI-08", "RI-09")
+                   for r in known_at_freeze(ledger))
+
+    def test_the_declared_branch_rule_is_the_declared_rule(self):
+        from mironba.report.evidence_view import condition_fires_in
+
+        assert condition_fires_in("IF James signs with Golden State",
+                                  "signs_with_blocker")
+        assert not condition_fires_in("IF James signs with Golden State",
+                                      "signs_elsewhere")
+        assert condition_fires_in("IF James signs elsewhere", "signs_elsewhere")
+
+    def test_the_branch_fork_shows_fired_and_dormant(self, ledger):
+        from mironba.report.evidence_view import branch_conditionals
+
+        blocker = branch_conditionals(ledger, "signs_with_blocker")
+        actual = branch_conditionals(ledger, "signs_elsewhere")
+        assert any(c["fired"] for c in blocker)
+        assert any(not c["fired"] for c in blocker)
+        fired_map = {c["id"]: c["fired"] for c in blocker}
+        assert all(fired_map[c["id"]] != c["fired"] for c in actual), (
+            "a conditional fired in both branches - the fork is not a fork"
+        )
+
+    def test_html_marks_interest_as_input_with_provenance(self, ledger):
+        from mironba.report.evidence_view import known_at_freeze  # noqa: F401
+        from mironba.report.html import render_html
+        from mironba.report.timeline import build_feed
+
+        feed = build_feed([{"seq": 0, "ts": "", "type": "run.started",
+                            "actor": "system", "payload": {}}])
+        page = render_html("t", {"signs_elsewhere": feed,
+                                 "signs_with_blocker": feed},
+                           unfalsifiable=("signs_with_blocker",), ledger=ledger)
+        assert "Known at the freeze" in page
+        assert "retired as a scored metric" in page
+        assert "FIRED in this branch" in page and "did not fire here" in page
+        assert page.count("sports.yahoo.com") >= 2
+        assert "RI-07" not in page

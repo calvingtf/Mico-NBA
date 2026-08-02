@@ -338,6 +338,19 @@ would still lack the orthogonal features (positional need, contract timing,
 availability) named in the ranker section. The news ingest addresses the branch
 scenario, not the ranker.
 
+**Where the news layer stands.** It is complete for what it can establish at
+this scale: one metric with power - conditional commitments attaching to the
+branch matching their condition, 4 of 4 at n=4, **p=0.0625, suggestive and not
+significant**, the same threshold refused elsewhere in this project. Reaching
+significance is a scoped next step, not an open gap: conditional commitments
+curated from two or three more offseasons would put the same mechanism check
+past the line. The surface now renders the ledger it rests on - the branch
+fork shows which commitments fired in which world (the Green opt-out is the
+case that makes the two Golden State worlds differ), dated PRE-freeze interest
+appears above the feed marked as an input, and every rendered item carries its
+date, source link and anchor. That display *is* the claim: not prediction -
+provenance.
+
 ## Seven results that weren't
 
 Every headline number below survived at least one revision, and seven were
