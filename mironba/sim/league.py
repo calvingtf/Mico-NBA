@@ -342,10 +342,8 @@ DERIVED_FACTS = {
     "expiring_pool": dict(freeze_computable=True, direction="repair",
                           note="expiry-validated pool; residual occupy-bias "
                                "measured at ~0.6% false frees, stated"),
-    "project_wins": dict(freeze_computable=False, direction="helps",
-                         note="roster tiers for contested resolution are "
-                              "built from 2026-27 rosters - the resolver "
-                              "separates contenders using outcome rosters"),
+    "project_wins": dict(freeze_computable=True, direction="repair",
+                         note="repaired: tiers now come from dated presence + validated expiry at the freeze, not 2026-27 rosters. The eval import is Entry 45 records the leak; the repair commit records the pre-registered prediction"),
 }
 
 
@@ -644,9 +642,22 @@ def project_wins(league, states):
     strengths = {}
     rosters = {}
     for team in TEAMS:
+        # Freeze-computable roster: dated presence + validated expiry, not
+        # the 2026-27 outcome table. The docstring always said 'freeze
+        # roster'; the implementation read the answer. June-trade players
+        # inherit dated_roster's season-table team semantics - stated, not
+        # hidden. Prediction recorded in the repair commit, before running.
+        from mironba.world.contract_expiry import (
+            _july_signings, extends_into, year_source,
+        )
+        from mironba.world.dated_roster import roster_on
+        _src = year_source('2026-27')
+        _sig = _july_signings('2026-27', '2025-26')
+        _state = roster_on('2025-26', team, FREEZE)
         roster = [
-            r["player_id"] for r in league.contracts_2627
-            if r["team_id"] == team
+            pid for pid in _state.salaries
+            if extends_into(pid, team, '2025-26', FREEZE,
+                            _source=_src, _signings=_sig).occupies_slot
         ]
         rosters[team] = [
             by_name[norm(league.name(pid))]

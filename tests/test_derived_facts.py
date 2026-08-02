@@ -68,7 +68,7 @@ class TestEveryDerivationIsDeclared:
 
     def test_the_known_leaks_are_on_record(self):
         assert DERIVED_FACTS["free_agent_pool"]["direction"] == "hurts"
-        assert DERIVED_FACTS["project_wins"]["direction"] == "helps"
+        assert DERIVED_FACTS["project_wins"]["direction"] == "repair"
         assert DERIVED_FACTS["freeze_state"]["direction"] == "mixed"
 
     def test_the_repair_is_freeze_computable_and_the_leak_is_not(self):
