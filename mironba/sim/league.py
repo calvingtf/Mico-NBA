@@ -328,12 +328,12 @@ DERIVED_FACTS = {
                      note="ground truth. As eval target: allowed. As freeze-"
                           "state subtraction: cleaning, but misses re-signings "
                           "by definition (an arrival needs a team change)"),
-    "freeze_state": dict(freeze_computable=False, direction="mixed",
-                         note="'freeze' books are 2026-27 salaries minus "
-                              "arrivals - so every post-freeze RE-SIGNING "
-                              "(Green $27.7M et al.) is inside the freeze "
-                              "payroll. Embeds real capacity use: blocks the "
-                              "counterfactual spend it should be simulating"),
+    "freeze_state": dict(freeze_computable=True, direction="repair",
+                         note="repaired: coverage decided by the expiry "
+                              "machinery plus PRE-evidence option declines - "
+                              "never by identity from POST evidence. Residual "
+                              "floor: re-signings with no pre-freeze signal "
+                              "stay in, quantified at entry 47/48"),
     "free_agent_pool": dict(freeze_computable=False, direction="hurts",
                             note="excludes everyone holding a 2026-27 deal = "
                                  "every actual re-signee. Deflates acquisition "
@@ -393,10 +393,66 @@ class LeagueState:
             if r["team_id"] == team and self.team_2526.get(r["player_id"]) != team
         }
 
+    def _pre_freeze_option_declines(self) -> set[str]:
+        """Players whose PRE-freeze evidence records a declined option.
+
+        The one pre-freeze signal that can remove a later re-signing from the
+        freeze books: an opt-out dated before the freeze means the old deal
+        ended by the player's own pre-freeze act, whatever he signed later.
+        Read from the ledger's world_state() - the door the simulator may use -
+        and matched on typed subjects plus a declared verbal rule (the fact
+        contains "declines" and "option"), stated here because entry 44 is
+        what happens when matching goes undeclared. On the current corpus this
+        matches exactly one item, GSW-01.
+        """
+        if not hasattr(self, "_declines_cache"):
+            declines: set[str] = set()
+            try:
+                from mironba.eval.backtest import DOCS
+                from mironba.world.evidence import load_ledger
+                ledger = load_ledger(DOCS, BACKTEST, FREEZE)
+                for item in ledger.world_state():
+                    text = item.fact.lower()
+                    if "declines" in text and "option" in text:
+                        for subject in item.subjects:
+                            if subject and subject[-1].isdigit():
+                                declines.add(subject)
+            except Exception:  # noqa: BLE001 - no ledger, no removals
+                pass
+            self._declines_cache = declines
+        return self._declines_cache
+
+    def covered_at_freeze(self, pid: str, team: str) -> bool:
+        """Freeze-computable coverage: expiry machinery + pre-freeze opt-outs.
+
+        Conservative in the same direction as everything validated: a deal is
+        IN the freeze books unless a pre-freeze signal removes it - a dated
+        post-freeze signing (the leaked july-in-closing rows, via the expiry
+        rules) or a PRE-evidence option decline. Re-signings with neither
+        signal stay in, and that residual is reported as a floor, never
+        removed by identity: a hand-list built from POST evidence would be the
+        same leak in the other direction.
+        """
+        from mironba.world.contract_expiry import (
+            EXPIRED, _july_signings, extends_into, year_source,
+        )
+
+        if not hasattr(self, "_expiry_cache"):
+            self._expiry_cache = (
+                year_source("2026-27"), _july_signings("2026-27", "2025-26"),
+            )
+        source, signings = self._expiry_cache
+        if pid in self._pre_freeze_option_declines():
+            return False
+        call = extends_into(pid, team, "2025-26", FREEZE,
+                            _source=source, _signings=signings)
+        return call.verdict != EXPIRED
+
     def freeze_state(self, team: str, exclude: set[str]) -> TeamCapState:
         held = [
             r for r in self.contracts_2627
             if r["team_id"] == team and r["player_id"] not in exclude
+            and self.covered_at_freeze(r["player_id"], team)
         ]
         return TeamCapState(
             team_id=team, season=SEASON,
