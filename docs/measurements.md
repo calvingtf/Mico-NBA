@@ -1878,3 +1878,70 @@ error that lowers a result is not audited, because failure reads as a system
 problem rather than a measurement problem.** The standing rule extends to
 inputs: an input that constrains the sim away from the observed outcome gets
 the same scrutiny as one that points at it. In the README beside its sibling.
+
+---
+
+## 46. The prediction held: freeze tiers, and ARBITRARY rises from zero
+
+project_wins() said "freeze roster" and read the 2026-27 outcome table. The
+repair - tiers from dated presence + validated expiry at the freeze - was
+committed with a **pre-registered prediction**: at a July freeze nobody has
+signed yet, teams should look more alike than their outcome rosters do, and
+ARBITRARY should fire *more* than the recorded zero.
+
+| resolution reason | outcome tiers (entry 41) | freeze tiers |
+|---|---|---|
+| clearly stronger roster | 5 | **1** |
+| higher offer | 3 | 4 |
+| **arbitrary** | **0** | **3** |
+| contested total | 8 | 8 |
+
+**The prediction held.** And the leak's direction is now visible in the
+winners: with outcome tiers, Golden State - whose outcome roster contained all
+its real retentions - won five contests by "clearly stronger roster". With
+freeze tiers it wins one. The help-direction leak was handing the incumbent
+its contested wins.
+
+Third independent arrival at one conclusion: the resolver said "nothing
+available separates the offers" at entry 42; the suitor filters could not
+separate teams at entry 39; and now the repaired tiers cannot either. **Money
+and roster tier cannot separate contenders in July.** The contested-accuracy
+readout underlines it: 1 of 8 sim winners matches reality, and the one hit was
+itself resolved arbitrarily.
+
+Downstream of project_wins (item 3): a single consumer - resolve()'s
+projections - so the restated figures are exactly the contested table above
+and the signing compositions that cascade from it (three of the five scored
+teams' sets shift). Standing untouched: scheduler savings, the zero-LLM cost
+finding, suitor_won (it never used projections), the pooled backtest, the
+ranker, and every enumeration figure.
+
+## 47. freeze_state()'s direction, quantified: not mixed - hurts, and it flips a tier
+
+The one unresolved "mixed" row in the derivation table, measured. Post-freeze
+**re-signings** sit inside the "freeze" books because an arrival requires a
+team change and a re-signing makes none.
+
+| | as simmed | corrected (proven set) |
+|---|---|---|
+| GSW committed at "freeze" | $207,940,722 | **$150,476,177** |
+| GSW tier | OVER_CAP | **UNDER_CAP** |
+| GSW roster | 11 | 7 |
+
+**Four players, $57,464,545, one team proven** - Green, Horford, Porzingis,
+Melton, each anchored to a POST evidence item. Zero further leaked-row
+candidates. League-wide unleaked re-signings are undetectable case by case
+(the conservative rules call them "continuing deal"), so the proven set is a
+floor and GSW is exact only because its POST evidence names every retention.
+
+Direction, per affected figure - not "mixed": entry 41's GSW capacity figures
+are **hurt** (committed overstated by $57.5M, the "could no longer afford"
+notes fired against phantom commitments, and the scenario's own premise - the
+Green opt-out creating room - is erased from the books that are supposed to
+model it). The tier flip is qualitative: sim-GSW planned as an over-the-cap
+team while true-freeze GSW had cap room.
+
+Repair deferred deliberately, like the pool repair before it: freeze_state is
+the next blind-commit candidate, and it is not patched while the number is on
+the table. Entry 41's GSW rows stand as written with this entry as their
+caveat.

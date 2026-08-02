@@ -282,7 +282,13 @@ from. The two paths meet at the solver and nowhere else.
 
 What the run showed: adding 25 competitors changed the signing sets of **4 of
 the 5 scored teams** and moved **no scored metric** — the one hit is the
-stipulated branch premise in both configurations. **More agents is a product
+stipulated branch premise in both configurations. A later repair
+(entry 46) rebuilt the contested resolver's tiers from the *freeze* roster
+rather than 2026-27 outcome rosters, with the prediction committed first:
+teams should look more alike in July, so ARBITRARY should rise from zero. It
+did — 0 → 3 of 8, and the five contested wins the outcome rosters had handed
+Golden State vanished. Third independent arrival at the same conclusion:
+money and roster tier cannot separate contenders in July. **More agents is a product
 feature, not evidence of better forecasting**, and the measurements file says
 so in those words (entry 41).
 
