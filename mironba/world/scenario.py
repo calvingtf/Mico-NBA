@@ -84,6 +84,10 @@ class BranchScenario:
     next_season: str = ""
     #: Structured persona params per team; anything absent uses the default.
     personas: dict = field(default_factory=dict)
+    #: branch -> the team the subject lands on in that branch. This is the
+    #: BRANCH PREMISE - stipulated by the branch definition, excluded from
+    #: scoring - declared here so no simulator hardcodes a destination.
+    branch_premises: dict = field(default_factory=dict)
     #: Stipulated seed only: the asserted event, validated by rules/ first.
     stipulation: dict = field(default_factory=dict)
     evidence_dir: Path = field(default=None)  # type: ignore[assignment]
@@ -108,8 +112,10 @@ class BranchScenario:
                 f"{self.id}: actual_branch {self.actual_branch!r} is not one "
                 f"of the declared branches {self.branches}"
             )
-        if not self.subjects or not self.scored_teams:
-            raise ScenarioError(f"{self.id}: subjects and scored_teams required")
+        if not self.subjects:
+            raise ScenarioError(f"{self.id}: subjects required")
+        if self.kind != "stipulated" and not self.scored_teams:
+            raise ScenarioError(f"{self.id}: scored_teams required")
         if self.evidence_dir is None:
             object.__setattr__(self, "evidence_dir", EVIDENCE_ROOT / self.id)
 
@@ -175,5 +181,6 @@ def load_scenario(scenario_id: str) -> BranchScenario:
         condition_markers=dict(raw.get("condition_markers") or {}),
         next_season=raw.get("next_season", ""),
         personas=dict(raw.get("personas") or {}),
+        branch_premises=dict(raw.get("branch_premises") or {}),
         stipulation=dict(raw.get("stipulation") or {}),
     )

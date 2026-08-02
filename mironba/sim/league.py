@@ -85,7 +85,7 @@ PRIOR_SEASON = ""
 def bind_scenario(scenario) -> None:
     """Bind every scenario-specific module global from one declared object."""
     global SC, DOCS, ARRIVALS, SUBJECT, BLOCKER_BRANCH, ACTUAL_BRANCH, SERVICE_YEARS
-    global PRIOR_SEASON, SEASON, FREEZE, BACKTEST, TEAMS, PERSONAS
+    global PRIOR_SEASON, SEASON, FREEZE, BACKTEST, TEAMS, PERSONAS, BRANCH_PREMISES
     from mironba.sim.arrivals import load_arrivals
 
     SC = scenario
@@ -99,10 +99,20 @@ def bind_scenario(scenario) -> None:
     FREEZE = scenario.freeze
     BACKTEST = scenario.id
     TEAMS = tuple(scenario.scored_teams)
-    PERSONAS = {}
+    PERSONAS = {
+        team: GMPersona(**params) for team, params in scenario.personas.items()
+    }
+    SERVICE_YEARS = {
+        r["player_id"]: int(r["years"])
+        for r in scenario._data_rows("service-years.csv")
+    }
+    BRANCH_PREMISES = dict(scenario.branch_premises)
+
+
 SEASON = None
 FREEZE = None
 BACKTEST = None
+BRANCH_PREMISES: dict = {}
 
 #: The teams reported as being in the LeBron field, plus the one that won it.
 #: Not an arbitrary five — evidence item LBJ-04 names exactly these.
@@ -116,18 +126,7 @@ TEAMS = ()
 #: input in this module. They are set from each team's observable cap behaviour
 #: at the freeze rather than from reputation: a team already past the second
 #: apron has revealed a high win-now weight, and one with room has not.
-PERSONAS = {
-    "GSW": GMPersona("win-now-veteran", risk_tolerance=0.7, win_now_horizon=1,
-                     asset_hoarding=0.3),
-    "MIA": GMPersona("disciplined", risk_tolerance=0.4, win_now_horizon=3,
-                     asset_hoarding=0.6),
-    "MIN": GMPersona("balanced", risk_tolerance=0.5, win_now_horizon=2,
-                     asset_hoarding=0.5),
-    "CLE": GMPersona("all-in", risk_tolerance=0.8, win_now_horizon=1,
-                     asset_hoarding=0.2),
-    "PHI": GMPersona("star-hunting", risk_tolerance=0.9, win_now_horizon=1,
-                     asset_hoarding=0.2),
-}
+PERSONAS: dict = {}  # bound from the scenario's declared personas
 
 #: Veteran-minimum deals hit the cap at the two-year tier whatever the player's
 #: service. Used for pool members whose service is not separately sourced.
@@ -386,9 +385,9 @@ class LeagueState:
     @classmethod
     def load(cls) -> LeagueState:
         c26 = _rows(SNAPSHOTS / f"bbref-contracts-{SEASON}" / "contract_years.csv")
-        c25 = _rows(SNAPSHOTS / "bbref-2025-26" / "contracts.csv")
+        c25 = _rows(SNAPSHOTS / f"bbref-{PRIOR_SEASON}" / "contracts.csv")
         names: dict[str, str] = {}
-        for season in (PRIOR_SEASON, "2024-25"):
+        for season in _recent_seasons(2):
             path = SNAPSHOTS / f"bbref-{season}" / "players.csv"
             if path.is_file():
                 for row in _rows(path):
@@ -433,7 +432,6 @@ class LeagueState:
         if not hasattr(self, "_declines_cache"):
             declines: set[str] = set()
             try:
-                from mironba.eval.backtest import DOCS
                 from mironba.world.evidence import load_ledger
                 ledger = load_ledger(DOCS, BACKTEST, FREEZE)
                 for item in ledger.world_state():
@@ -521,7 +519,7 @@ class LeagueState:
         if key in self._rights_cache:
             return self._rights_cache[key]
         years = 0
-        for season in (PRIOR_SEASON, "2024-25", "2023-24"):
+        for season in _recent_seasons(3):
             path = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
             if not path.is_file():
                 break
@@ -603,12 +601,12 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
         results[team].signed.append(pid)
 
     # The decision resolves first, and it changes what the winner can afford.
-    winner = "GSW" if outcome_key == BLOCKER_BRANCH else "PHI"
-    route = best_affordable(winner, SUBJECT)
+    winner = BRANCH_PREMISES.get(outcome_key, "")
+    route = best_affordable(winner, SUBJECT) if winner else None
     if route is not None:
         commit(winner, SUBJECT, route)
         results[winner].notes.append(
-            f"signed LeBron James via {route.route} at ${route.max_first_year:,}"
+            f"signed {league.name(SUBJECT)} via {route.route} at ${route.max_first_year:,}"
         )
     scheduler.wake_for(Event(DECISION, SUBJECT, winner, outcome_key))
 
@@ -870,9 +868,15 @@ def contested_accuracy(contests, league):
     }
 
 
+def _recent_seasons(n: int) -> tuple[str, ...]:
+    """PRIOR_SEASON and the n-1 seasons before it, newest first."""
+    start = int(PRIOR_SEASON[:4])
+    return tuple(f"{y}-{str(y + 1)[-2:]}" for y in range(start, start - n, -1))
+
+
 def _all_teams() -> tuple[str, ...]:
     import csv as _csv
-    path = Path(__file__).resolve().parents[1] / "data" / "snapshots" / "bbref-2025-26" / "contracts.csv"
+    path = SNAPSHOTS / f"bbref-{PRIOR_SEASON}" / "contracts.csv"
     with path.open(encoding="utf-8", newline="") as handle:
         return tuple(sorted({r["team_id"] for r in _csv.DictReader(handle)}))
 
@@ -968,12 +972,11 @@ def main(argv=None) -> int:
                       f"actual {row['actual'] or '-':<4} [{row['reason']}]")
             print()
             print("  READ THIS BEFORE THE RECALL NUMBER.")
-            print("  LeBron James's destination is the BRANCH PREMISE, not a")
-            print("  prediction: run_branch assigns him to Philadelphia because")
-            print("  that is what defines this branch. He is one of only two")
-            print("  producible signing targets, so the headline recall is one")
-            print("  stipulated hit and one genuine miss (Bassey to Golden")
-            print("  State). Predictive recall on non-stipulated signings is 0/1.")
+            print(f"  {league.name(SUBJECT)}'s destination is the BRANCH PREMISE,")
+            print("  not a prediction: run_branch assigns the subject to the")
+            print("  scenario's declared premise team because that is what")
+            print("  defines this branch. Any hit on the subject is stipulated,")
+            print("  not predicted, and the scored recall must be read net of it.")
             all_scores, all_pooled = score(results, league, signings_only=False)
             print()
             print("  against ALL post-freeze arrivals (trades and draft picks")

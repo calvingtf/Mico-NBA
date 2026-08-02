@@ -29,3 +29,6 @@ condition_markers:
   joins_gsw: golden state
   stays_elsewhere: ""
 next_season: "2026-27"
+branch_premises:
+  joins_gsw: GSW
+  stays_elsewhere: WAS

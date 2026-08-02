@@ -43,3 +43,6 @@ personas:
   MIN: {label: balanced, risk_tolerance: 0.5, win_now_horizon: 2, asset_hoarding: 0.5}
   CLE: {label: all-in, risk_tolerance: 0.8, win_now_horizon: 1, asset_hoarding: 0.2}
   PHI: {label: star-hunting, risk_tolerance: 0.7, win_now_horizon: 2, asset_hoarding: 0.4}
+branch_premises:
+  signs_with_blocker: GSW
+  signs_elsewhere: PHI
