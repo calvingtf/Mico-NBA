@@ -1,0 +1,10 @@
+id,team,player_id,date,source,url,retrieved,phase,anchors,note
+RI-01,GSW,jamesle01,2026-06-29,Yahoo Sports,https://sports.yahoo.com/nba/breaking-news/article/draymond-green-declines-player-option-as-warriors-reportedly-prepare-to-pursue-lebron-james-and-anthony-davis-143822340.html,2026-07-31,PRE,GSW-02,opt-out reported as creating room to pursue James
+RI-02,CLE,jamesle01,2026-06-30,NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-76ers-free-agency/1951874/,2026-07-31,PRE,LBJ-04,one of five teams tied to James
+RI-03,MIA,jamesle01,2026-06-30,NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-76ers-free-agency/1951874/,2026-07-31,PRE,LBJ-04,one of five teams tied to James
+RI-04,MIN,jamesle01,2026-06-30,NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-76ers-free-agency/1951874/,2026-07-31,PRE,LBJ-04,one of five teams tied to James
+RI-05,PHI,jamesle01,2026-06-30,NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-76ers-free-agency/1951874/,2026-07-31,PRE,LBJ-04,one of five teams tied to James
+RI-06,GSW,davisan02,2026-06-29,Yahoo Sports,https://sports.yahoo.com/nba/breaking-news/article/draymond-green-declines-player-option-as-warriors-reportedly-prepare-to-pursue-lebron-james-and-anthony-davis-143822340.html,2026-07-31,PRE,COND-02,same flexibility reported for a Davis pursuit
+RI-07,CLE,jamesle01,2026-07-14,ESPN via NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-free-agency-teams/1950146/,2026-07-31,POST,LBJ-06,focus narrowing to three teams
+RI-08,MIA,jamesle01,2026-07-14,ESPN via NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-free-agency-teams/1950146/,2026-07-31,POST,LBJ-06,focus narrowing to three teams
+RI-09,PHI,jamesle01,2026-07-14,ESPN via NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/lebron-james-free-agency-teams/1950146/,2026-07-31,POST,LBJ-06,focus narrowing to three teams

@@ -307,6 +307,31 @@ derivation.** That is what motivates a news ingest, and the motivation is
 earned: both structural routes were built, validated and run before being
 found insufficient.
 
+The ingest exists now: typed `reported_interest` rows in the evidence store,
+each **derived from an already-verified anchor item** — dates, sources and URLs
+copied from the anchor, so a row is a restructuring of a curated claim, never a
+new one. Typing immediately corrected a figure: the "six reported suitors" were
+**five** — LAL had entered the set via a substring match on a *departure* fact.
+
+**And because reported interest seeds the suitor set, suitor identification is
+retired as a scored metric** — once the set is an input, identifying it is
+stipulated, not predicted, the same rule as the LeBron→PHI branch premise. A
+test asserts no scored output is computable without POST-freeze access. What
+gets scored instead, each with its null: who *wins* given the set (sim said GSW
+by an arbitrary resolution, actual PHI — miss against a 25% null); what losers
+did with held capacity (sim had GSW chasing Paul George and Jerami Grant; real
+GSW re-signed Green at $27,678,571 and retained four others — 0 of 6 against a
+0.14-hit null, and the miss is structural: *re-sign your own capacity* is not in
+the planner's move set); and whether conditional commitments attach to the
+branch matching their condition (4 of 4, against a random-attachment null of 2).
+
+**The limit, stated:** this works for one scenario. The ranker would need
+reported interest across 71 deadline trades over ten seasons — hundreds of
+hand-dated items, with dating increasingly unreliable back toward 2016 — and it
+would still lack the orthogonal features (positional need, contract timing,
+availability) named in the ranker section. The news ingest addresses the branch
+scenario, not the ranker.
+
 ## Seven results that weren't
 
 Every headline number below survived at least one revision, and seven were

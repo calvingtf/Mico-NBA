@@ -1702,3 +1702,50 @@ comparison above is complete and is the comparison the experiment was for.
 **Not scored, and never will be:** the branch itself is counterfactual. Its
 value is comparative, and the comparison says: more agents change who gets
 whom, not how well anyone predicts. More agents is a product feature.
+
+---
+
+## 42. The news ingest: typed interest, a corrected count, and three honest scores
+
+Nine `reported_interest` rows, every one **derived from an existing verified
+anchor** - dates, sources, URLs copied from the anchor item, so each row
+restructures a curated claim rather than adding one. Anchor integrity is
+validated at load: an unanchored row is "a new claim wearing a citation" and
+fails the ledger.
+
+**Typing corrected a figure immediately.** The suitor set is five (GSW, CLE,
+MIA, MIN, PHI - LBJ-04), not six: LAL entered the substring-matched set via
+LBJ-01, a *departure* fact. Mention-counting invented a suitor; a typed record
+cannot.
+
+**Circularity, enforced.** PRE interest rows are inputs; POST rows (LBJ-06's
+narrowing) are gated behind SCORING_UNLOCK like every answer. Suitor
+identification is retired as a scored metric, the README says so beside the
+branch-premise note, and a test fails if any scored output is computable
+without POST access.
+
+**Relevance paths:** the reported path fires for the 2 players interest rows
+name (James, Davis); the structural path covers the rest of the ~130-player
+pool. Reported never mixes with structural, so the path is attributable per
+event.
+
+**The three scored outcomes:**
+
+| outcome | result | null |
+|---|---|---|
+| suitor_won | sim **GSW**, actual PHI - **miss**. Resolution reason, quoted: *"arbitrary - nothing available separates the offers"* | 1/4 = 25% |
+| capacity_use (GSW) | sim proposed Curry Jr./George/Grant; actual re-signed Green **$27,678,571** (verified against the structure snapshot before encoding) and retained Bassey, Horford, Melton, Porzingis, Payton - **0/3 proposed, 0/6 recall** | 0.14 expected hits |
+| conditionals_fire | **4/4** attach to the branch matching their condition | 2.0 (random) |
+
+Two findings inside the misses. The suitor resolution came back ARBITRARY with
+four contenders - money and roster tier cannot separate them, which is the
+same conclusion the project reached about LeBron-at-the-minimum from the
+beginning, now produced by the resolver itself and quoted per the unread-output
+rule. And the capacity miss is structural, not noise: **re-signing your own
+expiring capacity is not in the planner's move set**, so it chased external
+stars while the real team retained five of its own. CLE dropped from
+contention with its blocked-route map quoted in full.
+
+**The limit:** one scenario. The ranker would need hundreds of dated interest
+items across ten seasons, with dating unreliable toward 2016, and would still
+lack its named orthogonal features. Recorded in the README in those terms.

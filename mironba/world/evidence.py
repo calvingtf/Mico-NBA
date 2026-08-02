@@ -109,6 +109,32 @@ class ConditionalCommitment:
             )
 
 
+@dataclass(frozen=True, slots=True)
+class ReportedInterest:
+    """A report that a team is in on a player. Typed, because substring
+    matching over prose invented a suitor: LAL entered the 'reported suitors'
+    set via LBJ-01, which says his Lakers tenure is OVER - a departure fact.
+
+    **Circularity rule.** These rows are evidence about the outcome. Once they
+    seed the suitor set, suitor identification is stipulated, not predicted -
+    so identification is retired as a scored metric, and what gets scored is
+    downstream: who won given the set, what losers did with held capacity,
+    whether conditionals fire per branch. Every row must anchor to an existing
+    verified item; a row with no anchor is a new claim wearing a citation.
+    """
+
+    id: str
+    team: str
+    player_id: str
+    date: date
+    source: str
+    url: str
+    retrieved: date
+    phase: str
+    anchors: str
+    note: str = ""
+
+
 @dataclass
 class EvidenceLedger:
     """Evidence for one backtest, partitioned by its freeze date."""
@@ -117,6 +143,7 @@ class EvidenceLedger:
     freeze: date
     items: list[EvidenceItem] = field(default_factory=list)
     conditionals: list[ConditionalCommitment] = field(default_factory=list)
+    interest: list[ReportedInterest] = field(default_factory=list)
 
     def validate(self) -> list[str]:
         """Every way the file could be lying, checked at load time."""
@@ -145,6 +172,17 @@ class EvidenceLedger:
                 problems.append(
                     f"{conditional.id}: phase should be {expected}"
                 )
+        known = {i.id for i in self.items} | {c.id for c in self.conditionals}
+        for row in self.interest:
+            expected = PRE if row.date <= self.freeze else POST
+            if row.phase != expected:
+                problems.append(f"{row.id}: phase should be {expected}")
+            missing = [a for a in row.anchors.split("|") if a and a not in known]
+            if missing:
+                problems.append(
+                    f"{row.id}: anchors {missing} do not exist; an unanchored "
+                    "interest row is a new claim wearing a citation"
+                )
         return problems
 
     # -- the only door the simulator may use ------------------------------
@@ -156,6 +194,20 @@ class EvidenceLedger:
     def open_conditionals(self) -> list[ConditionalCommitment]:
         """PRE-freeze conditionals — the pending decisions that fork."""
         return [c for c in self.conditionals if c.phase == PRE]
+
+    def reported_interest(self) -> list[ReportedInterest]:
+        """PRE-freeze interest rows. Inputs, and inputs only: anything scored
+        against them is stipulated, not predicted."""
+        return [r for r in self.interest if r.phase == PRE]
+
+    def ground_truth_interest(self, *, unlock: str) -> list[ReportedInterest]:
+        """POST-freeze interest. Scoring only, same token as ground_truth()."""
+        if unlock != SCORING_UNLOCK:
+            raise EvidenceError(
+                "post-freeze interest is outcome evidence, not an input. "
+                "Pass evidence.SCORING_UNLOCK if you are scoring."
+            )
+        return [r for r in self.interest if r.phase == POST]
 
     # -- the door that has to be opened on purpose ------------------------
 
@@ -216,6 +268,19 @@ def load_ledger(
     """
     directory = Path(directory)
     ledger = EvidenceLedger(backtest_id=backtest_id, freeze=freeze)
+
+    interest_path = directory / f"{backtest_id}-interest.csv"
+    if interest_path.is_file():
+        with interest_path.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                ledger.interest.append(ReportedInterest(
+                    id=row["id"], team=row["team"], player_id=row["player_id"],
+                    date=date.fromisoformat(row["date"]), source=row["source"],
+                    url=row["url"],
+                    retrieved=date.fromisoformat(row["retrieved"]),
+                    phase=row["phase"], anchors=row.get("anchors", ""),
+                    note=row.get("note", ""),
+                ))
 
     evidence_path = directory / f"{backtest_id}-evidence.csv"
     with evidence_path.open(encoding="utf-8", newline="") as handle:
