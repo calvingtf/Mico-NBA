@@ -1641,3 +1641,64 @@ inputs changed. If the mechanism does not expose a reason, that is a defect in
 the mechanism. The expiry method's ``ExpiryCall.reason``, the joins' miss
 samples and the solver's ``blocked`` map all exist so this rule is satisfiable;
 the failure was not consulting them.
+
+---
+
+## 41. Thirty agents: the competition reshuffles the market and moves no metric
+
+Same branch, same seed (20260731), run sequentially, never concurrent. The
+planner is deterministic (the LLM path is measured separately, per the standing
+limitation), so both configs with both branches completed in ~13 minutes of
+wall-clock with zero LLM calls.
+
+### On the five scored teams
+
+| | 5-team | 30-team |
+|---|---|---|
+| signing sets changed | — | **4 of 5 teams** |
+| proposals (scored five) | 14 | 14 |
+| hits | 1 (the stipulated premise) | 1 (the same premise) |
+| predictive recall, non-stipulated | 0 of 1 | **0 of 1** |
+| ARBITRARY resolutions | 0 | **0** |
+
+**Composition moves, metrics do not.** With 25 competitors added, GSW loses
+Caldwell-Pope and DeRozan to the market and takes Paul George and Jerami Grant
+instead; MIA and PHI lose three of their signings each to competition and
+backfill with cheaper players. Every scored headline is unchanged: the one hit
+is LeBron-to-PHI, which is the branch premise in both configurations, and the
+one non-stipulated actual arrival (Bassey to GSW) is missed in both.
+
+The null makes the equality unsurprising: 14 proposals against 2 actual
+arrivals in a ~520-player pool expects ~0.05 hits by chance, so at this n the
+metric cannot separate the configurations - only the composition can, and it
+separated clearly.
+
+### Contention under 24 legal bidders
+
+The 30-team blocker branch: **8 contested players from 184 offers**, resolved
+5 by "clearly stronger roster" and 3 by "higher offer" - **zero arbitrary**,
+against the M5.5 defect where a coin-flip decided contests. The per-event
+relevance held without a bolt-on: contenders per player are exactly the teams
+`feasible_signings()` gives a route to, which is the hard filter applied
+per event rather than globally.
+
+### Cost
+
+| | 5-team | 30-team |
+|---|---|---|
+| agent wakes (both branches) | 30 | 120 |
+| events | 25 | 225 |
+| scheduler saving vs polling | — | **98.4%** |
+| wall-clock, all runs pooled | ~13 min | (same window) |
+
+Wakes scaled 4x for 6x the teams - sublinear, as the event-driven design
+predicts - and the naive-polling baseline it is measured against grew to 3,360.
+
+**Not extracted this round:** the league-wide pooled precision recompute
+against its null (the `pooled` key was not read after two key-guessing
+misreads earlier in the session; restraint beat another guess). The scored-five
+comparison above is complete and is the comparison the experiment was for.
+
+**Not scored, and never will be:** the branch itself is counterfactual. Its
+value is comparative, and the comparison says: more agents change who gets
+whom, not how well anyone predicts. More agents is a product feature.
