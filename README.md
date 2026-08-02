@@ -464,6 +464,12 @@ Each of these mechanisms exists because something got past the one before it:
   artifacts, which is how five of the seven above were found.
 - **Prompt-text assertions** — added after the salary claim, because every
   earlier boundary test constrained types.
+- **A derived-facts registry, enumerated by AST** — every sim-side derivation
+  from an outcome table declared with a direction and a freeze-computability
+  answer, after `free_agent_pool()` hid for three milestones. It found two more
+  leaks before any metric did; both repairs ran under predictions registered in
+  their commits and both held. The same move as the writer tests and
+  single-filter ratios — make the surface enumerable — applied to leakage.
 - **A pre-commit hook running the suite** — added after a commit went in red and
   broke a milestone gate.
 - **Merge-not-overwrite tests over every writer, enumerated programmatically** —

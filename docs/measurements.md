@@ -1987,3 +1987,42 @@ The input-circularity mirror (no sim input computable only with POST access)
 passed across all seven input packages on its first run, and the derived-facts
 registry now shows two repairs, one hurts-leak retired with its metric, and
 one cleaning entry - with freeze_state the last "mixed" resolved.
+
+---
+
+## 49. The audit closes: gap 0 of 130, a residual corrected, the table resolved
+
+### The coverage gap, measured
+
+Every POST item whose subjects intersect the free-agent pool, judged in the
+open: **one** - Payton, "expected back on a veteran-minimum", which is a
+report of intent, not a contract. **Zero of 130 pool players are placed under
+contract by POST evidence. The structure snapshot is not systematically
+incomplete**, and the pool is not inflated.
+
+Which corrects entry 48's residual: Quinten Post's Memphis row **exists** -
+that is exactly why he is not in the pool. He reached sim-GSW's option set
+through the `all_added` union in run_branch, which pours every team's real
+arrivals into the shared market **by design**, so competitors can contest
+them. Sim-GSW bidding on a player Memphis actually signed is the contention
+design working, not a snapshot hole. The residual was real; its mechanism was
+misattributed, and saying so costs one paragraph.
+
+### The derivation audit, closed
+
+| derivation | resolution |
+|---|---|
+| free_agent_pool() | hurts-leak; repair coincided with it; **metric retired with its 1/6 ceiling** |
+| project_wins() | helps-leak; **repaired under a registered prediction - held** (ARBITRARY 0 to 3) |
+| freeze_state() | hurts, quantified; **repaired under a registered prediction - held to the dollar**; residual floor **3 players, $29,785,974**, stated |
+| arrivals() | cleaning + eval target + market-union, declared |
+| rights() | freeze-computable, no leak |
+| expiring_pool() | repair |
+
+Every sim-side derivation from an outcome table is enumerated, directed, and
+either repaired, retired, declared, or floored in dollars. No "mixed" remains.
+Both repairs ran under predictions registered in their commits before
+execution, and both predictions held - one exactly, one with an informative
+half-miss. The two rounds of leak-closing produced no better headline number
+anywhere, and that is the point: they produced numbers whose meaning is now
+enumerable.
