@@ -268,6 +268,45 @@ coverage matrix, which contains illegal ones. The two are no longer conflated.
 
 ---
 
+### Thirty agents, and what the words mean
+
+The full-league run — all 30 teams planning the same offseason branch, same
+seed, competing for the same free agents — completed in ~13 minutes with
+**zero LLM calls**. That is not an optimisation; it is what the run is. The
+branch, league and deadline planners are **deterministic** (`sim/branch`,
+`sim/league`, `sim/deadline` in the diagram), so a failure is attributable to
+rules and data rather than to sampling. The language model is exercised in one
+place: the **trade-intent loop** (`agents/` + `sim/tick`), which is where the
+three-arm A/B was measured and where every LLM figure in this README comes
+from. The two paths meet at the solver and nowhere else.
+
+What the run showed: adding 25 competitors changed the signing sets of **4 of
+the 5 scored teams** and moved **no scored metric** — the one hit is the
+stipulated branch premise in both configurations. **More agents is a product
+feature, not evidence of better forecasting**, and the measurements file says
+so in those words (entry 41).
+
+### Suitor identification is not derivable from structural data
+
+A two-sided negative, reached by exhausting the alternatives rather than by
+assumption:
+
+| filter | admits | reported suitors excluded |
+| --- | --- | --- |
+| cap feasibility (dated + expiry, validated) | 24/30 | CLE |
+| record precedent (43 signings, 9 offseasons) | 30/30 | none |
+| intersection | 24/30 | **CLE — a real suitor** |
+
+At the July moratorium, almost any team can legally sign a veteran star to the
+minimum, and the worst team in a nine-offseason sample has signed a star-priced
+veteran — so neither cap position nor record excludes anyone, and the
+intersection still drops a team that actually pursued him (Cleveland, whose
+roster-as-it-stands is full of deals a GM could clear but has not). **Who is
+actually in on a player lives in reported interest — evidence, not
+derivation.** That is what motivates a news ingest, and the motivation is
+earned: both structural routes were built, validated and run before being
+found insufficient.
+
 ## Seven results that weren't
 
 Every headline number below survived at least one revision, and seven were
@@ -357,6 +396,19 @@ denominator it was being measured against.
 
 > **Standing rule.** A metric at or below its null gets the same audit as one
 > that beats it. Failure is not self-certifying.
+
+
+### The power rule
+
+Null-before-metric has a sibling: **state the smallest effect a design can
+detect before running it.** The 5-vs-30 comparison could not have separated the
+configurations on any scored metric — 14 proposals against 2 actual arrivals in
+a ~520-player pool expects ~0.05 hits by chance, so equal scores were near
+certain *before the run started*, and that was computable in advance. The run
+was still worth doing because composition (who signs whom) had the sample to
+move, and it did: 4 of 5 scored teams changed baskets. Running a comparison
+whose primary metric cannot move is only defensible when you say beforehand
+which secondary observable can.
 
 ### What these produced
 
