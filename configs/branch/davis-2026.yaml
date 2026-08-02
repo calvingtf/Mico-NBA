@@ -21,3 +21,11 @@ actual_branch: stays_elsewhere
 scored_teams:
   - GSW
   - WAS
+kind: pending_decision
+decision_subject: davisan02
+blocker_team: GSW
+blocker_branch: joins_gsw
+condition_markers:
+  joins_gsw: golden state
+  stays_elsewhere: ""
+next_season: "2026-27"

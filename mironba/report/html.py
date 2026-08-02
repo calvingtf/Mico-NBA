@@ -243,6 +243,8 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default="docs/example-run.html")
     parser.add_argument("--title", default="MiroNBA - LeBron 2026 scenario")
     parser.add_argument("--no-llm", action="store_true")
+    parser.add_argument("--scenario", default="",
+                        help="scenario id whose evidence ledger to render")
     args = parser.parse_args(argv)
     use_utf8_stdout()
 
@@ -275,9 +277,9 @@ def main(argv=None) -> int:
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    from mironba.report.evidence_view import load_lebron_ledger
+    from mironba.report.evidence_view import load_scenario_ledger
 
-    ledger = load_lebron_ledger()
+    ledger = load_scenario_ledger(args.scenario) if args.scenario else None
     out.write_text(
         render_html(args.title, branches, report, unfalsifiable, ledger=ledger),
         encoding="utf-8",

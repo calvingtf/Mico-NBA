@@ -26,21 +26,18 @@ from mironba.rules.signing import BIRD, MINIMUM, NON_BIRD
 from mironba.rules.signing_solver import check_signing
 from mironba.world.evidence import SCORING_UNLOCK, load_ledger
 
-DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
+EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "evidence"
 
 #: Which route each actual signing used. This is a *reading* of the contract,
 #: not a figure: the salaries themselves are pulled from the evidence file.
 #: Recorded here because the evidence file states outcomes in prose and the
 #: route is an interpretation of them — Green's Bird rights and Horford's
 #: 120%-of-prior are both derivable, but derivation is not extraction.
-ACTUAL_ROUTES = {
-    "greendr01": BIRD,
-    "horfoal01": NON_BIRD,
-    "porzikr01": NON_BIRD,
-    "bassech01": MINIMUM,
-    "meltode01": NON_BIRD,
-}
+def actual_routes(scenario) -> dict[str, str]:
+    """Route per actual signing, read from the scenario store, not from code."""
+    from mironba.eval.scenario_truth import ground_truth_routes
 
+    return ground_truth_routes(scenario)
 _MONEY = re.compile(r"\$([\d,]{7,})")
 #: A figure immediately followed by the season it applies to. Evidence text
 #: routinely lists several years of a contract, and the first year is the one
@@ -48,11 +45,8 @@ _MONEY = re.compile(r"\$([\d,]{7,})")
 _MONEY_FOR_SEASON = re.compile(r"\$([\d,]{7,})\s+for\s+(\d{4}-\d{2})")
 
 
-def actual_salaries(
-    backtest: str = "lebron-2026",
-    freeze: date = date(2026, 7, 6),
-    season: str = "2026-27",
-) -> dict[str, int]:
+def actual_salaries(scenario) -> dict[str, int]:
+    backtest, freeze, season = scenario.id, scenario.freeze, scenario.next_season
     """Post-freeze salaries, read through the unlock.
 
     Parsed out of the evidence file's POST partition rather than restated, so
@@ -60,7 +54,7 @@ def actual_salaries(
     source URL and a retrieval date. Where an item names a player and a figure,
     that pairing is the record.
     """
-    ledger = load_ledger(DOCS, backtest, freeze)
+    ledger = load_ledger(EVIDENCE_ROOT / backtest, backtest, freeze)
     found: dict[str, int] = {}
     for item in ledger.ground_truth(unlock=SCORING_UNLOCK):
         text = f"{item.fact} {item.verified}"
@@ -82,7 +76,7 @@ def actual_salaries(
             # No season tag: the first figure quoted is the signing figure.
             amount = amounts[0]
         for subject in item.subjects:
-            if subject in ACTUAL_ROUTES and subject not in found:
+            if subject in actual_routes(scenario) and subject not in found:
                 found[subject] = amount
     return found
 
@@ -172,17 +166,17 @@ class MoveScore:
         )
 
 
-def score_moves(planned_ids: set[str], state, agents, env) -> list[MoveScore]:
+def score_moves(planned_ids: set[str], state, agents, env, *, scenario) -> list[MoveScore]:
     """Per-move hits and misses against the real Golden State offseason."""
     from mironba.rules.signing import TeamCapState
 
-    salaries = actual_salaries()
+    salaries = actual_salaries(scenario)
     by_id = {a.player_id: a for a in agents}
     scores: list[MoveScore] = []
     committed = state.committed_salary
     roster = state.roster_count
 
-    for pid, route in ACTUAL_ROUTES.items():
+    for pid, route in actual_routes(scenario).items():
         agent = by_id.get(pid)
         salary = salaries.get(pid)
         if agent is None or salary is None:

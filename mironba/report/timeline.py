@@ -251,9 +251,9 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     use_utf8_stdout()
     if args.backtest:
-        from mironba.report.evidence_view import load_lebron_ledger, render_known_text
+        from mironba.report.evidence_view import load_scenario_ledger, render_known_text
 
-        ledger = load_lebron_ledger()
+        ledger = load_scenario_ledger(args.backtest)
         if ledger:
             print(render_known_text(ledger))
     print(render(load_run(args.run)))

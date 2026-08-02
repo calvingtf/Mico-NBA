@@ -11,6 +11,12 @@ from __future__ import annotations
 import random
 from pathlib import Path
 
+from mironba.sim.arrivals import load_arrivals
+from mironba.world.scenario import load_scenario
+
+_ARR = load_arrivals(load_scenario("lebron-2026"))
+_BY_ID = {a.player_id: a for a in _ARR}
+
 import pytest
 
 from mironba.sim.league import (
@@ -301,11 +307,11 @@ class TestArrivalMechanisms:
         """The bug that made Miami sweep. Giannis arrived on 2026-06-22, two
         weeks before the freeze, so his $58.5M is an input. Removing it handed
         Miami roughly $100M of cap space that never existed."""
-        from mironba.sim.arrivals import BY_ID, pre_freeze_ids
+        from mironba.sim.arrivals import pre_freeze_ids
 
         for pid in ("antetgi01", "portibo01", "ballla01", "greenjo02"):
-            assert BY_ID[pid].pre_freeze, f"{pid} should be pre-freeze"
-            assert pid in pre_freeze_ids()
+            assert _BY_ID[pid].pre_freeze, f"{pid} should be pre-freeze"
+            assert pid in pre_freeze_ids(_ARR)
 
     def test_jaylen_brown_lands_on_the_freeze_boundary_as_pre(self):
         """Reported July 1, official July 6 — the freeze date. The ledger's
@@ -313,15 +319,13 @@ class TestArrivalMechanisms:
         Philadelphia was talking to LeBron knowing Brown was theirs."""
         from datetime import date as d
 
-        from mironba.sim.arrivals import BY_ID
-
-        assert BY_ID["brownja02"].when == d(2026, 7, 6)
-        assert BY_ID["brownja02"].pre_freeze
+        assert _BY_ID["brownja02"].when == d(2026, 7, 6)
+        assert _BY_ID["brownja02"].pre_freeze
 
     def test_only_signings_are_producible_by_a_signing_planner(self):
-        from mironba.sim.arrivals import ARRIVALS, SIGNING
+        from mironba.sim.arrivals import SIGNING
 
-        for arrival in ARRIVALS:
+        for arrival in _ARR:
             if arrival.producible_by_a_signing_planner:
                 assert arrival.mechanism == SIGNING
                 assert not arrival.pre_freeze
@@ -330,21 +334,21 @@ class TestArrivalMechanisms:
         from mironba.sim.arrivals import signing_targets
 
         for team in TEAMS:
-            assert "antetgi01" not in signing_targets(team)
-            assert "brownja02" not in signing_targets(team)
+            assert "antetgi01" not in signing_targets(team, _ARR)
+            assert "brownja02" not in signing_targets(team, _ARR)
 
     def test_unsourced_arrivals_are_labelled_unknown_not_guessed(self):
         """Labelling one of these a signing would improve recall by choosing
         the denominator to suit the number."""
-        from mironba.sim.arrivals import BY_ID, UNKNOWN
+        from mironba.sim.arrivals import UNKNOWN
 
-        assert BY_ID["wadede01"].mechanism == UNKNOWN
-        assert BY_ID["wadede01"].source == ""
+        assert _BY_ID["wadede01"].mechanism == UNKNOWN
+        assert _BY_ID["wadede01"].source == ""
 
     def test_every_sourced_arrival_carries_a_url_and_a_date(self):
-        from mironba.sim.arrivals import ARRIVALS, UNKNOWN
+        from mironba.sim.arrivals import UNKNOWN
 
-        for arrival in ARRIVALS:
+        for arrival in _ARR:
             if arrival.mechanism == UNKNOWN:
                 continue
             assert arrival.url.startswith("http"), arrival.player_id

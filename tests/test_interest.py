@@ -13,7 +13,10 @@ from datetime import date
 
 import pytest
 
-from mironba.eval.backtest import DOCS, FREEZE
+from mironba.world.scenario import load_scenario
+
+_SC = load_scenario("lebron-2026")
+DOCS, FREEZE = _SC.evidence_dir, _SC.freeze
 from mironba.world.evidence import (
     PRE, POST, EvidenceError, ReportedInterest, load_ledger,
 )

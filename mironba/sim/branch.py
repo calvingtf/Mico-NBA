@@ -53,44 +53,83 @@ from mironba.world.pending import (
     build_branches,
 )
 
-DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
+DOCS = None
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
-BACKTEST = "lebron-2026"
-FREEZE = date(2026, 7, 6)
-SEASON = "2026-27"
+BACKTEST = None
+FREEZE = None
+SEASON = None
+PRIOR = None
+SC = None
+SUBJECT = ""
+BLOCKER = ""
+BLOCKER_BRANCH = ""
+ACTUAL = ""
+DECISION = None
+GSW_BLOCK = None
+POST_FREEZE: set = set()
 
-#: The decision the branch forks on.
-DECISION = PendingDecision(
-    decision_id="lebron-2026-destination",
-    owner="jamesle01",
-    question="Where does LeBron James sign?",
-    outcomes=(
-        Outcome("signs_with_blocker", "James signs with Golden State", ("GSW",)),
-        Outcome("signs_elsewhere", "James signs with another team", ()),
-    ),
-    opened_on=date(2026, 6, 30),
-)
 
-#: Golden State's block, from the evidence file: they held roster space open
-#: and finished July as the only team not to have acquired a new player.
-GSW_BLOCK = Block(
-    team="GSW",
-    decision_id=DECISION.decision_id,
-    awaiting_outcome="signs_with_blocker",
-    # A maximum slot for a 23-year veteran is what holding "space for LeBron"
-    # means in dollars. Held, not spent.
-    reserved_salary=57_736_350,
-    reserved_roster_spots=1,
-    opportunity_cost=OpportunityCost(
-        lost_targets=(),
-        note=(
-            "Golden State signed nobody new between the freeze and the "
-            "decision. The cost of waiting is the free agents who came off the "
-            "board in those eighteen days; the ones this simulation can name "
-            "are filled in from the transaction log at run time."
+def _prior_seasons(season: str, n: int = 3) -> tuple[str, ...]:
+    """The n seasons before `season`, newest first ("2026-27" -> 2025-26...)."""
+    start = int(season[:4])
+    return tuple(f"{y}-{str(y + 1)[-2:]}" for y in range(start - 1, start - 1 - n, -1))
+
+
+def bind_scenario(sc) -> None:
+    """Bind every scenario-specific module global from one declared object.
+
+    The reserved salary is DERIVED, not recalled: a maximum slot for a 10+
+    years-of-service veteran is 35% of that season's cap, which is what
+    holding "space for the subject" means in dollars.
+    """
+    global DOCS, BACKTEST, FREEZE, SEASON, PRIOR, SC, SUBJECT, BLOCKER
+    global BLOCKER_BRANCH, ACTUAL, DECISION, GSW_BLOCK, POST_FREEZE
+    global SERVICE_YEARS, _NAMES
+
+    SC = sc
+    DOCS = sc.evidence_dir
+    BACKTEST = sc.id
+    FREEZE = sc.freeze
+    SEASON = sc.next_season
+    PRIOR = sc.season
+    SUBJECT = sc.decision_subject
+    BLOCKER = sc.blocker_team
+    BLOCKER_BRANCH = sc.blocker_branch
+    ACTUAL = sc.actual_branch
+    POST_FREEZE = sc.post_freeze_signing_ids()
+    SERVICE_YEARS = {r["player_id"]: int(r["years"])
+                     for r in sc._data_rows("service-years.csv")}
+    _NAMES = {r["player_id"]: r["name"] for r in sc._data_rows("names.csv")}
+
+    DECISION = PendingDecision(
+        decision_id=f"{sc.id}-destination",
+        owner=SUBJECT,
+        question=sc.decision,
+        outcomes=tuple(
+            Outcome(key,
+                    f"{_name(SUBJECT)}: {key.replace(chr(95), chr(32))}",
+                    (BLOCKER,) if key == BLOCKER_BRANCH else ())
+            for key in sc.branches
         ),
-    ),
-)
+        opened_on=sc.freeze,
+    )
+    env = environment_for(SEASON)
+    GSW_BLOCK = Block(
+        team=BLOCKER,
+        decision_id=DECISION.decision_id,
+        awaiting_outcome=BLOCKER_BRANCH,
+        reserved_salary=int(env.salary_cap * 0.35),
+        reserved_roster_spots=1,
+        opportunity_cost=OpportunityCost(
+            lost_targets=(),
+            note=(
+                f"{BLOCKER} committed nothing new between the freeze and the "
+                "decision. The cost of waiting is the free agents who came "
+                "off the board meanwhile; the ones this simulation can name "
+                "are filled in from the transaction log at run time."
+            ),
+        ),
+    )
 
 
 @dataclass
@@ -143,23 +182,21 @@ def gsw_freeze_state() -> tuple[TeamCapState, list[FreeAgent], dict[str, int]]:
     with contracts.open(encoding="utf-8", newline="") as handle:
         rows = [
             r for r in csv.DictReader(handle)
-            if r["team_id"] == "GSW" and r["season"] == SEASON
+            if r["team_id"] == BLOCKER and r["season"] == SEASON
         ]
 
     # Post-freeze signings, which are the answer rather than the setup.
-    post_freeze = {
-        "greendr01", "horfoal01", "porzikr01", "bassech01", "meltode01",
-    }
+    post_freeze = set(POST_FREEZE)
     held = [r for r in rows if r["player_id"] not in post_freeze]
     state = TeamCapState(
-        team_id="GSW",
+        team_id=BLOCKER,
         season=SEASON,
         committed_salary=sum(int(r["salary"]) for r in held),
         roster_count=len({r["player_id"] for r in held}),
     )
 
     # Prior-season salaries, for the Bird-family ceilings.
-    prior_path = SNAPSHOTS / "bbref-2025-26" / "contracts.csv"
+    prior_path = SNAPSHOTS / f"bbref-{PRIOR}" / "contracts.csv"
     prior: dict[str, int] = {}
     team_2526: dict[str, str] = {}
     with prior_path.open(encoding="utf-8", newline="") as handle:
@@ -173,13 +210,13 @@ def gsw_freeze_state() -> tuple[TeamCapState, list[FreeAgent], dict[str, int]]:
     # exactly three, and both are Bird.
     def years_with(pid: str) -> int:
         years = 0
-        for season in ("2025-26", "2024-25", "2023-24"):
+        for season in _prior_seasons(SEASON):
             path = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
             if not path.is_file():
                 break
             with path.open(encoding="utf-8", newline="") as handle:
                 on_team = any(
-                    r["player_id"] == pid and r["team_id"] == "GSW"
+                    r["player_id"] == pid and r["team_id"] == BLOCKER
                     for r in csv.DictReader(handle)
                 )
             if on_team:
@@ -199,7 +236,7 @@ def gsw_freeze_state() -> tuple[TeamCapState, list[FreeAgent], dict[str, int]]:
         under_contract_2627 = {r["player_id"] for r in csv.DictReader(handle)}
     unsigned_own = {
         pid for pid, team in team_2526.items()
-        if team == "GSW" and pid not in under_contract_2627
+        if team == BLOCKER and pid not in under_contract_2627
     }
 
     agents = [
@@ -215,14 +252,7 @@ def gsw_freeze_state() -> tuple[TeamCapState, list[FreeAgent], dict[str, int]]:
     return state, agents, prior
 
 
-_NAMES = {
-    "greendr01": "Draymond Green",
-    "horfoal01": "Al Horford",
-    "porzikr01": "Kristaps Porzingis",
-    "bassech01": "Charles Bassey",
-    "meltode01": "De'Anthony Melton",
-    "jamesle01": "LeBron James",
-}
+_NAMES: dict = {}
 
 
 def _name(pid: str) -> str:
@@ -241,11 +271,8 @@ MINIMUM_CAP_HIT_TIER = 2
 #: Reference's contract page does not publish service. These come from public
 #: draft years and are the one recalled input in this branch — recorded here
 #: rather than inlined so the flag travels with the number.
-SERVICE_YEARS = {
-    "greendr01": 14, "horfoal01": 19, "porzikr01": 11,
-    "bassech01": 5, "meltode01": 8, "jamesle01": 23,
-}
-SERVICE_PROVENANCE = "recalled from public draft years; not sourced from any ingest"
+SERVICE_YEARS: dict = {}
+SERVICE_PROVENANCE = "hand-supplied in the scenario store (service-years.csv); not from any ingest"
 
 
 # --------------------------------------------------------------------------
@@ -286,25 +313,25 @@ def plan_branch(
     ceiling = env.second_apron if budget is None else budget
     result.notes.append(f"budget ceiling ${ceiling:,} (second apron)")
 
-    won = any(b.capacity_used for b in branch.blocks if b.team == "GSW")
+    won = any(b.capacity_used for b in branch.blocks if b.team == BLOCKER)
     if won:
         # James signs here: the reserved slot is spent on him, and the money
         # that was being held is gone.
-        block = next(b for b in branch.blocks if b.team == "GSW")
+        block = next(b for b in branch.blocks if b.team == BLOCKER)
         lebron = FreeAgent(
-            "jamesle01", "LeBron James",
-            years_of_service=SERVICE_YEARS["jamesle01"],
+            SUBJECT, _name(SUBJECT),
+            years_of_service=SERVICE_YEARS[SUBJECT],
             prior_salary=0, years_with_team=0,
         )
         routes = signing_routes(
-            TeamCapState("GSW", SEASON, committed_salary=committed,
+            TeamCapState(BLOCKER, SEASON, committed_salary=committed,
                          roster_count=roster),
             lebron, env,
         )
         best = routes.best()
         if best is not None:
             result.moves.append(
-                PlannedMove("jamesle01", "LeBron James", best.route,
+                PlannedMove(SUBJECT, _name(SUBJECT), best.route,
                             best.max_first_year, best.max_years, best.hard_cap)
             )
             committed += best.max_first_year
@@ -319,7 +346,7 @@ def plan_branch(
 
     for agent in sorted(agents, key=lambda a: -a.prior_salary):
         team_now = TeamCapState(
-            "GSW", SEASON, committed_salary=committed, roster_count=roster
+            BLOCKER, SEASON, committed_salary=committed, roster_count=roster
         )
         routes = signing_routes(team_now, agent, env)
         if not routes.any_route:
@@ -378,7 +405,7 @@ class AuditLine:
         return f"  {mark}{self.surface:<38} {self.checked:>6} checked  {self.detail}"
 
 
-def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
+def leakage_audit(freeze: date | None = None) -> list[AuditLine]:
     """Re-check the freeze over everything a branch touches.
 
     Not a re-read of the ledger's own flag. Each surface is examined for dates
@@ -386,6 +413,7 @@ def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
     because the ledger only guards the evidence file and a branch reads more
     than that.
     """
+    freeze = freeze or FREEZE
     lines: list[AuditLine] = []
     ledger = load_ledger(DOCS, BACKTEST, freeze)
 
@@ -404,13 +432,13 @@ def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
         f"{len(ledger.conditionals) - len(live)} POST commitments withheld",
     ))
 
-    tx = SNAPSHOTS / "bbref-2025-26" / "transactions.csv"
+    tx = SNAPSHOTS / f"bbref-{PRIOR}" / "transactions.csv"
     if tx.is_file():
         with tx.open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
         kept = redact_after(rows, freeze, key="date")
         lines.append(AuditLine(
-            "transaction log (2025-26)", len(rows), len(rows) - len(kept),
+            f"transaction log ({PRIOR})", len(rows), len(rows) - len(kept),
             f"{len(rows) - len(kept)} post-freeze row(s) excluded by redact_after; "
             f"latest kept {max((r['date'] for r in kept), default='-')}",
         ))
@@ -432,12 +460,12 @@ def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
         with contracts.open(encoding="utf-8", newline="") as handle:
             gsw = [
                 r for r in csv.DictReader(handle)
-                if r["team_id"] == "GSW" and r["season"] == SEASON
+                if r["team_id"] == BLOCKER and r["season"] == SEASON
             ]
-        post = {"greendr01", "horfoal01", "porzikr01", "bassech01", "meltode01"}
+        post = set(POST_FREEZE)
         seeded = [r for r in gsw if r["player_id"] in post]
         lines.append(AuditLine(
-            "contract snapshot (GSW roster)", len(gsw), len(seeded),
+            f"contract snapshot ({BLOCKER} roster)", len(gsw), len(seeded),
             f"{len(seeded)} post-freeze signing(s) present in the file and "
             "excluded from the freeze state by gsw_freeze_state(); "
             "world/dated_roster.py reconstructs dated presence (validated "
@@ -454,10 +482,16 @@ def leakage_audit(freeze: date = FREEZE) -> list[AuditLine]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run both LeBron branches.")
+    parser = argparse.ArgumentParser(
+        description="Run both branches of a declared pending-decision scenario.")
+    parser.add_argument("--scenario", required=True,
+                        help="a declared scenario id under configs/branch/")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
+    from mironba.world.scenario import load_scenario
+
+    bind_scenario(load_scenario(args.scenario))
     env = environment_for(SEASON)
     state, agents, _ = gsw_freeze_state()
     agents = [
@@ -466,17 +500,18 @@ def main(argv: list[str] | None = None) -> int:
         for a in agents
     ]
     ledger = load_ledger(DOCS, BACKTEST, FREEZE)
-    branches = build_branches(DECISION, [GSW_BLOCK], ledger.open_conditionals())
+    branches = build_branches(DECISION, [GSW_BLOCK], ledger.open_conditionals(),
+                              fires=SC.condition_fires_in)
 
     print("=" * 74)
-    print(f"  freeze {FREEZE}   Golden State at ${state.committed_salary:,}, "
+    print(f"  freeze {FREEZE}   {BLOCKER} at ${state.committed_salary:,}, "
           f"{state.roster_count} under contract")
     print("=" * 74)
 
     results = []
     for branch in branches:
         result = plan_branch(branch, state, agents, env)
-        result.falsifiable = branch.outcome_key == "signs_elsewhere"
+        result.falsifiable = branch.outcome_key == ACTUAL
         results.append(result)
         print(f"\nBRANCH {branch.label}")
         print(f"  active commitments: "
@@ -489,14 +524,15 @@ def main(argv: list[str] | None = None) -> int:
         for note in result.notes:
             print(f"  note: {note}")
 
-    actual_branch = next(r for r in results if r.branch.outcome_key == "signs_elsewhere")
+    actual_branch = next(r for r in results if r.branch.outcome_key == ACTUAL)
     print("\n" + "=" * 74)
-    print("  SCORING — signs_elsewhere is what happened")
+    print(f"  SCORING - {ACTUAL} is what happened")
     print("=" * 74)
-    from mironba.eval.branch_score import ACTUAL_ROUTES, Tally, score_moves
+    from mironba.eval.branch_score import Tally, actual_routes, score_moves
 
     scores = score_moves(
-        {m.player_id for m in actual_branch.moves}, state, agents, env
+        {m.player_id for m in actual_branch.moves}, state, agents, env,
+        scenario=SC,
     )
     for score in scores:
         print(score.line())
@@ -510,14 +546,14 @@ def main(argv: list[str] | None = None) -> int:
 
     tally = Tally(
         proposed=[m.player_id for m in actual_branch.moves],
-        actual=list(ACTUAL_ROUTES),
+        actual=list(actual_routes(SC)),
     )
     print("\n  PRECISION AND RECALL")
     print(tally.render(name=_name))
     print("\n  Retention is no longer near-tautological: the planner works to a")
     print("  second-apron ceiling and had to drop players to stay under it.")
 
-    counterfactual = next(r for r in results if r.branch.outcome_key != "signs_elsewhere")
+    counterfactual = next(r for r in results if r.branch.outcome_key != ACTUAL)
     print(f"\n  BRANCH {counterfactual.label} IS NOT SCORED.")
     print("  It did not happen and never will have ground truth. Its value is")
     print("  comparative: same GM, same freeze state, different answer.")

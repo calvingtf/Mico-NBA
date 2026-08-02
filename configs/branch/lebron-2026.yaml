@@ -29,3 +29,17 @@ scored_teams:
   - MIN
   - CLE
   - PHI
+kind: pending_decision
+decision_subject: jamesle01
+blocker_team: GSW
+blocker_branch: signs_with_blocker
+condition_markers:
+  signs_with_blocker: golden state
+  signs_elsewhere: ""
+next_season: "2026-27"
+personas:
+  GSW: {label: win-now-veteran, risk_tolerance: 0.7, win_now_horizon: 1, asset_hoarding: 0.3}
+  MIA: {label: disciplined, risk_tolerance: 0.4, win_now_horizon: 3, asset_hoarding: 0.6}
+  MIN: {label: balanced, risk_tolerance: 0.5, win_now_horizon: 2, asset_hoarding: 0.5}
+  CLE: {label: all-in, risk_tolerance: 0.8, win_now_horizon: 1, asset_hoarding: 0.2}
+  PHI: {label: star-hunting, risk_tolerance: 0.7, win_now_horizon: 2, asset_hoarding: 0.4}

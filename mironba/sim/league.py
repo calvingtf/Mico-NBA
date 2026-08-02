@@ -71,14 +71,42 @@ from mironba.sim.arrivals import (
 )
 
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
-DOCS = Path(__file__).resolve().parents[2] / "evidence" / "lebron-2026"
-SEASON = "2026-27"
-FREEZE = date(2026, 7, 6)
-BACKTEST = "lebron-2026"
+# Scenario-bound module state. Nothing here has a hardcoded value: main() and
+# every test bind a declared scenario first, and helpers assert the binding.
+SC = None
+DOCS = None
+ARRIVALS = ()
+SUBJECT = ""
+BLOCKER_BRANCH = ""
+ACTUAL_BRANCH = ""
+PRIOR_SEASON = ""
+
+
+def bind_scenario(scenario) -> None:
+    """Bind every scenario-specific module global from one declared object."""
+    global SC, DOCS, ARRIVALS, SUBJECT, BLOCKER_BRANCH, ACTUAL_BRANCH, SERVICE_YEARS
+    global PRIOR_SEASON, SEASON, FREEZE, BACKTEST, TEAMS, PERSONAS
+    from mironba.sim.arrivals import load_arrivals
+
+    SC = scenario
+    DOCS = scenario.evidence_dir
+    ARRIVALS = load_arrivals(scenario)
+    SUBJECT = scenario.decision_subject
+    BLOCKER_BRANCH = scenario.blocker_branch
+    ACTUAL_BRANCH = scenario.actual_branch
+    PRIOR_SEASON = scenario.season
+    SEASON = scenario.next_season
+    FREEZE = scenario.freeze
+    BACKTEST = scenario.id
+    TEAMS = tuple(scenario.scored_teams)
+    PERSONAS = {}
+SEASON = None
+FREEZE = None
+BACKTEST = None
 
 #: The teams reported as being in the LeBron field, plus the one that won it.
 #: Not an arbitrary five — evidence item LBJ-04 names exactly these.
-TEAMS = ("GSW", "MIA", "MIN", "CLE", "PHI")
+TEAMS = ()
 
 #: Structured persona parameters, one per team. Numeric and sweepable, never
 #: prose — the charter's rule, and it also lets a persona feed a deterministic
@@ -119,10 +147,7 @@ def persona_for(team: str) -> GMPersona:
     return PERSONAS.get(team, DEFAULT_PERSONA)
 
 
-SERVICE_YEARS = {
-    "greendr01": 14, "horfoal01": 19, "porzikr01": 11,
-    "bassech01": 2, "meltode01": 8, "jamesle01": 23,
-}
+SERVICE_YEARS = {}
 
 #: How many players a team pursues. Bounded so the market is a market rather
 #: than every team bidding on all 130 free agents.
@@ -363,7 +388,7 @@ class LeagueState:
         c26 = _rows(SNAPSHOTS / f"bbref-contracts-{SEASON}" / "contract_years.csv")
         c25 = _rows(SNAPSHOTS / "bbref-2025-26" / "contracts.csv")
         names: dict[str, str] = {}
-        for season in ("2025-26", "2024-25"):
+        for season in (PRIOR_SEASON, "2024-25"):
             path = SNAPSHOTS / f"bbref-{season}" / "players.csv"
             if path.is_file():
                 for row in _rows(path):
@@ -439,12 +464,12 @@ class LeagueState:
 
         if not hasattr(self, "_expiry_cache"):
             self._expiry_cache = (
-                year_source("2026-27"), _july_signings("2026-27", "2025-26"),
+                year_source(SEASON), _july_signings(SEASON, PRIOR_SEASON),
             )
         source, signings = self._expiry_cache
         if pid in self._pre_freeze_option_declines():
             return False
-        call = extends_into(pid, team, "2025-26", FREEZE,
+        call = extends_into(pid, team, PRIOR_SEASON, FREEZE,
                             _source=source, _signings=signings)
         return call.verdict != EXPIRED
 
@@ -481,11 +506,11 @@ class LeagueState:
             EXPIRED, _july_signings, extends_into, year_source,
         )
 
-        source = year_source("2026-27")
-        signings = _july_signings("2026-27", "2025-26")
+        source = year_source(SEASON)
+        signings = _july_signings(SEASON, PRIOR_SEASON)
         out: set[str] = set()
         for row in self.contracts_2526:
-            call = extends_into(row["player_id"], row["team_id"], "2025-26",
+            call = extends_into(row["player_id"], row["team_id"], PRIOR_SEASON,
                                 freeze, _source=source, _signings=signings)
             if call.verdict == EXPIRED:
                 out.add(row["player_id"])
@@ -496,7 +521,7 @@ class LeagueState:
         if key in self._rights_cache:
             return self._rights_cache[key]
         years = 0
-        for season in ("2025-26", "2024-25", "2023-24"):
+        for season in (PRIOR_SEASON, "2024-25", "2023-24"):
             path = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
             if not path.is_file():
                 break
@@ -538,7 +563,7 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
     # Philadelphia - had already happened and are part of the world the GMs
     # were planning in. Removing them was what gave Miami $100M of cap space
     # that never existed and let it win all eight contests.
-    already = pre_freeze_ids()
+    already = pre_freeze_ids(ARRIVALS)
     added = {t: (league.arrivals(t) - already) for t in TEAMS}
     all_added = set().union(*added.values())
     states = {t: league.freeze_state(t, added[t]) for t in TEAMS}
@@ -549,7 +574,7 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
     }
 
     base_pool = pool_ids if pool_ids is not None else league.free_agent_pool()
-    pool = (base_pool | all_added) - {"jamesle01"}
+    pool = (base_pool | all_added) - {SUBJECT}
 
     def agent_for(pid, team):
         return FreeAgent(
@@ -578,14 +603,14 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
         results[team].signed.append(pid)
 
     # The decision resolves first, and it changes what the winner can afford.
-    winner = "GSW" if outcome_key == "signs_with_blocker" else "PHI"
-    route = best_affordable(winner, "jamesle01")
+    winner = "GSW" if outcome_key == BLOCKER_BRANCH else "PHI"
+    route = best_affordable(winner, SUBJECT)
     if route is not None:
-        commit(winner, "jamesle01", route)
+        commit(winner, SUBJECT, route)
         results[winner].notes.append(
             f"signed LeBron James via {route.route} at ${route.max_first_year:,}"
         )
-    scheduler.wake_for(Event(DECISION, "jamesle01", winner, outcome_key))
+    scheduler.wake_for(Event(DECISION, SUBJECT, winner, outcome_key))
 
     # Shortlists: own expiring players first, then the top of the market.
     wanted = {}
@@ -797,8 +822,8 @@ def score(results, league, *, signings_only=True):
     scores = []
     for t in TEAMS:
         actual = (
-            sorted(signing_targets(t)) if signings_only
-            else sorted(league.arrivals(t) - pre_freeze_ids())
+            sorted(signing_targets(t, ARRIVALS)) if signings_only
+            else sorted(league.arrivals(t) - pre_freeze_ids(ARRIVALS))
         )
         scores.append(TeamScore(t, list(results[t].signed), actual))
     proposed = sum(len(s.proposed) for s in scores)
@@ -863,6 +888,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Multi-team branch simulation.")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--seed", type=int, default=20260731)
+    parser.add_argument("--scenario", required=True,
+                        help="a declared scenario id under configs/branch/")
     parser.add_argument("--teams", choices=("five", "league"), default="five",
                         help="five = the M5 scored teams; league = all 30. "
                         "Per-event relevance stays derived either way: a team "
@@ -871,6 +898,9 @@ def main(argv=None) -> int:
                         "fan out to the teams the hard filter admits, while "
                         "every team still plans its own offseason.")
     args = parser.parse_args(argv)
+    from mironba.world.scenario import load_scenario
+
+    bind_scenario(load_scenario(args.scenario))
     if args.teams == "league":
         global TEAMS
         TEAMS = _all_teams()
@@ -879,11 +909,11 @@ def main(argv=None) -> int:
     commitments = load_ledger(DOCS, BACKTEST, FREEZE).open_conditionals()
     payload = {}
 
-    for outcome in ("signs_elsewhere", "signs_with_blocker"):
+    for outcome in (ACTUAL_BRANCH, BLOCKER_BRANCH):
         results, contests, scheduler = run_branch(
             outcome, league, commitments, seed=args.seed
         )
-        tag = ("this is what happened" if outcome == "signs_elsewhere"
+        tag = ("this is what happened" if outcome == ACTUAL_BRANCH
                else "counterfactual - NOT SCORED")
         print("=" * 78)
         print(f"  BRANCH {outcome}   ({tag})")
@@ -913,7 +943,7 @@ def main(argv=None) -> int:
               f"naive polling {scheduler.polled_equivalent}   "
               f"saving {scheduler.saving:.1%}")
 
-        if outcome == "signs_elsewhere":
+        if outcome == ACTUAL_BRANCH:
             scores, pooled = score(results, league)
             print("\n  PER-TEAM PRECISION AND RECALL")
             for team_score in scores:

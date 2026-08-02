@@ -53,10 +53,11 @@ class Arrival:
     url: str
     retrieved: date
     note: str = ""
+    freeze: date = date(2026, 7, 6)
 
     @property
     def pre_freeze(self) -> bool:
-        return self.when is not None and self.when <= date(2026, 7, 6)
+        return self.when is not None and self.when <= self.freeze
 
     @property
     def producible_by_a_signing_planner(self) -> bool:
@@ -66,80 +67,56 @@ class Arrival:
 
 R = date(2026, 7, 31)
 
-ARRIVALS: tuple[Arrival, ...] = (
-    # --- pre-freeze trades: inputs, not predictions -----------------------
-    Arrival("antetgi01", "MIA", TRADE, date(2026, 6, 22), "ESPN",
-            "https://www.espn.com/nba/story/_/id/49144931/giannis-traded-heat-faq-blockbuster-move-means-bucks-celtics-draft-playoff-race",
-            R, "Milwaukee -> Miami with Portis for Herro, Ware, Jaquez, "
-               "Jakucionis and picks; completed the night of June 22"),
-    Arrival("portibo01", "MIA", TRADE, date(2026, 6, 22), "ESPN",
-            "https://www.espn.com/nba/story/_/id/49144931/giannis-traded-heat-faq-blockbuster-move-means-bucks-celtics-draft-playoff-race",
-            R, "same trade as Antetokounmpo"),
-    Arrival("ballla01", "MIN", TRADE, date(2026, 6, 25), "NBC Sports",
-            "https://www.nbcsports.com/fantasy/basketball/player-news/2026-06-25/shams-lamelo-ball-traded-to-timberwolves",
-            R, "Charlotte -> Minnesota with Josh Green for Naz Reid and picks"),
-    Arrival("greenjo02", "MIN", TRADE, date(2026, 6, 25), "NBC Sports",
-            "https://www.nbcsports.com/fantasy/basketball/player-news/2026-06-25/shams-lamelo-ball-traded-to-timberwolves",
-            R, "same trade as LaMelo Ball"),
-    Arrival("brownja02", "PHI", TRADE, date(2026, 7, 6), "NBA.com / Boston Globe",
-            "https://www.nba.com/news/reports-sixers-to-acquire-jaylen-brown-from-celtics",
-            R, "Boston -> Philadelphia for Paul George and picks; reported "
-               "July 1, official July 6 — on the freeze boundary, and PRE "
-               "under the ledger's date <= freeze rule"),
+def load_arrivals(scenario) -> tuple:
+    """The dated arrival table for one scenario, from its evidence store.
 
-    # --- post-freeze signings: the only ones a signing planner can make ---
-    Arrival("bassech01", "GSW", SIGNING, date(2026, 7, 9),
-            "Basketball-Reference transaction log",
-            "https://www.basketball-reference.com/leagues/NBA_2026_transactions.html",
-            date(2026, 7, 30), "in our own ingest"),
-    Arrival("jamesle01", "PHI", SIGNING, date(2026, 7, 24), "ESPN",
-            "https://www.espn.com/nba/story/_/id/49440164/lebron-chooses-76ers-sign-2-year-8-million-contract",
-            R, "2 years, ~$8M, at the veteran minimum"),
+    This was a hand-written module constant for the LeBron case - sourced,
+    dated data living in code. It is data: evidence/<id>/arrivals.csv, same
+    provenance columns, loaded per scenario. The freeze that splits pre from
+    post comes from the scenario, never from a constant.
+    """
+    import csv as _csv
 
-    # --- draft picks: a different mechanism again -------------------------
-    Arrival("lendeya01", "GSW", DRAFT, date(2026, 6, 25), "NBCS Bay Area",
-            "https://www.nbcsportsbayarea.com/nba/golden-state-warriors/remaining-free-agency-moves-draymond-green/1952777/",
-            R, "No. 11 overall pick"),
+    path = scenario.evidence_dir / 'arrivals.csv'
+    if not path.is_file():
+        return ()
+    out = []
+    with path.open(encoding='utf-8', newline='') as handle:
+        for r in _csv.DictReader(handle):
+            out.append(Arrival(
+                player_id=r['player_id'], team=r['team'],
+                mechanism=r['mechanism'],
+                when=date.fromisoformat(r['when']) if r['when'] else None,
+                source=r['source'], url=r['url'],
+                retrieved=date.fromisoformat(r['retrieved']),
+                note=r.get('note', ''),
+                freeze=scenario.freeze,
+            ))
+    return tuple(out)
 
-    # --- unsourced ---------------------------------------------------------
-    # Modest salaries, changed teams, and no reporting found. Left UNKNOWN
-    # rather than guessed: labelling one of these a signing to improve recall
-    # would be choosing the denominator to suit the number.
-    Arrival("hardati02", "MIA", UNKNOWN, None, "", "", R, "not sourced"),
-    Arrival("wadede01", "PHI", UNKNOWN, None, "", "", R, "not sourced"),
-    Arrival("simonan01", "PHI", UNKNOWN, None, "", "", R, "not sourced"),
-    Arrival("hukpoar01", "PHI", UNKNOWN, None, "", "", R, "not sourced"),
-    Arrival("lylestr01", "MIN", UNKNOWN, None, "", "", R, "no 2025-26 contract"),
-    Arrival("conwery01", "MIA", UNKNOWN, None, "", "", R, "no 2025-26 contract"),
-    Arrival("evansis01", "MIN", UNKNOWN, None, "", "", R, "no 2025-26 contract"),
-    Arrival("thomame01", "CLE", UNKNOWN, None, "", "", R, "no 2025-26 contract"),
-    Arrival("philola01", "PHI", UNKNOWN, None, "", "", R, "no 2025-26 contract"),
-)
-
-BY_ID = {a.player_id: a for a in ARRIVALS}
+def mechanism(player_id: str, arrivals) -> str:
+    for arrival in arrivals:
+        if arrival.player_id == player_id:
+            return arrival.mechanism
+    return UNKNOWN
 
 
-def mechanism(player_id: str) -> str:
-    arrival = BY_ID.get(player_id)
-    return arrival.mechanism if arrival else UNKNOWN
-
-
-def pre_freeze_ids() -> set[str]:
+def pre_freeze_ids(arrivals) -> set[str]:
     """Arrivals that had already happened at the freeze. These are inputs."""
-    return {a.player_id for a in ARRIVALS if a.pre_freeze}
+    return {a.player_id for a in arrivals if a.pre_freeze}
 
 
-def signing_targets(team: str) -> set[str]:
+def signing_targets(team: str, arrivals) -> set[str]:
     """Arrivals for this team a signing planner could in principle produce."""
     return {
-        a.player_id for a in ARRIVALS
+        a.player_id for a in arrivals
         if a.team == team and a.producible_by_a_signing_planner
     }
 
 
-def summary() -> str:
+def summary(arrivals) -> str:
     counts: dict[str, int] = {}
-    for arrival in ARRIVALS:
+    for arrival in arrivals:
         key = f"{arrival.mechanism}{' (pre-freeze)' if arrival.pre_freeze else ''}"
         counts[key] = counts.get(key, 0) + 1
     return ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))

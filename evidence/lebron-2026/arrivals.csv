@@ -1,0 +1,18 @@
+player_id,team,mechanism,when,source,url,retrieved,note
+antetgi01,MIA,trade,2026-06-22,ESPN,https://www.espn.com/nba/story/_/id/49144931/giannis-traded-heat-faq-blockbuster-move-means-bucks-celtics-draft-playoff-race,2026-07-31,"Milwaukee -> Miami with Portis for Herro, Ware, Jaquez, Jakucionis and picks; completed the night of June 22"
+portibo01,MIA,trade,2026-06-22,ESPN,https://www.espn.com/nba/story/_/id/49144931/giannis-traded-heat-faq-blockbuster-move-means-bucks-celtics-draft-playoff-race,2026-07-31,same trade as Antetokounmpo
+ballla01,MIN,trade,2026-06-25,NBC Sports,https://www.nbcsports.com/fantasy/basketball/player-news/2026-06-25/shams-lamelo-ball-traded-to-timberwolves,2026-07-31,Charlotte -> Minnesota with Josh Green for Naz Reid and picks
+greenjo02,MIN,trade,2026-06-25,NBC Sports,https://www.nbcsports.com/fantasy/basketball/player-news/2026-06-25/shams-lamelo-ball-traded-to-timberwolves,2026-07-31,same trade as LaMelo Ball
+brownja02,PHI,trade,2026-07-06,NBA.com / Boston Globe,https://www.nba.com/news/reports-sixers-to-acquire-jaylen-brown-from-celtics,2026-07-31,"Boston -> Philadelphia for Paul George and picks; reported July 1, official July 6 — on the freeze boundary, and PRE under the ledger's date <= freeze rule"
+bassech01,GSW,signing,2026-07-09,Basketball-Reference transaction log,https://www.basketball-reference.com/leagues/NBA_2026_transactions.html,2026-07-30,in our own ingest
+jamesle01,PHI,signing,2026-07-24,ESPN,https://www.espn.com/nba/story/_/id/49440164/lebron-chooses-76ers-sign-2-year-8-million-contract,2026-07-31,"2 years, ~$8M, at the veteran minimum"
+lendeya01,GSW,draft,2026-06-25,NBCS Bay Area,https://www.nbcsportsbayarea.com/nba/golden-state-warriors/remaining-free-agency-moves-draymond-green/1952777/,2026-07-31,No. 11 overall pick
+hardati02,MIA,unknown,,,,2026-07-31,not sourced
+wadede01,PHI,unknown,,,,2026-07-31,not sourced
+simonan01,PHI,unknown,,,,2026-07-31,not sourced
+hukpoar01,PHI,unknown,,,,2026-07-31,not sourced
+lylestr01,MIN,unknown,,,,2026-07-31,no 2025-26 contract
+conwery01,MIA,unknown,,,,2026-07-31,no 2025-26 contract
+evansis01,MIN,unknown,,,,2026-07-31,no 2025-26 contract
+thomame01,CLE,unknown,,,,2026-07-31,no 2025-26 contract
+philola01,PHI,unknown,,,,2026-07-31,no 2025-26 contract

@@ -239,9 +239,9 @@ class TestEvidenceOnTheSurface:
 
     @pytest.fixture(scope="class")
     def ledger(self):
-        from mironba.report.evidence_view import load_lebron_ledger
+        from mironba.report.evidence_view import load_scenario_ledger
 
-        ledger = load_lebron_ledger()
+        ledger = load_scenario_ledger("lebron-2026")
         if ledger is None:
             pytest.skip("lebron-2026 ledger not present")
         return ledger

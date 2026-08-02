@@ -181,7 +181,7 @@ class Branch:
         return f"{self.decision_id}={self.outcome_key}"
 
 
-def active_commitments(commitments, outcome: Outcome, *, decision: PendingDecision):
+def active_commitments(commitments, outcome: Outcome, *, decision: PendingDecision, fires=None):
     """Conditional commitments that apply in this branch.
 
     A commitment's condition names a branch — "IF James signs with Golden
@@ -201,11 +201,20 @@ def active_commitments(commitments, outcome: Outcome, *, decision: PendingDecisi
         if condition.startswith("UNTIL"):
             live.append(commitment)
             continue
-        subjects = {s.lower() for s in outcome.subjects}
-        mentions_subject = any(s in condition.lower() for s in subjects)
-        if outcome.key == "signs_with_blocker" and mentions_subject:
+        if fires is not None:
+            # The scenario's declared marker rule (entry 44 is what inference
+            # does). No branch key is named here.
+            if fires(commitment.condition, outcome.key):
+                live.append(commitment)
+            continue
+        all_subjects = {s.lower() for o in decision.outcomes for s in o.subjects}
+        mentions_subject = any(s in condition.lower() for s in all_subjects)
+        # Fallback shape: the blocker branch is the one that names teams; a
+        # condition naming any of the decision's teams fires there and only
+        # there. The declared marker rule (fires=) supersedes this.
+        if outcome.subjects and mentions_subject:
             live.append(commitment)
-        elif outcome.key != "signs_with_blocker" and "elsewhere" in condition.lower():
+        elif not outcome.subjects and not mentions_subject:
             live.append(commitment)
     return live
 
@@ -214,6 +223,7 @@ def build_branches(
     decision: PendingDecision,
     blocks: list[Block],
     commitments,
+    fires=None,
 ) -> list[Branch]:
     """One branch per outcome, with its blocks settled and commitments attached."""
     branches = []
@@ -238,7 +248,7 @@ def build_branches(
                 decision_id=decision.decision_id,
                 outcome_key=outcome.key,
                 active_commitments=list(
-                    active_commitments(commitments, outcome, decision=decision)
+                    active_commitments(commitments, outcome, decision=decision, fires=fires)
                 ),
                 blocks=settled,
             )

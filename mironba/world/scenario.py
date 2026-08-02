@@ -38,16 +38,7 @@ EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "evidence"
 #: Modules that still hard-code scenario identifiers, found by enumeration
 #: (89 occurrences, 14 files). Tracked, not hidden: the fence test allows
 #: these and only these, so migration is measurable and new leakage fails.
-SCENARIO_DEBT = (
-    "mironba/sim/branch.py",
-    "mironba/sim/league.py",
-    "mironba/sim/arrivals.py",
-    "mironba/world/pending.py",
-    "mironba/eval/backtest.py",
-    "mironba/eval/branch_score.py",
-    "mironba/eval/interest_score.py",
-    "mironba/report/evidence_view.py",
-)
+SCENARIO_DEBT: tuple = ()  # paid in full; the fence now admits no module
 
 
 class ScenarioError(ValueError):
@@ -56,6 +47,20 @@ class ScenarioError(ValueError):
 
 @dataclass(frozen=True)
 class BranchScenario:
+    """One declared scenario. Two seed shapes share this object:
+
+    * ``pending_decision`` - something is unresolved (where does a player
+      sign?), the world forks into branches, one branch happened.
+    * ``stipulated`` - the event is asserted up front (Curry traded to the
+      Lakers), there are no branches and no ground truth, and the run is a
+      demonstration labelled unfalsifiable, never a measurement.
+
+    They share: id, season, a freeze with a stated rationale, subjects, an
+    evidence directory, scored teams (empty for stipulated - nothing scores).
+    They diverge on: branches/actual_branch (pending only) versus
+    ``stipulation`` (stipulated only), and on whether eval may run at all.
+    """
+
     id: str
     season: str
     freeze: date
@@ -65,6 +70,22 @@ class BranchScenario:
     branches: tuple[str, ...]
     actual_branch: str
     scored_teams: tuple[str, ...]
+    kind: str = "pending_decision"
+    #: The player whose unresolved decision forks the world (pending only).
+    decision_subject: str = ""
+    #: The team holding capacity for the subject, and the branch where the
+    #: subject joins it.
+    blocker_team: str = ""
+    blocker_branch: str = ""
+    #: branch -> lowercase marker; a conditional fires in the branch whose
+    #: marker appears in its condition. One declared rule, no inference.
+    condition_markers: dict = field(default_factory=dict)
+    #: The league year the decision lands in ("2026-27" for a July-2026 freeze).
+    next_season: str = ""
+    #: Structured persona params per team; anything absent uses the default.
+    personas: dict = field(default_factory=dict)
+    #: Stipulated seed only: the asserted event, validated by rules/ first.
+    stipulation: dict = field(default_factory=dict)
     evidence_dir: Path = field(default=None)  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
@@ -74,7 +95,15 @@ class BranchScenario:
         ]
         if missing:
             raise ScenarioError(f"scenario is missing {missing}")
-        if self.actual_branch not in self.branches:
+        if self.kind == "stipulated":
+            if self.branches or self.actual_branch:
+                raise ScenarioError(
+                    f"{self.id}: a stipulated scenario has no branches - the "
+                    "event is asserted, not forked"
+                )
+            if not self.stipulation:
+                raise ScenarioError(f"{self.id}: stipulated but no stipulation")
+        elif self.actual_branch not in self.branches:
             raise ScenarioError(
                 f"{self.id}: actual_branch {self.actual_branch!r} is not one "
                 f"of the declared branches {self.branches}"
@@ -83,6 +112,31 @@ class BranchScenario:
             raise ScenarioError(f"{self.id}: subjects and scored_teams required")
         if self.evidence_dir is None:
             object.__setattr__(self, "evidence_dir", EVIDENCE_ROOT / self.id)
+
+    def condition_fires_in(self, condition: str, branch: str) -> bool:
+        """The declared per-scenario rule; entry 44 is what inference does."""
+        marker = self.condition_markers.get(branch, "")
+        others = [m for b, m in self.condition_markers.items() if b != branch and m]
+        if marker:
+            return marker in condition.lower()
+        return not any(m in condition.lower() for m in others)
+
+    def _data_rows(self, name: str) -> list[dict]:
+        import csv
+
+        path = self.evidence_dir / name
+        if not path.is_file():
+            return []
+        with path.open(encoding="utf-8", newline="") as handle:
+            return list(csv.DictReader(handle))
+
+    def pre_freeze_arrival_ids(self) -> set[str]:
+        """Hand-curated pre-freeze arrivals - data in the store, not code."""
+        return {r["player_id"] for r in self._data_rows("pre-freeze-arrivals.csv")}
+
+    def post_freeze_signing_ids(self) -> set[str]:
+        """Names whose signings postdate the freeze; excluded from freeze state."""
+        return {r["player_id"] for r in self._data_rows("post-freeze-signings.csv")}
 
     def ledger(self):
         """The scenario's evidence, PRE/POST partitioned by ITS OWN freeze.
@@ -111,7 +165,15 @@ def load_scenario(scenario_id: str) -> BranchScenario:
         freeze_rationale=raw["freeze_rationale"],
         subjects=tuple(raw["subjects"]),
         decision=raw["decision"],
-        branches=tuple(raw["branches"]),
-        actual_branch=raw["actual_branch"],
-        scored_teams=tuple(raw["scored_teams"]),
+        branches=tuple(raw.get("branches") or ()),
+        actual_branch=raw.get("actual_branch", ""),
+        scored_teams=tuple(raw.get("scored_teams") or ()),
+        kind=raw.get("kind", "pending_decision"),
+        decision_subject=raw.get("decision_subject", ""),
+        blocker_team=raw.get("blocker_team", ""),
+        blocker_branch=raw.get("blocker_branch", ""),
+        condition_markers=dict(raw.get("condition_markers") or {}),
+        next_season=raw.get("next_season", ""),
+        personas=dict(raw.get("personas") or {}),
+        stipulation=dict(raw.get("stipulation") or {}),
     )

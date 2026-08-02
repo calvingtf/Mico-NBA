@@ -27,13 +27,12 @@ INPUT_MARKER = (
 )
 
 
-def load_lebron_ledger():
-    """The one curated backtest ledger, or None when its files are absent."""
+def load_scenario_ledger(scenario_id: str):
+    """The named scenario's ledger, or None when its files are absent."""
     try:
-        from mironba.eval.backtest import DOCS, FREEZE
-        from mironba.world.evidence import load_ledger
+        from mironba.world.scenario import load_scenario
 
-        return load_ledger(DOCS, "lebron-2026", FREEZE)
+        return load_scenario(scenario_id).ledger()
     except Exception:  # noqa: BLE001 - surface renders fine without evidence
         return None
 
@@ -61,8 +60,12 @@ def known_at_freeze(ledger) -> list[dict]:
     return rows
 
 
-def condition_fires_in(condition: str, branch_name: str) -> bool:
-    """The declared rule. See the module docstring; do not widen it silently."""
+def condition_fires_in(condition: str, branch_name: str, scenario=None) -> bool:
+    """The declared rule - the SCENARIO's marker rule, never local inference."""
+    if scenario is not None:
+        for key in scenario.branches:
+            if key in branch_name:
+                return scenario.condition_fires_in(condition, key)
     gsw_conditional = "golden state" in condition.lower()
     gsw_branch = "blocker" in branch_name.lower()
     return gsw_conditional == gsw_branch

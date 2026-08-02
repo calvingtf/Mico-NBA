@@ -77,3 +77,14 @@ def rules_fired(validation) -> set[str]:
 
 def error_rules(validation) -> set[str]:
     return {f.rule for f in validation.errors()}
+
+
+# The suite's fixtures predate the scenario object and assume the
+# lebron-2026 case; bind it before test modules copy module globals.
+import mironba.sim.branch as _branch_mod
+import mironba.sim.league as _league_mod
+from mironba.world.scenario import load_scenario as _load_scenario
+
+_SC = _load_scenario("lebron-2026")
+_league_mod.bind_scenario(_SC)
+_branch_mod.bind_scenario(_SC)
