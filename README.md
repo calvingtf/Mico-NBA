@@ -718,6 +718,33 @@ illegal would be equally wrong in the other direction.
 8. **One model, one quantization, one machine.** Throughput and latency describe
    an RTX 3090 running `qwen3.6:27b` at Q4_K_M.
 
+### Draft simulation v0: rumor-driven, and it loses to the mock - on purpose
+
+One draft (2026), assignment only, scored against exact ground truth with two
+nulls. `python -m mironba.sim.draft` walks the 60 slots in reconstructed
+order - standings worst-first (**no lottery model**), plus the 9 pick trades
+the transaction text attributes unambiguously; 56/60 slots attributed, the 4
+unattributable ones listed with reasons, never guessed. Each owning team
+takes its highest-priority available rumored target from 26 dated,
+source-quoted `draft_interest` rows (11 teams, 17 prospects, hand-curated
+because RSS reaches back two days). Contested prospects resolve by pick
+order, which is exact. 6 slots resolve; 54 emit UNRESOLVED with the reason;
+the first choice was already gone at 16 slots - that cascade is the one thing
+the walk contributes over reading the rumor list.
+
+`python -m mironba.eval.draft_score`: **accuracy 1/6** on resolved slots
+(unresolved count printed beside every number). Null 1, random assignment of
+the named prospects onto the same slots: 0.18 expected hits - the sim is
+above it, which is expected and means little. Null 2, a published final mock
+(HoopsHQ, dated 2026-06-22, pre-draft) on the same slots: **the mock scores
+2/5 where the sim scores 1/5 - the sim loses to the consensus mock.** That is
+a perfectly good result stated plainly: the mock is a professional forecast
+built on prospect evaluation; the sim has only dated rumor behaviour, and one
+draft's difference is what that gap is worth. Mock rows are `draft_projection`
+evidence - a competing forecaster, never an input - and a fence test fails if
+any module outside `eval/` can reach them (it caught its own docstring on the
+first run). Rookie-scale cap effects are NOT_MODELLED in v0.
+
 ## What is still unmeasured
 
 Named because an absent measurement that nobody names reads as a measurement
