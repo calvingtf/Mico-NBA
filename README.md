@@ -974,8 +974,16 @@ unmeasured" as free-to-run work that has not been run.
 - **Historical news** - BLOCKED: RSS reaches back ~3 measured days, the
   archive reaches back to its first partition (2026-07-31), and the Wayback
   CDX spike came back 0/26 - the source articles were never captured at all.
-  Historical scenarios stay hand-curated; UNRECOVERABLE-BY-RSS gaps stay
-  declared. The standing archive is the only source of future PRE evidence.
+  A GDELT DOC 2.0 spike (entry #58) adds one route whose dating guarantee is
+  sound - seendate is a third-party existed-by timestamp, a conservative PRE
+  gate - but its recall is UNMEASURED: after one successful probe (250
+  articles, seendate on every row) the API answered 429 to every request
+  across an hour, including a 45-minute zero-request cooldown, consistent
+  with a shared-egress IP saturating GDELT's limiter. Infeasible to measure
+  from this network today, claimed as exactly that; the spike is committed
+  and re-runs any day the API answers. Historical scenarios stay
+  hand-curated; UNRECOVERABLE-BY-RSS gaps stay declared. The standing
+  archive is the only source of future PRE evidence.
 - **Market model resolution** - BLOCKED at current inputs: the value model's
   win-delta error is 10.48 wins, so contention tiers separate only extremes,
   and single-star trades can flatten to zero projected-win shift (reported

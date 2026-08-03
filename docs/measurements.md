@@ -2270,3 +2270,30 @@ a person or a front office's character, and whether it is supported:
 - docs/example-run.html and bench-league json artifacts: historical model
   prose and recorded payloads carrying old labels - artifacts of runs,
   kept as recorded, covered by their own limitation blocks.
+
+
+## 58. GDELT spike: dating guarantee sound, recall UNMEASURED - network-blocked (2026-08-03)
+
+**What was measured before the wall:** one successful DOC 2.0 query
+returned 250 articles for the 2026 draft window with ``seendate`` present
+on every row, the expected 8-column schema, and mainstream domains
+(nbcwashington, forbes, nbcchicago...). The dating guarantee is stated in
+the module and stands regardless: seendate is GDELT's own observation
+timestamp - an upper bound on publication that works as a CONSERVATIVE
+PRE gate (it can under-admit late-seen items, never smuggle POST into
+PRE); a backfilled row would gate on seendate and keep the page's
+self-reported date for display only.
+**What could not be measured:** recall against the 26 draft rows and 9
+lebron rows. Every request after the first success returned 429 across
+60+ minutes - through a 240s in-run backoff, a 7-minute cooldown, a
+45-minute ZERO-REQUEST cooldown, and a User-Agent discriminator (the
+exact UA that had succeeded). A first-request 429 after 45 silent
+minutes is not a burst penalty; it is consistent with a shared-egress
+(CGNAT) neighbour saturating GDELT's per-IP limiter continuously.
+**Verdict, claimed as exactly this and nothing more:** INFEASIBLE TO
+MEASURE FROM THIS NETWORK TODAY. Recall is UNMEASURED - not poor, not
+good - so nothing changes: historical stays hand-curated (the Wayback
+conclusion), and the committed spike re-runs any day the API answers,
+printing the full two-level recall analysis (exact-source and
+claim-level) it was built to produce. No pipeline was built, per the
+brief, and none would be until that number exists.
