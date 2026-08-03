@@ -564,10 +564,12 @@ def signing_ceiling(team: str, env, revealed=None) -> int:
     """The budget a team plans signings against.
 
     Default: the second apron for everyone (the measured backtest
-    behaviour). With a revealed-disposition map, a team whose sourced
-    history spent below the league average is capped at the FIRST apron -
-    spend_level wired to willingness-to-pay. SUGGESTIVE at n=11; the caller
-    labels any arm built on this.
+    behaviour). With a behaviour map, a team whose sourced history spent
+    below the league average is capped at the FIRST apron. spend_level is
+    the FRANCHISE'S payroll posture, not a stable personal disposition:
+    same-GM persistence is dead even at n=29 (mae 0.078 vs null 0.077) and
+    it LEANS SHIFT at handovers (11/16, p=0.105) - mandate-consistent. The
+    caller labels any arm built on this a demonstration.
     """
     if revealed and revealed.get(team, {}).get("low_spend"):
         return env.first_apron

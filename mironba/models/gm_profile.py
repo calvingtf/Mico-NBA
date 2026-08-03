@@ -34,6 +34,17 @@ Parameters computed (each per season, then averaged over tenure seasons):
 NOT COMPUTABLE from the ingested history, dropped with reasons rather than
 approximated: average contract length (season tables carry salaries, not
 terms) and young-for-veteran direction (no historical age/service ingest).
+
+WHAT THE THREE DESIGNS SHOWED (entries #53-#55): at n=11 four parameters
+looked persistent; at n=29 (within-stint, past the costed power target)
+none beat the league-average null; at n=16 clean handovers five of six
+computable parameters are FLAT - shifts do not exceed within-stint drift.
+So these numbers are TEAM-CONDITION SUMMARIES, not GM dispositions: the
+person demonstrably does not carry them across the boundary. spend_level
+alone leans shift at handovers (11/16, p=0.105) while not persisting
+within stints - mandate-consistent, inconclusive at this n, and the
+residual confound (new GMs arrive with mandates) is stated wherever the
+result is.
 """
 
 from __future__ import annotations
@@ -336,7 +347,7 @@ def to_persona(prof: Profile | None, averages: dict, *,
         hoarding = 0.8
     else:
         hoarding = 0.5
-    return GMPersona(f"revealed:{prof.gm}", risk_tolerance=0.5,
+    return GMPersona(f"franchise-history:{prof.team}", risk_tolerance=0.5,
                      win_now_horizon=2, asset_hoarding=hoarding)
 
 

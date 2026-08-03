@@ -2200,3 +2200,24 @@ demonstration until the persistence question has its n=23 pairs.
 null-failed parameter; this one confirms direction and locus with the
 suggestive ones, under a prediction that could have failed and was written
 down first.
+
+
+## 55. The handover test: the person does not carry the parameters (2026-08-03)
+
+**Registered (ebb73cc, before running):** nothing clears p<=0.05;
+spend_level FLAT; if anything shifts, trade_rate.
+**Observed (n=16 clean handovers):** primary held - nothing clears.
+deadline_share 2/16, trade_rate 3/16, aggregation 4/16, pick_flow 4/16
+(p>=0.98 - decisively flat), retention 5/13. Both specific calls missed
+informatively: trade_rate was the flattest, and spend_level leaned SHIFT
+(11/16, p=0.105) against its registered FLAT.
+**The combined read across entries #53-#55:** n=11 suggestion -> dissolved
+at n=29 (no within-stint persistence, spend dead even at mae 0.078 vs
+0.077) -> handover-flat on five of six. These parameters are
+franchise-condition summaries; the code no longer calls any of them a GM
+disposition, and the persona label became franchise-history:<team>.
+spend_level is the residue: no within-stint persistence plus a handover
+lean is mandate-shaped, not person-shaped - unresolved at this n, confound
+stated.
+**Design note recorded:** flat survives the mandate confound (a mandate
+inflates shifts); a shift result never rises above person-or-mandate.

@@ -857,34 +857,55 @@ the date, within the sourced tenure, registered in DERIVED_FACTS; under
 `MIN_SEASONS` the profile is UNKNOWN and falls back to league average,
 loudly (8 of 30 teams at the current freeze).
 
-**Out of sample** (fit 2016-22 under the same GM, predict 2022-25, n=11
-GMs; null = the league-average fit-window profile):
+**Out of sample, three designs, the story told once.** At n=11 (current
+GMs only) four parameters looked persistent. Curating 25 sourced predecessor
+stints (coverage 132/300 -> 255/300 team-seasons; still incomplete: MIN 6
+missing, CLE 5, CHI/DET/SAC 4 - undated stints stay out) raised the
+within-stint design to **n=29 same-GM pairs, past the costed n=23 target -
+and the persistence result dissolved rather than confirmed**:
 
-| parameter | n | GM mae | null mae | wins | p (sign test) | verdict |
-|---|---|---|---|---|---|---|
-| spend_level | 11 | 0.066 | 0.082 | 8/11 | 0.113 | SUGGESTIVE |
-| trade_rate | 11 | 0.918 | 0.963 | 7/11 | 0.274 | SUGGESTIVE |
-| deadline_share | 11 | 0.232 | 0.259 | 5/11 | 0.726 | SUGGESTIVE (mae only) |
-| posture_agreement | 9 | 0.380 | 0.396 | 5/9 | 0.500 | SUGGESTIVE (mae only) |
-| aggregation_rate | 11 | 0.168 | 0.154 | 6/11 | 0.500 | **does not beat the null** |
-| pick_flow | 11 | 1.812 | 1.640 | 4/11 | 0.887 | **does not beat the null** |
-| retention_rate | 11 | 0.089 | 0.062 | 3/11 | 0.967 | **does not beat the null** |
+| parameter | n | wins | p (sign test) | verdict |
+|---|---|---|---|---|
+| spend_level | 29 | 16/29 | 0.356 | does not beat the null (mae 0.078 vs 0.077) |
+| trade_rate | 29 | 15/29 | 0.500 | does not beat the null |
+| pick_flow | 29 | 14/29 | 0.644 | does not beat the null |
+| aggregation_rate | 29 | 12/29 | 0.868 | does not beat the null |
+| deadline_share | 29 | 11/29 | 0.932 | does not beat the null |
+| retention_rate | 29 | 11/29 | 0.932 | does not beat the null |
+| posture_agreement | 16 | 11/16 | 0.105 | SUGGESTIVE, still above 0.064 |
 
-**No parameter clears the threshold this project refused p=0.064 at** - the
-best is spend_level at p=0.113, which is 8/11 under a coin-flip null. So the
-persistence results are SUGGESTIVE, not passes: read plainly, a GM's volume
-and spending habits *look* more persistent than their trade construction,
-and at n=11 that reading is not yet a measurement. The power is costed like
-the draft corpus: separating a true 75% persistence rate from chance needs
-**n=23 same-GM fit/holdout pairs** (critical 16 wins, power 0.80) against
-the 11 that exist - and the route to more pairs is curating predecessor
-tenures for the 168 unattributable team-seasons. The direction is still
-consistent with the M10 observation that persona citation fell as model
-capability rose. The one parameter that reaches decision logic
-(aggregation -> asset_hoarding -> max_assets_out in the cascade) is among
-the failures, so `to_persona` refuses to differentiate on it without an
-explicit probe flag: **a parameter that failed its null must not enter the
-sim as if it had.**
+**The handover test** is the design that separates person from franchise -
+same-GM persistence predicts the team's future from the team's past either
+way; a GM change does not. n = 16 clean lead-to-lead handovers (LAC and NYK
+excluded by their sourced tenure notes: the authority did not change
+cleanly). Prediction registered in commit ebb73cc before running: primary,
+nothing clears p<=0.05; spend_level specifically FLAT; secondary, if
+anything shifts it is trade_rate.
+
+| parameter | n | shifted | p | reading |
+|---|---|---|---|---|
+| deadline_share | 16 | 2/16 | 1.000 | FLAT - franchise-or-noise, not a GM disposition |
+| trade_rate | 16 | 3/16 | 0.998 | FLAT - franchise-or-noise, not a GM disposition |
+| aggregation_rate | 16 | 4/16 | 0.989 | FLAT - franchise-or-noise, not a GM disposition |
+| pick_flow | 16 | 4/16 | 0.989 | FLAT - franchise-or-noise, not a GM disposition |
+| retention_rate | 13 | 5/13 | 0.867 | FLAT - franchise-or-noise, not a GM disposition |
+| spend_level | 16 | 11/16 | 0.105 | leans shift - not separable from drift at this n |
+
+The primary prediction held; the spend-specific one did not (it leans the
+other way), and the secondary hedge on trade_rate was wrong in direction
+(3/16 - decisively flat). The five flat parameters are renamed in the code:
+they are franchise-condition summaries, and nothing calls them GM
+dispositions any more. spend_level is the interesting residue: dead even
+within stints yet leaning shift across them is what a MANDATE looks like -
+payroll posture resets when regimes change, rather than travelling with a
+person.
+
+**The residual confound, stated beside the result:** a handover is not
+clean either - new GMs often arrive with a mandate, so a behaviour shift
+can be the situation rather than the person. This design narrows the
+person-vs-franchise confound; it does not remove it. A FLAT result is the
+stronger reading (a mandate would inflate shifts, not suppress them);
+spend_level's lean stays person-or-mandate and is labelled so.
 
 **The derived-vs-uniform experiments**, three layers, all reported:
 
@@ -923,10 +944,12 @@ deciding.**
 2. Money and roster tier cannot separate contenders in July - the M10
    discriminator result, and the reaction's own resolver declaring contested
    decisions ARBITRARY because nothing available separates the offers.
-3. GM trade-construction style does not persist out of sample
-   (aggregation, pick flow, retention all fail their null), while the
-   suggestive survivors are volume and spending - properties of the
-   franchise's constraint position more than of the person.
+3. GM behaviour does not travel with the person: at n=29 no profile
+   parameter beats the league-average null within a stint, and at n=16
+   clean handovers five of six computable parameters are FLAT - the
+   franchise's constraint position, not the individual, is what the
+   transaction record reveals. (spend_level alone leans shift at
+   handovers, p=0.105 - mandate-consistent, unresolved.)
 
 Stated as a convergence of three negatives, not proven as a theorem: each
 leg carries its own n and its own null, listed where it was measured.
@@ -988,6 +1011,19 @@ unmeasured" as free-to-run work that has not been run.
   player-heavy one; the published-curve comparison from the M9 brief is the
   stated route. Rookie-scale cap effects remain NOT_MODELLED (draft v0
   scope statement).
+
+### What the persona evidence now supports (boundary statement)
+
+Mechanism: CONFIRMED - dispositions wired to real hooks change the world in
+the registered direction (entry #54). Persistence: NULL at proper power -
+n=29 within-stint pairs, no parameter beats the league average, spend_level
+dead even (entry #53 costing, resolved by 2057ca5). Person-attribution:
+NONE ESTABLISHED - five of six computable parameters are handover-flat and
+are named franchise-condition summaries in the code; spend_level leans
+shift at handovers (p=0.105), which is mandate-consistent and unresolved;
+posture_agreement remains the lone SUGGESTIVE within-stint survivor
+(p=0.105 at n=16) and reaches no decision logic. The uniform arm therefore
+remains the defaults; every derived arm is a labelled demonstration.
 
 ## Reading further
 

@@ -132,9 +132,11 @@ def _execute(league, acquirer: str, counterparty: str, package) -> None:
 def gate_by_trade_rate(team: str, revealed=None) -> bool:
     """True when a team may enter the generated-trade queue.
 
-    trade_rate wired to propensity-to-deal: below the league-average rate in
-    the sourced history means the team does not attempt a generated trade.
-    SUGGESTIVE at n=11; arms built on this carry the label.
+    trade_rate is the FRANCHISE'S recent deal volume, not a GM disposition:
+    it failed same-GM persistence at n=29 (p=0.500) and is handover-FLAT
+    (3/16 shifts, p=0.998), so the person demonstrably does not carry it.
+    Below the league-average rate means the team does not attempt a
+    generated trade. Arms built on this are labelled demonstrations.
     """
     if revealed and revealed.get(team, {}).get("below_avg_trade_rate"):
         return False
