@@ -560,13 +560,27 @@ class TeamResult:
     notes: list = field(default_factory=list)
 
 
+def signing_ceiling(team: str, env, revealed=None) -> int:
+    """The budget a team plans signings against.
+
+    Default: the second apron for everyone (the measured backtest
+    behaviour). With a revealed-disposition map, a team whose sourced
+    history spent below the league average is capped at the FIRST apron -
+    spend_level wired to willingness-to-pay. SUGGESTIVE at n=11; the caller
+    labels any arm built on this.
+    """
+    if revealed and revealed.get(team, {}).get("low_spend"):
+        return env.first_apron
+    return env.second_apron
+
+
 def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None,
-               stipulated=frozenset()):
+               stipulated=frozenset(), revealed=None):
     """One branch: every team plans, contested players resolve, losers react."""
     env = environment_for(SEASON)
     rng = random.Random(seed)
     scheduler = Scheduler(teams=TEAMS)
-    ceiling = env.second_apron
+    ceilings = {t: signing_ceiling(t, env, revealed) for t in TEAMS}
 
     # Only POST-freeze arrivals are removed. The June trades - Giannis and
     # Portis to Miami, LaMelo Ball and Josh Green to Minnesota, Jaylen Brown to
@@ -603,7 +617,7 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
         routes = signing_routes(state, agent_for(pid, team), env)
         usable = [
             r for r in routes.routes
-            if state.committed_salary + r.max_first_year <= ceiling
+            if state.committed_salary + r.max_first_year <= ceilings[team]
         ]
         return max(usable, key=lambda r: r.max_first_year) if usable else None
 

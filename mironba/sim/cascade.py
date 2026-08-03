@@ -94,6 +94,7 @@ class CascadeResult:
     trades: list = field(default_factory=list)
     attempts: int = 0
     killed_by_gate: int = 0
+    killed_by_trade_rate_gate: int = 0
     killed_by_solver: int = 0
     suppressed_by_cap: int = 0
     depth_reached: int = 0
@@ -128,9 +129,21 @@ def _execute(league, acquirer: str, counterparty: str, package) -> None:
             row["team_id"] = dest[row["player_id"]]
 
 
+def gate_by_trade_rate(team: str, revealed=None) -> bool:
+    """True when a team may enter the generated-trade queue.
+
+    trade_rate wired to propensity-to-deal: below the league-average rate in
+    the sourced history means the team does not attempt a generated trade.
+    SUGGESTIVE at n=11; arms built on this carry the label.
+    """
+    if revealed and revealed.get(team, {}).get("below_avg_trade_rate"):
+        return False
+    return True
+
+
 def run_cascade(league, results, *, season: str, when: date,
                 trade_season: str, teams, persona_for, scheduler,
-                stipulated=frozenset()) -> CascadeResult:
+                stipulated=frozenset(), revealed=None) -> CascadeResult:
     """Generated trades, triggered by the market's own events.
 
     ``results`` is the reaction's per-team outcome: a team enters the queue
@@ -165,6 +178,9 @@ def run_cascade(league, results, *, season: str, when: date,
             out.suppressed_by_cap += 1
             continue
         attempted.add(team)
+        if not gate_by_trade_rate(team, revealed):
+            out.killed_by_trade_rate_gate += 1
+            continue
         out.attempts += 1
         out.depth_reached = max(out.depth_reached, depth)
 

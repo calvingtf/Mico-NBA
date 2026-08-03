@@ -98,3 +98,40 @@ class TestWhatThisIsNamed:
         prof = profile("OKC", date(2026, 7, 6))
         assert prof.status == "OK"
         assert set(prof.values) == set(PARAMETERS)
+
+
+class TestTheWiring:
+    def test_low_spend_caps_at_the_first_apron(self):
+        from mironba.rules.constants import environment_for
+        from mironba.sim.league import signing_ceiling
+
+        env = environment_for("2026-27")
+        assert signing_ceiling("AAA", env, None) == env.second_apron
+        assert signing_ceiling("AAA", env,
+                               {"AAA": {"low_spend": True}}) == env.first_apron
+        assert signing_ceiling("AAA", env,
+                               {"AAA": {"low_spend": False}}) == env.second_apron
+
+    def test_below_average_trade_rate_gates_the_cascade(self):
+        from mironba.sim.cascade import gate_by_trade_rate
+
+        assert gate_by_trade_rate("AAA", None)
+        assert not gate_by_trade_rate(
+            "AAA", {"AAA": {"below_avg_trade_rate": True}})
+
+    def test_unknown_profiles_behave_like_the_uniform_arm(self):
+        from datetime import date
+
+        from mironba.models.gm_profile import profile, to_behavior
+
+        prof = profile("CHI", date(2026, 7, 6))  # 2026 hire -> UNKNOWN
+        behavior = to_behavior({"CHI": prof}, {"spend_level": 1.0,
+                                               "trade_rate": 5.0})
+        assert behavior["CHI"] == {"low_spend": False,
+                                   "below_avg_trade_rate": False}
+
+    def test_deadline_share_is_declared_not_wirable(self):
+        from mironba.models.gm_profile import to_behavior
+
+        assert "NOT WIRABLE" in to_behavior.__doc__
+        assert "no in-world clock" in to_behavior.__doc__

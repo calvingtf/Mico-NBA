@@ -88,7 +88,7 @@ def apply_trade(league, trade: Trade) -> None:
             row["team_id"] = dest[row["player_id"]]
 
 
-def react(scenario, league_mod, seed: int, seed_trade=None):
+def react(scenario, league_mod, seed: int, seed_trade=None, revealed=None):
     """One full reaction - market signings, then the trade cascade.
 
     ``seed_trade=None`` is the NULL: the same world, same date, same seed,
@@ -103,7 +103,8 @@ def react(scenario, league_mod, seed: int, seed_trade=None):
         apply_trade(league, seed_trade)
         movers = frozenset(p.player_id for p in seed_trade.players)
     results, contests, scheduler = league_mod.run_branch(
-        "stipulated", league, [], seed=seed, stipulated=movers
+        "stipulated", league, [], seed=seed, stipulated=movers,
+        revealed=revealed,
     )
     for team in league_mod.TEAMS:
         leaked = movers & set(results[team].signed)
@@ -115,7 +116,7 @@ def react(scenario, league_mod, seed: int, seed_trade=None):
         league, results, season=scenario.season, when=scenario.freeze,
         trade_season=scenario.next_season, teams=league_mod.TEAMS,
         persona_for=league_mod.persona_for, scheduler=scheduler,
-        stipulated=movers,
+        stipulated=movers, revealed=revealed,
     )
     for trade in cascade.trades:
         touched = movers & (set(trade.received) | set(trade.sent))

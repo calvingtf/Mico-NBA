@@ -340,6 +340,40 @@ def to_persona(prof: Profile | None, averages: dict, *,
                      win_now_horizon=2, asset_hoarding=hoarding)
 
 
+def to_behavior(profiles: dict, averages: dict) -> dict:
+    """Map the SUGGESTIVE parameters into the two hooks the reaction has.
+
+    * ``spend_level`` -> the signing ceiling: a team whose sourced history
+      spent below the league average is capped at the FIRST apron instead of
+      the second. Willingness to pay, read from what was actually paid.
+    * ``trade_rate`` -> the cascade trigger: a team whose sourced history
+      trades below the league-average rate does not enter the generated-
+      trade queue. Propensity to deal, read from deals actually made.
+    * ``deadline_share`` is NOT WIRABLE: the reaction has no in-world clock
+      (stated in the README), so a timing disposition has nothing to bind
+      to. Left unwired with this reason rather than approximated.
+
+    UNKNOWN profiles get league-average behaviour on both hooks - the same
+    as the uniform arm, loudly by construction. Both parameters are
+    SUGGESTIVE at n=11 (entry #53); the arm they feed is labelled that way,
+    never as validated.
+    """
+    avg_spend = averages.get("spend_level")
+    avg_rate = averages.get("trade_rate")
+    out = {}
+    for team, prof in profiles.items():
+        low_spend = below_rate = False
+        if prof.status == "OK":
+            spend = prof.values.get("spend_level")
+            rate = prof.values.get("trade_rate")
+            low_spend = (spend is not None and avg_spend is not None
+                         and spend < avg_spend)
+            below_rate = (rate is not None and avg_rate is not None
+                          and rate < avg_rate)
+        out[team] = {"low_spend": low_spend, "below_avg_trade_rate": below_rate}
+    return out
+
+
 # --------------------------------------------------------------------------
 # Out-of-sample validation: early seasons predict held-out later ones?
 # --------------------------------------------------------------------------
