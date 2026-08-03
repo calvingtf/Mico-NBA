@@ -886,15 +886,30 @@ the failures, so `to_persona` refuses to differentiate on it without an
 explicit probe flag: **a parameter that failed its null must not enter the
 sim as if it had.**
 
-**The derived-vs-uniform experiment**, two layers, both reported: run as an
-explicitly-labelled wiring probe (aggregation forced through), derived
-personas change the world - 0 of 121 signings differ but **8 of ~9 generated
-trades differ by identity** (Houston at max-4 ships a four-player package
-for LaVine; Oklahoma City at max-1 loses the Haliburton deal to the
-Clippers). So the pipe reaches the decision logic. But under the VALIDATED
-mapping the derived persona set is identical to uniform by construction,
-and the honest conclusion is: **derived personas do not change the world,
-and on present evidence they should not.**
+**The derived-vs-uniform experiments**, three layers, all reported:
+
+1. *Wiring probe* (aggregation - a null failure - forced through, labelled):
+   0 of 121 signings differ but 8 of ~9 generated trades differ by identity.
+   The pipe reaches decision logic; the parameter feeding it had still
+   failed its null.
+2. *Suggestive parameters wired to real hooks* (prediction registered in
+   commit 68c0ddd BEFORE running): spend_level -> a first-apron signing
+   ceiling for the 13 below-average-spend teams; trade_rate -> a cascade
+   gate for the 12 below-average-rate teams; deadline_share NOT WIRABLE (no
+   in-world clock) and says so. **The prediction held in both channels and
+   in the predicted direction**: signings 108 vs 121 with an identity diff
+   of 17 (predicted 5-20), 15 of 17 on low-spend teams, including the
+   predicted downstream contest flips - Oklahoma City and Houston, capped
+   at the first apron, can no longer afford LeBron and Morant, who land
+   with Minnesota and New York instead; generated trades 7 vs 9 with an
+   identity diff of 10 and 11 trade-rate-gate kills (0 in the uniform arm),
+   the gated teams' targets rerouting to ungated ones.
+3. *The label that survives*: dispositions wired to real hooks DO reach
+   outcomes - this is mechanism confirmation, not endorsement. The
+   parameters feeding the hooks are SUGGESTIVE at n=11 (nothing cleared
+   the 0.064-refused threshold), so the derived arm is a labelled
+   demonstration until the persistence result has the n=23 pairs it is
+   costed at.
 
 ### The convergence
 

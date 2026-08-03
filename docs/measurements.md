@@ -2177,3 +2177,26 @@ the 168 unattributable team-seasons.
 **Unchanged:** the refusal gate. Parameters that failed even the mean-error
 comparison still may not enter the sim, and the suggestive ones enter only
 with their label.
+
+
+## 54. Suggestive dispositions reach outcomes - prediction registered, held (2026-08-03)
+
+**Registered (commit 68c0ddd, before running):** wiring spend_level to a
+first-apron signing ceiling and trade_rate to a cascade gate would produce a
+NON-EMPTY identity diff, direction derived <= uniform, signings diff of
+order 5-20 concentrated on low-spend teams with possible downstream contest
+flips, and fewer generated trades attributable to gated teams.
+**Observed:** signings 108 vs 121, identity diff 17 (15/17 on low-spend
+teams); the downstream flips happened - OKC and HOU, first-apron-capped,
+lose LeBron and Morant to MIN and NYK; generated trades 7 vs 9, identity
+diff 10, trade-rate gate kills 11 vs 0, targets rerouting from gated GSW/MIA
+to ungated MIN/NYK/PHX.
+**What it does and does not establish:** the hooks work - dispositions
+wired to real decision points change the world in the stated direction. It
+does NOT establish that the dispositions are real: both parameters are
+SUGGESTIVE at n=11 (entry #53), so the derived arm stays a labelled
+demonstration until the persistence question has its n=23 pairs.
+**Contrast with entry #52's probe:** that run confirmed the plumbing with a
+null-failed parameter; this one confirms direction and locus with the
+suggestive ones, under a prediction that could have failed and was written
+down first.
