@@ -72,15 +72,54 @@ def canonical_arm(arm: str) -> str:
 ARMS_WITH_LIST = ("feasible", "unlock")
 
 
+#: Every persona field the LLM path receives, audited against the seven
+#: measured GM-profile parameters (entries #53-#55) - the enumeration move
+#: applied to claims about people. A test asserts this registry covers the
+#: GMPersona fields exactly, so a new field cannot ship as an unexamined
+#: disposition. Fields matching handover-FLAT parameters are franchise
+#: condition summaries and the prompts present them as such.
+PERSONA_FIELD_AUDIT = {
+    "label": "UNMEASURED prose tag. An assumption dial recorded in scenario "
+             "yamls; the system prompt now states no field is a personal "
+             "disposition. Frozen measurement configs keep their historical "
+             "labels for reproducibility and are reported, not edited.",
+    "risk_tolerance": "UNMEASURED - none of the seven measured parameters "
+                      "corresponds to it. Possibly proxyable from deadline "
+                      "posture_agreement (itself only SUGGESTIVE, p=0.105); "
+                      "not derived. Presented as an assumed franchise-"
+                      "condition dial, never a measured person trait.",
+    "win_now_horizon": "UNMEASURED as stated (a judgment horizon in "
+                       "seasons). Nearest measured parameter is pick_flow, "
+                       "which failed its null at n=29 and is handover-FLAT "
+                       "(4/16) - derivable in principle from pick spending, "
+                       "not derived, and not a person trait where measured.",
+    "asset_hoarding": "MEASURED via aggregation_rate: fails the league-"
+                      "average null at n=29 (12/29, p=0.868) and is "
+                      "handover-FLAT (4/16, p=0.989). A franchise-condition "
+                      "summary; must never be presented as a disposition of "
+                      "a person, and the prompt says so.",
+}
+
+
 @dataclass(frozen=True, slots=True)
 class GMPersona(Persona):
-    """Structured, sweepable, and legible to code as well as to the model."""
+    """Structured, sweepable, and legible to code as well as to the model.
 
-    #: 0 = will not touch a deal that could go wrong; 1 = will.
+    These are FRANCHISE-CONDITION dials, not personal dispositions: the
+    measured members of this set do not persist within a GM's own stint
+    (n=29) and do not shift when the person changes (n=16 handovers) -
+    see PERSONA_FIELD_AUDIT above and entries #53-#55.
+    """
+
+    #: 0 = the franchise avoids deals that could go wrong; 1 = it does not.
+    #: UNMEASURED assumption dial (see PERSONA_FIELD_AUDIT).
     risk_tolerance: float = 0.5
-    #: Seasons over which this GM expects to be judged. 1 = win now.
+    #: Seasons the franchise is assumed to plan across. 1 = win now.
+    #: UNMEASURED as stated; nearest measured parameter failed its null.
     win_now_horizon: int = 3
-    #: 0 = will trade anyone; 1 = hoards young players and picks.
+    #: 0 = ships multiple contracts; 1 = holds them. Corresponds to the
+    #: MEASURED aggregation_rate: null-failed and handover-flat - a
+    #: franchise-condition summary.
     asset_hoarding: float = 0.5
 
     def validate(self) -> None:
@@ -99,7 +138,7 @@ class GMPersona(Persona):
 
     @property
     def max_assets_out(self) -> int:
-        """How many players this GM will part with in one deal.
+        """How many players the franchise setting allows out in one deal.
 
         The persona parameter feeding a deterministic constraint rather than
         only the prompt. It is stated to the model *and* checked at assembly,
@@ -157,11 +196,14 @@ class GMContext:
 SYSTEM_TEMPLATE = """\
 You are the general manager of the {team_id} in the {season} NBA season.
 
-Your decision-making parameters:
+Your franchise's constraint-position parameters:
 {persona_block}
 
 Read them literally. risk_tolerance and asset_hoarding run 0 to 1.
-win_now_horizon is the number of seasons over which you expect to be judged.
+win_now_horizon is the number of seasons the franchise plans across.
+These summarise the franchise's situation and stated assumptions - they are
+not personal dispositions of a GM; measured GM behaviour does not travel
+with the person.
 
 You do not decide whether a trade is legal. A separate rules engine checks the
 collective bargaining agreement and will reject anything that does not comply.
@@ -183,8 +225,8 @@ Trade partner available this tick: {partner_team}
 Their roster:
 {partner_roster}
 
-You may send at most {max_assets_out} player(s) in one deal, given your
-asset_hoarding of {asset_hoarding}.\
+You may send at most {max_assets_out} player(s) in one deal, given the
+franchise's asset_hoarding setting of {asset_hoarding}.\
 """
 
 ACTION_TEMPLATE = """\

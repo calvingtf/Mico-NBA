@@ -816,14 +816,19 @@ first run). Rookie-scale cap effects are NOT_MODELLED in v0.
 Named because an absent measurement that nobody names reads as a measurement
 that came back fine.
 
-- **Whether the persona does anything.** Citation of persona parameters in
-  stated reasons falls monotonically with capability — Qwen 78.3%, Sonnet 67.7%,
-  Haiku 61.2%, Opus 50.6% — and Qwen restates the numbers *as* its justification
-  where stronger models reason about cap state. That is consistent with the
-  persona being text the weak model recites rather than a disposition it acts
-  from. **The permutation control that would settle it has not been run**:
-  permute the parameters, hold everything else, measure whether behaviour moves.
-  Until then every persona-driven result here carries this caveat.
+- **Whether the persona does anything - now restated (entry #56).** The
+  original reading was that the persona may be text a weak model recites
+  rather than a disposition it acts from. The stronger explanation, available
+  since the GM-profile measurements: the model was reciting a label that did
+  not denote a disposition at all - at n=29 within-stint pairs no parameter
+  beats the league-average null, and at n=16 handovers five of six computable
+  parameters are FLAT. The citation-rate observation itself stands - Qwen
+  78.3%, Sonnet 67.7%, Haiku 61.2%, Opus 50.6%, falling monotonically with
+  capability - but what it measures is **how readily each model repeats a
+  supplied label, which says something about the models and nothing about
+  GMs**. The permutation control (permute parameters, hold everything else)
+  remains unrun and would now measure label-sensitivity, not
+  disposition-fidelity.
 - **The salary-free arm.** A fourth arm with all money stripped from the
   rendered context, to ask what the numbers were doing in the model's reasoning
   now that we know it can see them. Free to run on the local model. Not run.

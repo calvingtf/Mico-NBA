@@ -2221,3 +2221,52 @@ lean is mandate-shaped, not person-shaped - unresolved at this n, confound
 stated.
 **Design note recorded:** flat survives the mandate confound (a mandate
 inflates shifts); a shift result never rises above person-or-mandate.
+
+
+## 56. M10 restated: the label denoted nothing (2026-08-03)
+
+The original M10 entry stands unedited, per the no-rewriting rule. Its
+reading - personas may be text a weak model recites rather than a
+disposition it acts from - now has a stronger successor: **the model was
+reciting a label that did not denote a disposition at all.** Two
+measurements: within-stint persistence, n=29 same-GM pairs, no parameter
+beats the league-average null (entry #53 costing, resolved at 2057ca5);
+handover shifts, n=16 clean successions, five of six computable parameters
+FLAT (entry #55). The citation-rate observation survives untouched - 78.3%
+/ 67.7% / 61.2% / 50.6%, falling monotonically with capability - and its
+meaning is restated: it measures how readily each model repeats a supplied
+label. That is a fact about the models, and nothing about GMs.
+
+## 57. The persona-assertion sweep (2026-08-03)
+
+The rename covered parameters that were measured and failed; this entry is
+the enumeration - every remaining place the system attributes behaviour to
+a person or a front office's character, and whether it is supported:
+
+- agents/gm.py GMPersona fields and prompt templates: WERE personal-
+  disposition framing ("Your decision-making parameters", "your
+  asset_hoarding", "this GM will part with"); now franchise-condition
+  framing, with PERSONA_FIELD_AUDIT enumerating each field's measurement
+  status (asset_hoarding MEASURED-and-failed; risk_tolerance and
+  win_now_horizon UNMEASURED and reported as such - the former possibly
+  proxyable from posture_agreement, the latter from pick spending, neither
+  derived). Prompt rewording post-dates every recorded manifest; recorded
+  runs keep their hashes.
+- configs/branch/lebron-2026.yaml labels (win-now-veteran, disciplined,
+  all-in, star-hunting) and configs/scenario/*.yaml labels: UNSUPPORTED
+  character words, but FROZEN measurement inputs - the M10 arms and the
+  lebron backtest rendered these exact strings into hashed prompts.
+  Reported, not edited: reproducibility of a measured surface outranks
+  retro-consistency, and the audit registry documents the supersession.
+- mironba/sim/league.py DEFAULT_PERSONA "balanced-default" and its comment
+  block: SUPPORTED as written - the comment derives the dials from
+  observable cap behaviour at the freeze, a constraint position.
+- agents/chat.py: answers attribute to "the persona parameters it was
+  given" - provenance framing, SUPPORTED (it claims what was supplied, not
+  what anyone is like).
+- models/gm_profile.py, models/handover.py, sim/cascade.py,
+  sim/league.py signing_ceiling: renamed in the previous round; labels now
+  franchise-history:<team>.
+- docs/example-run.html and bench-league json artifacts: historical model
+  prose and recorded payloads carrying old labels - artifacts of runs,
+  kept as recorded, covered by their own limitation blocks.

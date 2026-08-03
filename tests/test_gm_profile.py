@@ -135,3 +135,30 @@ class TestTheWiring:
 
         assert "NOT WIRABLE" in to_behavior.__doc__
         assert "no in-world clock" in to_behavior.__doc__
+
+
+class TestThePersonaAssertionAudit:
+    def test_the_audit_registry_covers_the_persona_fields_exactly(self):
+        """A new persona field cannot ship as an unexamined disposition."""
+        from dataclasses import fields
+
+        from mironba.agents.gm import PERSONA_FIELD_AUDIT, GMPersona
+
+        assert set(PERSONA_FIELD_AUDIT) == {f.name for f in fields(GMPersona)}
+
+    def test_measured_and_failed_fields_say_so(self):
+        from mironba.agents.gm import PERSONA_FIELD_AUDIT
+
+        assert "MEASURED" in PERSONA_FIELD_AUDIT["asset_hoarding"]
+        assert "handover-FLAT" in PERSONA_FIELD_AUDIT["asset_hoarding"]
+        for field in ("risk_tolerance", "win_now_horizon", "label"):
+            assert "UNMEASURED" in PERSONA_FIELD_AUDIT[field], field
+
+    def test_the_model_is_never_told_these_are_personal_dispositions(self):
+        from mironba.agents.gm import CONTEXT_TEMPLATE, SYSTEM_TEMPLATE
+
+        assert "not personal dispositions" in SYSTEM_TEMPLATE
+        assert "franchise" in SYSTEM_TEMPLATE
+        assert "Your decision-making parameters" not in SYSTEM_TEMPLATE
+        assert "your\nasset_hoarding" not in CONTEXT_TEMPLATE
+        assert "franchise's asset_hoarding" in CONTEXT_TEMPLATE
