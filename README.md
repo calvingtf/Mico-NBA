@@ -864,18 +864,32 @@ unmeasured" as free-to-run work that has not been run.
   legality (M9), but the PROPOSER still generates two-team packages plus a
   near-miss absorber; free-form k-team generation is unbuilt and its search
   space grows combinatorially. No measurement claims cover it.
-- **Follow-on trades in the reaction** - COSTED: the 30-team reaction is
-  structurally signings-only - its single commit path books a signing route,
-  and both stipulated worlds produced 121 signings across 29 teams and zero
-  generated trades (the seed trade is stipulated, not produced). The trade
-  machinery exists on the other side of the codebase - the GM-tick path
-  (LLM intent -> deterministic solver -> rules verdict) that the measured
-  runs exercise - but the two are not wired together. The cost is per-team
-  trade ticks inside the reaction loop (LLM calls x30 teams, or a
-  deterministic intent proposer first) plus extending stipulation integrity
-  to generated trades. The original chain-reaction goal is therefore HALF
-  built: seeded trade -> signing cascade exists; seeded trade -> further
-  trades does not.
+- **Follow-on trades in the reaction** - BUILT for two-team trades
+  (`sim/cascade.py`); k-team generation stays COSTED (combinatorial search,
+  no measurement claims). Intent is proposed deterministically - a cost
+  decision stated in the module, not a capability claim (the LLM tick runs
+  ~30s/call; thirty teams across rounds would turn a 13-minute reaction into
+  hours) - and the solver and validator are unchanged, with the LLM path
+  intact for the intent A/B. Triggers are the scheduler's existing events
+  (contest losses wake teams; executed trades emit TRADED events that wake
+  only interested teams - no polling). Acceptance is the existing
+  standings-based disposition gate: a counterparty parts with a player only
+  as a SELLER; no value-based acceptance is modelled because the 10.48-win
+  resolution cannot support one (still BLOCKED, below). Termination is
+  declared before running: one executed trade per team, one attempt per
+  team, depth cap 3. Stipulation integrity extends to generated trades
+  under the same enumerated glob test. **The headline is the null diff, not
+  the raw count**: each scenario runs twice, with and without the seed, at
+  the same date and seed - giannis-knicks: 9 seeded vs 10 unseeded
+  generated trades, **4 attributable to the seed**, 5 displaced (the
+  unseeded world trades around Giannis as a market free agent; the seeded
+  one cannot); curry-lakers: 9 vs 10, **4 attributable** (the seed's
+  fingerprint is package composition on the teams it touched - Warriors
+  ship Porzingis+Green instead of Butler once Reaves and Grimes arrive).
+  Counterparty gate killed ~385 candidate pairs per run; depth reached 1 of
+  3, so the depth cap did not bind. UNFALSIFIABLE in output and manifest,
+  like the rest of the stipulated path: a demonstration, and the diff is
+  what makes it an honest one.
 - **Pick valuation** - COSTED: pick assets validate in trades, but no value
   curve is fitted, so a pick-heavy package cannot be compared to a
   player-heavy one; the published-curve comparison from the M9 brief is the

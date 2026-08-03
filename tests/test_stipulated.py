@@ -115,19 +115,29 @@ class TestTheSeedHolds:
         ]
         assert stipulated_ids, "enumeration found no stipulated scenarios"
 
+        from mironba.sim.stipulated import react
+
         for sid in stipulated_ids:
             sc = load_scenario(sid)
             league_mod.bind_scenario(sc)
             league_mod.TEAMS = league_mod._all_teams()
-            league = league_mod.LeagueState.load()
-            trade = build_trade(sc, league)
-            apply_trade(league, trade)
+            trade = build_trade(sc, league_mod.LeagueState.load())
             movers = {p.player_id for p in trade.players}
-            results, _, _ = league_mod.run_branch(
-                "stipulated", league, [], stipulated=movers)
+            dest = {p.player_id: p.to_team for p in trade.players}
+            # react() runs the market AND the trade cascade, asserting the
+            # invariant on both paths internally; re-check the end state here
+            # so the test fails even if those asserts are ever removed.
+            league, results, _, _, cascade = react(sc, league_mod, 20260731,
+                                                   seed_trade=trade)
             for team in league_mod.TEAMS:
-                leaked = movers & set(results[team].signed)
-                assert not leaked, (
-                    f"{sid}: {team} signed stipulated mover(s) "
-                    f"{sorted(leaked)} during the reaction"
+                assert not movers & set(results[team].signed),                     f"{sid}: {team} signed a stipulated mover"
+            for gen in cascade.trades:
+                touched = movers & (set(gen.received) | set(gen.sent))
+                assert not touched, (
+                    f"{sid}: generated trade moved stipulated {sorted(touched)}"
+                )
+            final = {r["player_id"]: r["team_id"] for r in league.contracts_2627}
+            for pid, team in dest.items():
+                assert final[pid] == team, (
+                    f"{sid}: {pid} ended on {final[pid]}, stipulated {team}"
                 )

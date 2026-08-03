@@ -88,6 +88,43 @@ def apply_trade(league, trade: Trade) -> None:
             row["team_id"] = dest[row["player_id"]]
 
 
+def react(scenario, league_mod, seed: int, seed_trade=None):
+    """One full reaction - market signings, then the trade cascade.
+
+    ``seed_trade=None`` is the NULL: the same world, same date, same seed,
+    with nothing stipulated. Only trades that appear in the seeded run and
+    not here are attributable to the seed.
+    """
+    from mironba.sim.cascade import run_cascade
+
+    league = league_mod.LeagueState.load()
+    movers = frozenset()
+    if seed_trade is not None:
+        apply_trade(league, seed_trade)
+        movers = frozenset(p.player_id for p in seed_trade.players)
+    results, contests, scheduler = league_mod.run_branch(
+        "stipulated", league, [], seed=seed, stipulated=movers
+    )
+    for team in league_mod.TEAMS:
+        leaked = movers & set(results[team].signed)
+        assert not leaked, (
+            f"stipulation violated: {team} signed {sorted(leaked)} - a "
+            "stipulated player changed teams during the reaction"
+        )
+    cascade = run_cascade(
+        league, results, season=scenario.season, when=scenario.freeze,
+        trade_season=scenario.next_season, teams=league_mod.TEAMS,
+        persona_for=league_mod.persona_for, scheduler=scheduler,
+        stipulated=movers,
+    )
+    for trade in cascade.trades:
+        touched = movers & (set(trade.received) | set(trade.sent))
+        assert not touched, (
+            f"stipulation violated: generated trade moved {sorted(touched)}"
+        )
+    return league, results, contests, scheduler, cascade
+
+
 def main(argv=None) -> int:
     from mironba.sim.tick import use_utf8_console
     from mironba.world.scenario import load_scenario
@@ -163,16 +200,10 @@ def main(argv=None) -> int:
                   "which can flatten a single-star swap to nothing.\n    "
                   "Reported as produced, not patched.")
 
-    movers = {p.player_id for p in trade.players}
-    results, contests, scheduler = league_mod.run_branch(
-        "stipulated", league, [], seed=args.seed, stipulated=movers
+    seeded_league, results, contests, scheduler, cascade = react(
+        scenario, league_mod, args.seed, seed_trade=trade
     )
-    for team in league_mod.TEAMS:
-        leaked = movers & set(results[team].signed)
-        assert not leaked, (
-            f"stipulation violated: {team} signed {sorted(leaked)} - a "
-            "stipulated player changed teams during the reaction"
-        )
+    league = seeded_league
     print("\n  REACTION - every team plans its offseason in the stipulated world")
     for team in league_mod.TEAMS:
         r = results[team]
@@ -188,6 +219,43 @@ def main(argv=None) -> int:
     print(f"\n  {len(contested)} contested players, {arbitrary} resolved arbitrarily")
     print(f"  scheduler: {scheduler.wakes} wakes vs {scheduler.polled_equivalent} "
           f"polled ({scheduler.saving:.0%} saved)")
+
+    # -- 3. The trade cascade, and its null -------------------------------
+    from mironba.sim.cascade import MAX_DEPTH
+
+    print("\n  TRADE CASCADE (deterministic intent; solver and rules unchanged)")
+    for t in cascade.trades:
+        print(t.line(name=league.name))
+    if not cascade.trades:
+        print("    no generated trades")
+    print(f"    attempts {cascade.attempts}; killed by counterparty gate "
+          f"{cascade.killed_by_gate}, by solver {cascade.killed_by_solver}; "
+          f"suppressed by cap {cascade.suppressed_by_cap}")
+    print(f"    depth reached {cascade.depth_reached} of {MAX_DEPTH} "
+          f"(depth cap {'bound' if cascade.depth_reached >= MAX_DEPTH else 'did not bind'}; "
+          f"one-attempt-per-team cap suppressed {cascade.suppressed_by_cap} "
+          "repeat wakes)")
+
+    print("\n  THE NULL - the same world, same seed, WITHOUT the stipulated trade")
+    _, _, _, _, null_cascade = react(scenario, league_mod, args.seed,
+                                     seed_trade=None)
+    seeded_keys = {t.key(): t for t in cascade.trades}
+    null_keys = {t.key(): t for t in null_cascade.trades}
+    attributable = [t for k, t in seeded_keys.items() if k not in null_keys]
+    vanished = [t for k, t in null_keys.items() if k not in seeded_keys]
+    print(f"    unseeded run generated {len(null_cascade.trades)} trade(s); "
+          f"seeded run {len(cascade.trades)}")
+    print(f"    ATTRIBUTABLE TO THE SEED: {len(attributable)} trade(s) - the "
+          "headline; a cascade that")
+    print("    would have happened anyway is not a cascade.")
+    for t in attributable:
+        print("  " + t.line(name=league.name))
+    if vanished:
+        print(f"    displaced by the seed ({len(vanished)} trade(s) that happen "
+              "only WITHOUT it):")
+        for t in vanished:
+            print("  " + t.line(name=league.name))
+
     print(f"\n  NOT SCORED. {UNFALSIFIABLE}")
 
     if args.out:
@@ -217,6 +285,17 @@ def main(argv=None) -> int:
             },
             "reaction": {
                 t: asdict(results[t]) for t in league_mod.TEAMS
+            },
+            "cascade": {
+                "label": UNFALSIFIABLE,
+                "seeded_trades": [asdict(t) for t in cascade.trades],
+                "unseeded_trades": [asdict(t) for t in null_cascade.trades],
+                "attributable_to_seed": [asdict(t) for t in attributable],
+                "displaced_by_seed": [asdict(t) for t in vanished],
+                "killed_by_counterparty_gate": cascade.killed_by_gate,
+                "killed_by_solver": cascade.killed_by_solver,
+                "depth_reached": cascade.depth_reached,
+                "cap_bound": cascade.cap_bound,
             },
         }
         args.out.parent.mkdir(parents=True, exist_ok=True)
