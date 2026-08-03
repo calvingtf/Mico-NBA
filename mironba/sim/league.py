@@ -549,7 +549,8 @@ class TeamResult:
     notes: list = field(default_factory=list)
 
 
-def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None):
+def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None,
+               stipulated=frozenset()):
     """One branch: every team plans, contested players resolve, losers react."""
     env = environment_for(SEASON)
     rng = random.Random(seed)
@@ -572,7 +573,11 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
     }
 
     base_pool = pool_ids if pool_ids is not None else league.free_agent_pool()
-    pool = (base_pool | all_added) - {SUBJECT}
+    # A stipulated mover is under contract with his destination for the
+    # whole reaction: the arrivals union pours him in (right for a pending
+    # scenario, wrong here), so he is excluded by id, enumerated by the
+    # caller from the stipulation itself.
+    pool = (base_pool | all_added) - {SUBJECT} - set(stipulated)
 
     def agent_for(pid, team):
         return FreeAgent(

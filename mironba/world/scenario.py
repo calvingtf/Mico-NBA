@@ -163,7 +163,12 @@ def load_scenario(scenario_id: str) -> BranchScenario:
         raise ScenarioError(
             f"no scenario {scenario_id!r} under {CONFIG_DIR}; declared: {known}"
         )
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return scenario_from_raw(yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
+def scenario_from_raw(raw: dict) -> BranchScenario:
+    """Construct from a parsed mapping - the loader's body, callable on
+    not-yet-written yaml so authoring can round-trip BEFORE it writes."""
     return BranchScenario(
         id=raw["id"],
         season=raw["season"],

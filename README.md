@@ -790,10 +790,13 @@ rate**. Fallbacks hit 0/2 against a conditional null of 0.25 expected on the
 1 informative case (the other actual pick lay outside the remaining set, so
 chance scores zero there too - uninformative by construction). A rate on two
 cases is a diagnostic, not a measurement, the same standard that retired
-suitor_won at n=1. **The corpus cannot support this measurement**: it needs
-ranked lists 3-4 deep per team (~120-150 rows shaped like the Warriors'
-ten), which would yield ~20-25 informative cases - enough to separate a 50%
-fallback rate from a 1/4 null. It stops there. Mock rows are `draft_projection`
+suitor_won at n=1. **The corpus cannot support this measurement, and the
+verdict stands as measurements entry #50** - the corpus is deliberately not
+expanded. The future decision is costed rather than open-ended: curating
+~120-150 ranked rows (lists 3-4 deep per team, shaped like the Warriors'
+ten) buys ~20-25 informative conditional cases, which is enough to separate
+a 50% fallback rate from the 1/4 null at conventional power - and anything
+less buys another diagnostic, not a measurement. Mock rows are `draft_projection`
 evidence - a competing forecaster, never an input - and a fence test fails if
 any module outside `eval/` can reach them (it caught its own docstring on the
 first run). Rookie-scale cap effects are NOT_MODELLED in v0.

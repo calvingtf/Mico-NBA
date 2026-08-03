@@ -163,9 +163,16 @@ def main(argv=None) -> int:
                   "which can flatten a single-star swap to nothing.\n    "
                   "Reported as produced, not patched.")
 
+    movers = {p.player_id for p in trade.players}
     results, contests, scheduler = league_mod.run_branch(
-        "stipulated", league, [], seed=args.seed
+        "stipulated", league, [], seed=args.seed, stipulated=movers
     )
+    for team in league_mod.TEAMS:
+        leaked = movers & set(results[team].signed)
+        assert not leaked, (
+            f"stipulation violated: {team} signed {sorted(leaked)} - a "
+            "stipulated player changed teams during the reaction"
+        )
     print("\n  REACTION - every team plans its offseason in the stipulated world")
     for team in league_mod.TEAMS:
         r = results[team]

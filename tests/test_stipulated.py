@@ -93,3 +93,41 @@ class TestTheLabel:
 
         with pytest.raises(SystemExit, match="pending_decision"):
             main(["--scenario", "lebron-2026"])
+
+
+class TestTheSeedHolds:
+    def test_no_stipulated_player_changes_teams_in_any_scenario(self):
+        """The invariant, enumerated: every stipulated yaml's movers stay
+        put through the whole reaction. The arrivals union pours real
+        arrivals into the signable pool - right for a pending scenario,
+        wrong once a player's team is stipulated - and both existing
+        stipulated scenarios violated this before the exclusion existed
+        (PHI signed Grimes; BOS won a league-wide contest for Giannis)."""
+        from pathlib import Path
+
+        import mironba.sim.league as league_mod
+        from mironba.sim.stipulated import apply_trade, build_trade
+
+        config_dir = Path(__file__).resolve().parents[1] / "configs" / "branch"
+        stipulated_ids = [
+            path.stem for path in sorted(config_dir.glob("*.yaml"))
+            if "kind: stipulated" in path.read_text(encoding="utf-8")
+        ]
+        assert stipulated_ids, "enumeration found no stipulated scenarios"
+
+        for sid in stipulated_ids:
+            sc = load_scenario(sid)
+            league_mod.bind_scenario(sc)
+            league_mod.TEAMS = league_mod._all_teams()
+            league = league_mod.LeagueState.load()
+            trade = build_trade(sc, league)
+            apply_trade(league, trade)
+            movers = {p.player_id for p in trade.players}
+            results, _, _ = league_mod.run_branch(
+                "stipulated", league, [], stipulated=movers)
+            for team in league_mod.TEAMS:
+                leaked = movers & set(results[team].signed)
+                assert not leaked, (
+                    f"{sid}: {team} signed stipulated mover(s) "
+                    f"{sorted(leaked)} during the reaction"
+                )

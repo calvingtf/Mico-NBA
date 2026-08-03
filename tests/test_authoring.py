@@ -159,3 +159,46 @@ class TestTheGate:
             f"scenario yaml has a second writer: {offenders}; write_scenario "
             "with its confirmation gate must stay the only one"
         )
+
+
+class TestTheWorldKnowledgeSurfaceIsEnumerated:
+    def test_the_registry_covers_the_proposal_schema_exactly(self):
+        """A new model-filled field cannot ship unaudited: the registry must
+        name every Proposal field (and every Move subfield) and nothing else."""
+        from mironba.world.authoring import WORLD_KNOWLEDGE_FIELDS
+
+        stub = StubClient(CURRY_TRADE)
+        draft_from_sentence("x", stub)
+        schema = stub.schema_seen.model_json_schema()
+        fields = set(schema["properties"])
+        move_fields = {f"moves.{name}"
+                       for name in schema["$defs"]["Move"]["properties"]}
+        expected = (fields - {"moves"}) | move_fields
+        assert set(WORLD_KNOWLEDGE_FIELDS) == expected, (
+            "registry and schema diverged: "
+            f"missing={expected - set(WORLD_KNOWLEDGE_FIELDS)} "
+            f"stale={set(WORLD_KNOWLEDGE_FIELDS) - expected}"
+        )
+
+    def test_a_wrong_scored_team_can_no_longer_pass(self):
+        """The audit's finding: scored_teams was unchecked and a garbage code
+        validated cleanly. It errors now."""
+        payload = dict(CURRY_TRADE, kind="pending_decision", moves=[],
+                       scored_teams=["XYZ"])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert any("no such team: 'XYZ'" in e for e in draft.errors)
+
+    def test_a_written_scenario_must_round_trip_or_be_rolled_back(self, tmp_path):
+        """An unloadable yaml is a write that did not happen. (tmp roots skip
+        the load - the loader only reads the real config dir - so this
+        asserts the refusal path for pending drafts instead, which is the
+        v0 boundary the round-trip protects.)"""
+        payload = dict(CURRY_TRADE, kind="pending_decision", moves=[],
+                       scored_teams=["GSW"],
+                       player_names=["Stephen Curry"])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert draft.ok, (draft.errors, draft.ambiguities)
+        with pytest.raises(AuthoringError, match="stipulated scenarios only"):
+            write_scenario(draft, "t-pending", confirmed=True,
+                           config_dir=tmp_path)
+        assert not list(tmp_path.iterdir())

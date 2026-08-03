@@ -132,6 +132,31 @@ def resolver_hit_rate() -> str:
               "never auto-resolve)")
 
 
+#: Every field the drafting model fills, audited against what the snapshot
+#: can answer - the writer-enumeration move applied to world knowledge. The
+#: from-team check caught the model asserting a decade-old fact against the
+#: snapshot; fixing that one field and stopping would be fixing the writer
+#: you tripped over. A test asserts this registry covers the Proposal
+#: schema exactly, so a new field cannot ship unaudited.
+WORLD_KNOWLEDGE_FIELDS = {
+    "kind": "CONSTRAINED-AT-DECODE: Literal['stipulated','pending_decision']",
+    "seed_date": "CHECKED: ISO-parsed; must sit inside the ingested window",
+    "decision": "UNCHECKED-BY-DESIGN: free prose; the snapshot cannot answer "
+                "a counterfactual's framing. Never feeds a computation.",
+    "player_names": "CHECKED: resolver against the player table; ambiguity "
+                    "surfaces, unknown names error",
+    "team_codes": "CHECKED: must exist in the ingested team table",
+    "moves.player_name": "CHECKED: resolver, same as player_names",
+    "moves.from_team": "CHECKED: code must exist AND match the player's "
+                       "contract-snapshot team (the check that caught the "
+                       "model asserting MIL for a player traded to MIA)",
+    "moves.to_team": "CHECKED: code must exist. The snapshot cannot check "
+                     "the destination further - it IS the counterfactual.",
+    "scored_teams": "CHECKED: codes must exist in the ingested team table "
+                    "(was UNCHECKED until this audit; a wrong code passed "
+                    "validation and would have bound TEAMS to garbage)",
+}
+
 # --------------------------------------------------------------------------
 # The draft
 # --------------------------------------------------------------------------
@@ -253,8 +278,9 @@ def validate_draft(draft: Draft) -> Draft:
         else:
             draft.ambiguities[name] = candidates
 
-    for code in set(draft.team_codes) | {m["from_team"] for m in draft.moves} | {
-            m["to_team"] for m in draft.moves}:
+    for code in (set(draft.team_codes) | set(draft.scored_teams)
+                 | {m["from_team"] for m in draft.moves}
+                 | {m["to_team"] for m in draft.moves}):
         if code and code not in teams:
             draft.errors.append(f"no such team: {code!r}")
 
@@ -400,10 +426,31 @@ def write_scenario(draft: Draft, scenario_id: str, *, confirmed: bool = False,
     if not draft.ok:
         raise AuthoringError(f"draft not clean: errors={draft.errors} "
                              f"ambiguities={sorted(draft.ambiguities)}")
+    if draft.kind != "stipulated":
+        raise AuthoringError(
+            "authoring v0 writes stipulated scenarios only: a pending "
+            "decision needs declared branches, premises and markers that a "
+            "sentence does not carry, and the loader would refuse the file. "
+            "Draft it here, then declare the branch structure by hand."
+        )
     path = config_dir / f"{scenario_id}.yaml"
     if path.exists():
         raise AuthoringError(f"{path} already exists; authoring never overwrites")
-    path.write_text(scenario_yaml(draft, scenario_id), encoding="utf-8")
+    text = scenario_yaml(draft, scenario_id)
+    # Round-trip BEFORE the write: the yaml must construct as a scenario or
+    # nothing lands on disk. (The package bans deletion helpers - runs/ is
+    # append-only - so write-then-rollback is not an available shape.)
+    import yaml as _yaml
+
+    from mironba.world.scenario import scenario_from_raw
+
+    try:
+        scenario_from_raw(_yaml.safe_load(text))
+    except Exception as exc:
+        raise AuthoringError(
+            f"drafted yaml would not load as a scenario; nothing was "
+            f"written: {exc}") from exc
+    path.write_text(text, encoding="utf-8")
     return path
 
 
