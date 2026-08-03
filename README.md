@@ -390,7 +390,14 @@ statement is appended to the scenario's own `archive-window.txt` - both
 current scenarios report 0/90 covered, BEFORE-ARCHIVE, which is the
 forward-only limit stating itself. `--catch-up` polls now and extends the
 archive forward by feed reach (~2-3 days), not by a window: coverage comes
-from the schedule, not from remembering to run it.
+from the schedule, not from remembering to run it. The archive's own health
+is visible without asking: every command that touches it prints coverage
+first (days covered, longest gap, unrecoverable count), a newest partition
+older than 2 days is announced as **ARCHIVE STALE - the schedule is broken**
+with the last successful poll's timestamp (the failure that costs the most
+and announces itself the least), and `--health` is the five-second
+after-a-week-away view: first/last partition, days covered over expected,
+unrecoverable ranges, next scheduled run.
 
 **Wayback CDX spike (negative, measured):** the one route that could backfill
 history or fill UNRECOVERABLE gaps is the Internet Archive - a capture

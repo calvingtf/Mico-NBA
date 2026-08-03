@@ -355,6 +355,7 @@ def retrieve_for_scenario(scenario_id: str, lookback_days: int = 90,
     from mironba.data.ingest.rss import enqueue
     from mironba.world.scenario import load_scenario
 
+    print(announce(root))
     scenario = load_scenario(scenario_id)
     report = window(scenario, lookback_days, root)
     text = render_window_report(scenario, report)
@@ -384,6 +385,126 @@ def retrieve_for_scenario(scenario_id: str, lookback_days: int = 90,
     return 0
 
 
+# --------------------------------------------------------------------------
+# Health: visible on every read, loud when stale, one-line on demand
+# --------------------------------------------------------------------------
+
+#: Older than this many days, the newest partition means the schedule is
+#: broken - the failure that costs the most and announces itself the least.
+STALE_AFTER_DAYS = 2
+
+
+def _ranges(days: list[date]) -> list[tuple[date, date]]:
+    out: list[tuple[date, date]] = []
+    for day in sorted(days):
+        if out and (day - out[-1][1]).days == 1:
+            out[-1] = (out[-1][0], day)
+        else:
+            out.append((day, day))
+    return out
+
+
+def last_poll_stamp(root: Path = ARCHIVE_ROOT) -> str:
+    """The newest __poll__ marker's own timestamp - when a poll last ran."""
+    stamps = []
+    for path in sorted(root.glob("*.csv"), reverse=True)[:14]:
+        for row in read_partition(date.fromisoformat(path.stem), root):
+            if row["feed"] == POLL_MARKER:
+                stamps.append(row["fetched_at"])
+    return max(stamps) if stamps else ""
+
+
+def health(root: Path = ARCHIVE_ROOT, *, today: date | None = None,
+           query_scheduler: bool = True) -> dict:
+    today = today or datetime.now(timezone.utc).date()
+    report = coverage(root, today=today)
+    parts = sorted(root.glob("*.csv"))
+    newest = date.fromisoformat(parts[-1].stem) if parts else None
+    age = (today - newest).days if newest else None
+    return {
+        "first": report["first"],
+        "newest": newest,
+        "age_days": age,
+        "stale": age is None or age > STALE_AFTER_DAYS,
+        "last_poll": last_poll_stamp(root),
+        "covered": sum(1 for s in report["days"].values() if s == COVERED),
+        "expected": len(report["days"]),
+        "missing": report["missing"],
+        "unrecoverable_ranges": _ranges(report["unrecoverable"]),
+        "longest_gap": report["longest_gap"],
+        "longest_gap_range": report["longest_gap_range"],
+        "next_run": _next_scheduled_run() if query_scheduler else "",
+    }
+
+
+def _next_scheduled_run() -> str:
+    """Ask the OS scheduler when the next poll fires. Best effort."""
+    import subprocess
+
+    times = []
+    for task in ("MiroNBA-RSS-Archiver", "MiroNBA-RSS-Archiver-PM"):
+        try:
+            out = subprocess.run(
+                ["schtasks", "/Query", "/TN", task, "/FO", "LIST"],
+                capture_output=True, text=True, timeout=15, check=True,
+            ).stdout
+            for line in out.splitlines():
+                if line.strip().startswith("Next Run Time:"):
+                    times.append(line.split(":", 1)[1].strip())
+        except Exception:  # noqa: BLE001 - no scheduler is a reportable state
+            continue
+    return min(times) if times else "unknown (scheduler not queryable)"
+
+
+def announce(root: Path = ARCHIVE_ROOT, *, today: date | None = None) -> str:
+    """The banner every archive-reading entry point prints FIRST.
+
+    Staleness is a loud state, not a quiet condition: if the newest
+    partition is older than STALE_AFTER_DAYS the schedule is broken and the
+    first line says so, with the last successful poll's timestamp. Coverage
+    follows on every run - learning the archive has a hole must never
+    require asking.
+    """
+    h = health(root, today=today, query_scheduler=False)
+    lines = []
+    if h["newest"] is None:
+        lines.append("!! ARCHIVE EMPTY - no partition has ever been written; "
+                     "the poller has never run here.")
+    elif h["stale"]:
+        lines.append(
+            f"!! ARCHIVE STALE - newest partition {h['newest']} is "
+            f"{h['age_days']} day(s) old (threshold {STALE_AFTER_DAYS}). The "
+            f"schedule is broken; last successful poll "
+            f"{h['last_poll'] or 'unknown'}.")
+    gap = (f"; longest gap {h['longest_gap']}d "
+           f"({h['longest_gap_range'][0]}..{h['longest_gap_range'][1]})"
+           if h["longest_gap"] else "")
+    unrec = sum((hi - lo).days + 1 for lo, hi in h["unrecoverable_ranges"])
+    lines.append(
+        f"archive health: {h['covered']}/{h['expected']} day(s) covered "
+        f"since {h['first']}{gap}; {unrec} unrecoverable day(s)"
+        if h["first"] else "archive health: empty")
+    return chr(10).join(lines)
+
+
+def print_health(root: Path = ARCHIVE_ROOT) -> None:
+    """--health: the five-seconds-after-a-week-away view."""
+    h = health(root)
+    print(announce(root))
+    print(f"  first partition   {h['first'] or '-'}")
+    print(f"  last partition    {h['newest'] or '-'}"
+          + (f"  ({h['age_days']}d old)" if h["newest"] else ""))
+    print(f"  days covered      {h['covered']}/{h['expected']}")
+    print(f"  last poll         {h['last_poll'] or 'never'}")
+    if h["unrecoverable_ranges"]:
+        for lo, hi in h["unrecoverable_ranges"]:
+            span = f"{lo}" if lo == hi else f"{lo} .. {hi}"
+            print(f"  UNRECOVERABLE     {span}")
+    else:
+        print("  UNRECOVERABLE     none")
+    print(f"  next scheduled    {h['next_run']}")
+
+
 def main(argv=None) -> int:
     import argparse
 
@@ -392,6 +513,9 @@ def main(argv=None) -> int:
     parser.add_argument("--root", type=Path, default=ARCHIVE_ROOT)
     parser.add_argument("--coverage", action="store_true",
                         help="report gaps and exit; no fetch")
+    parser.add_argument("--health", action="store_true",
+                        help="one-line archive health: partitions, coverage, "
+                             "unrecoverable ranges, next scheduled run")
     parser.add_argument("--catch-up", action="store_true",
                         help="poll right now. Extends the archive FORWARD by "
                              "the feeds' reach (~2 days), not by a window - "
@@ -402,11 +526,15 @@ def main(argv=None) -> int:
     parser.add_argument("--lookback", type=int, default=90)
     args = parser.parse_args(argv)
 
-    if args.coverage:
-        print_coverage(args.root)
+    if args.health:
+        print_health(args.root)
         return 0
     if args.window:
         return retrieve_for_scenario(args.window, args.lookback, args.root)
+    print(announce(args.root))
+    if args.coverage:
+        print_coverage(args.root)
+        return 0
     return poll(args.root)
 
 

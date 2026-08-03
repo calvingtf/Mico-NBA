@@ -173,3 +173,61 @@ class TestScenarioWindow:
         report = window(_Scenario(), lookback_days=2, root=tmp_path)
         assert len(report["items"]) == 2
         assert [r["url"] for r in report["matching"]] == ["http://m"]
+
+
+class TestHealthIsVisibleUnasked:
+    def _seed(self, tmp_path, day="2026-08-01"):
+        write_archive_rows([
+            _row("http://a", f"{day}T08:00:00+00:00"),
+            _marker_row("__poll__", date.fromisoformat(day), "poll ran",
+                        f"{day}T09:00:00+00:00"),
+        ], root=tmp_path)
+
+    def test_staleness_is_loud_with_the_last_poll_date(self, tmp_path):
+        from mironba.data.ingest.archive import announce
+
+        self._seed(tmp_path, "2026-08-01")
+        text = announce(tmp_path, today=date(2026, 8, 5))
+        assert "ARCHIVE STALE" in text
+        assert "4 day(s) old" in text
+        assert "2026-08-01T09:00:00+00:00" in text, "last poll must be named"
+
+    def test_a_fresh_archive_is_not_shouted_about(self, tmp_path):
+        from mironba.data.ingest.archive import announce
+
+        self._seed(tmp_path, "2026-08-01")
+        text = announce(tmp_path, today=date(2026, 8, 3))
+        assert "STALE" not in text
+        assert text.startswith("archive health:")
+
+    def test_an_archive_that_never_ran_says_so(self, tmp_path):
+        from mironba.data.ingest.archive import announce
+
+        assert "ARCHIVE EMPTY" in announce(tmp_path, today=date(2026, 8, 3))
+
+    def test_coverage_appears_on_every_run_not_on_request(self, tmp_path, capsys):
+        from mironba.data.ingest.archive import main
+
+        self._seed(tmp_path, "2026-08-01")
+        main(["--coverage", "--root", str(tmp_path)])
+        out = capsys.readouterr().out
+        assert out.splitlines()[0].startswith(("archive health:", "!! ARCHIVE"))
+
+    def test_unrecoverable_days_group_into_ranges(self, tmp_path):
+        from mironba.data.ingest.archive import health
+
+        self._seed(tmp_path, "2026-08-01")
+        recover({"espn-nba": 1}, tmp_path, today=date(2026, 8, 10), stamp="s")
+        h = health(tmp_path, today=date(2026, 8, 10), query_scheduler=False)
+        assert len(h["unrecoverable_ranges"]) == 1
+        lo, hi = h["unrecoverable_ranges"][0]
+        assert (lo, hi) == (date(2026, 8, 2), date(2026, 8, 8))
+
+    def test_last_poll_is_the_newest_marker(self, tmp_path):
+        from mironba.data.ingest.archive import last_poll_stamp
+
+        write_archive_rows([
+            _marker_row("__poll__", date(2026, 8, 1), "am", "2026-08-01T09:00:00+00:00"),
+            _marker_row("__poll__", date(2026, 8, 1), "pm", "2026-08-01T21:00:00+00:00"),
+        ], root=tmp_path)
+        assert last_poll_stamp(tmp_path) == "2026-08-01T21:00:00+00:00"
