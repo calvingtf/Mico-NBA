@@ -1,0 +1,7 @@
+retrieved 2026-08-03T00:57:00.717928+00:00
+ARCHIVE WINDOW for davis-2026: 2026-06-30 .. 2026-07-06
+  days requested 7, covered 0 - THE WINDOW HAS GAPS, listed below; drafts from this window describe the covered days only
+  gap 2026-06-30 .. 2026-07-06  [BEFORE-ARCHIVE]
+  items in window 0, matching subjects 0
+drafts produced 0
+

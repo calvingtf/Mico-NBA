@@ -364,13 +364,44 @@ supplies real publication timestamps (feeds without them are excluded), an
 LLM drafts typed rows into a review queue with the source sentence quoted, and
 the store has exactly one writer, which refuses anything a human has not
 explicitly confirmed. The live feeds reach back about two days. A **standing
-archiver** (`python -m mironba.data.ingest.archive`, scheduled daily) now
-appends every dated item to `archive/rss/YYYY-MM-DD.csv` partitions -
-append-only, one writer, under the enumerated writer test, with
+archiver** (`python -m mironba.data.ingest.archive`, scheduled twice daily at
+09:00 and 21:00) appends every dated item to `archive/rss/YYYY-MM-DD.csv`
+partitions - append-only, one writer, under the enumerated writer test, with
 `published_at` and `fetched_at` recorded separately - so a scenario declared
 months from now can read history captured as it happened. That serves
 scenarios **forward only**: nothing can be archived retroactively, and
 historical scenarios remain hand-curated.
+
+Every day is accounted for, and gaps are expected rather than exceptional:
+the scheduled tasks run only while the machine is logged in, which is a
+known, named gap source. So every poll writes a marker even when it appends
+nothing - an absent partition and an empty poll must never look the same
+(the sentinel-for-absence failure class) - and `--coverage` enumerates every
+day from the first partition to today, listing each missing day and the
+longest gap. Recovery is honestly scoped: the poll measures each feed's
+actual reach (3 days at last measurement, not the assumed 2) and recovers
+only gaps inside it; anything older is marked **UNRECOVERABLE-BY-RSS** with
+the range, never retried, never reported as success, and a test asserts an
+out-of-reach gap can never flip to recovered. `--window <scenario-id>` reads
+a declared lookback (default 90 days) before a scenario's freeze and reports
+days requested, days covered, and every gap by range BEFORE returning
+anything; survivors go to the same review queue as live ingest, and the gap
+statement is appended to the scenario's own `archive-window.txt` - both
+current scenarios report 0/90 covered, BEFORE-ARCHIVE, which is the
+forward-only limit stating itself. `--catch-up` polls now and extends the
+archive forward by feed reach (~2-3 days), not by a window: coverage comes
+from the schedule, not from remembering to run it.
+
+**Wayback CDX spike (negative, measured):** the one route that could backfill
+history or fill UNRECOVERABLE gaps is the Internet Archive - a capture
+timestamp is a third party attesting the text existed by that date, which is
+exactly what PRE requires and stronger than a page's self-reported date. The
+spike (one publisher, the 2026 draft window, `wayback_spike.py`) found 258
+captured URLs under hoopsrumors.com's May-June 2026 paths, snapshots
+resolving 5/5 - and **0 of the 26 curated rows are discoverable: all four
+source articles were never captured by Wayback at all**, not captured late.
+Recall 0/26; per the brief, historical stays hand-curated and gaps stay
+declared rather than filled.
 
 ## Seven results that weren't
 
