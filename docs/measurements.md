@@ -2100,3 +2100,37 @@ corpus is mostly single-target teams. The measurement needs ranked lists 3-4
 deep per team (~120-150 rows); at n=2 the rate is a diagnostic and the
 correct move is to say what corpus would support it and stop - which this
 entry does.
+
+
+## 51. A disclosed artifact is not an enumerated one (2026-08-03)
+
+**What happened:** closing the stipulation-integrity invariant, the report
+named one violation (BOS signing Giannis). The enumerated invariant test then
+found a second (PHI signing Grimes in the curry world). The third - HOU
+signing Towns, in a run whose output had been read twice - appeared only in
+the diff of the pre-fix and post-fix runs. Disclosure had found one; the
+test found two; the diff found three.
+
+**The lesson:** an artifact you noticed and disclosed is a sample of the
+violations, not the set. Only two moves produce the set: an enumerated
+assertion (every stipulated yaml, every mover, by glob) and a diff of the
+affected runs. They answer different questions - the assertion proves the
+rule holds NOW; the diff shows what the violation was DOING, and it is where
+the third case surfaced.
+
+**Standing rule:** when closing an invariant, diff the affected runs as well
+as asserting the rule. Report what the diff shows beside what the assertion
+proves, and treat any violation count quoted before both exist as a lower
+bound.
+
+**Follow-through, enumerated rather than remembered:** a marker scan of every
+git-tracked file (scenario ids + reaction-output markers) found ZERO
+committed artifacts generated from a pre-fix stipulated run: runs/ is
+gitignored (both local manifests were regenerated post-fix; a programmatic
+check confirms no stipulated mover appears in any signed list), the README
+quotes only validator findings (pool-independent), and docs/example-run.html
+plus the bench-league json artifacts derive from the PENDING path, which the
+fix does not touch (stipulated= defaults empty; the lebron numbers are
+asserted unchanged by the suite). Nothing needed regeneration; the pre-fix
+outputs survive only as quoted history in commit messages, which is where a
+violation record belongs.

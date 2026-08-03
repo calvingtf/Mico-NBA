@@ -828,6 +828,38 @@ that came back fine.
 - **The counterfactual branch.** Unfalsifiable by construction. Run and
   reported, never scored.
 
+## The standing boundary
+
+What remains open, and for each why it is BLOCKED (no route exists with the
+data this project can reach) or COSTED (a route exists and its price is
+stated). This list is the honest project boundary; everything above it is
+either measured, retired with a recorded reason, or listed in "still
+unmeasured" as free-to-run work that has not been run.
+
+- **Draft corpus** - COSTED: ~120-150 hand-curated ranked interest rows
+  (lists 3-4 deep per team) buy ~20-25 informative conditional cases, enough
+  to separate a 50% fallback rate from the 1/4 null (entry #50). Anything
+  less buys another diagnostic.
+- **Historical news** - BLOCKED: RSS reaches back ~3 measured days, the
+  archive reaches back to its first partition (2026-07-31), and the Wayback
+  CDX spike came back 0/26 - the source articles were never captured at all.
+  Historical scenarios stay hand-curated; UNRECOVERABLE-BY-RSS gaps stay
+  declared. The standing archive is the only source of future PRE evidence.
+- **Market model resolution** - BLOCKED at current inputs: the value model's
+  win-delta error is 10.48 wins, so contention tiers separate only extremes,
+  and single-star trades can flatten to zero projected-win shift (reported
+  as produced in every stipulated run). Sharper resolution needs a better
+  player-value input, not more simulation.
+- **Multi-team trade generation** - COSTED: the validator handles 3-team
+  legality (M9), but the PROPOSER still generates two-team packages plus a
+  near-miss absorber; free-form k-team generation is unbuilt and its search
+  space grows combinatorially. No measurement claims cover it.
+- **Pick valuation** - COSTED: pick assets validate in trades, but no value
+  curve is fitted, so a pick-heavy package cannot be compared to a
+  player-heavy one; the published-curve comparison from the M9 brief is the
+  stated route. Rookie-scale cap effects remain NOT_MODELLED (draft v0
+  scope statement).
+
 ## Reading further
 
 - [`docs/measurements.md`](docs/measurements.md) — **the measurement history**:
