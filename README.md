@@ -774,11 +774,26 @@ the walk contributes over reading the rumor list.
 (unresolved count printed beside every number). Null 1, random assignment of
 the named prospects onto the same slots: 0.18 expected hits - the sim is
 above it, which is expected and means little. Null 2, a published final mock
-(HoopsHQ, dated 2026-06-22, pre-draft) on the same slots: **the mock scores
-2/5 where the sim scores 1/5 - the sim loses to the consensus mock.** That is
-a perfectly good result stated plainly: the mock is a professional forecast
-built on prospect evaluation; the sim has only dated rumor behaviour, and one
-draft's difference is what that gap is worth. Mock rows are `draft_projection`
+(HoopsHQ, dated 2026-06-22, pre-draft) on the same slots: the mock scores
+2/5 where the sim scores 1/5 - the sim loses to the consensus mock. Losing
+there is **a corpus limit, not a method verdict**: beating a consensus mock
+with rumors alone is unlikely by construction, because the mock uses the
+same rumors plus the scouting the sim deliberately does not have.
+
+The sim's one unique output is the **cascade** - a mock gives a point
+prediction and cannot say what a team does when its target is taken. Scored
+conditionally on the ACTUAL draft walk (not the reconstructed order, whose
+lottery-free slots are an artifact): 20 first-choice-gone events happened in
+reality, 18 of which had no remaining rumored target - single-target teams
+cannot cascade - leaving **n = 2 scoreable fallback cases, stated before any
+rate**. Fallbacks hit 0/2 against a conditional null of 0.25 expected on the
+1 informative case (the other actual pick lay outside the remaining set, so
+chance scores zero there too - uninformative by construction). A rate on two
+cases is a diagnostic, not a measurement, the same standard that retired
+suitor_won at n=1. **The corpus cannot support this measurement**: it needs
+ranked lists 3-4 deep per team (~120-150 rows shaped like the Warriors'
+ten), which would yield ~20-25 informative cases - enough to separate a 50%
+fallback rate from a 1/4 null. It stops there. Mock rows are `draft_projection`
 evidence - a competing forecaster, never an input - and a fence test fails if
 any module outside `eval/` can reach them (it caught its own docstring on the
 first run). Rookie-scale cap effects are NOT_MODELLED in v0.

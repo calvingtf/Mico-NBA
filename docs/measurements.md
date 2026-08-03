@@ -2079,3 +2079,24 @@ the store has **exactly one writer**, it raises without an explicit human
 confirmed=True, phase is computed from the scenario's freeze rather than
 declared by the row, and a test greps the package for any other write path.
 The phantom sixth suitor, made mechanical.
+
+
+## 50. The cascade scored conditionally - and the corpus says no (2026-08-02)
+
+**Number:** n = 2 scoreable fallback cases from 20 first-choice-gone events;
+0/2 hits against a conditional null of 0.25 on the 1 informative case.
+**What was asked:** conditional on a team's rumored first choice being gone
+at its ACTUAL pick, does the actual selection match the priority list's next
+available name? The condition is evaluated on the real draft's own walk;
+using the sim's reconstructed (lottery-free) order would score a contingency
+that reality never faced.
+**The null is not the unconditional null:** once the first choice is gone
+the candidate set is the team's remaining un-taken targets (1/len(remaining)),
+and a case whose actual pick lies outside that set is uninformative by
+construction - chance scores zero there too, the external_acquisition
+ceiling shape again.
+**Verdict:** 18 of 20 conditional events exhausted their lists because the
+corpus is mostly single-target teams. The measurement needs ranked lists 3-4
+deep per team (~120-150 rows); at n=2 the rate is a diagnostic and the
+correct move is to say what corpus would support it and stop - which this
+entry does.

@@ -86,6 +86,114 @@ def score(draft_year: int, *, trials: int = 20000, seed: int = 20260625) -> dict
     }
 
 
+#: Team-name -> code map for the actual-picks table (curated corpus teams).
+_TEAM_CODES = {
+    "Washington Wizards": "WAS", "Golden State Warriors": "GSW",
+    "Oklahoma City Thunder": "OKC", "Miami Heat": "MIA",
+    "Milwaukee Bucks": "MIL", "Charlotte Hornets": "CHA",
+    "Dallas Mavericks": "DAL", "Los Angeles Clippers": "LAC",
+    "Atlanta Hawks": "ATL", "Chicago Bulls": "CHI",
+    "New Orleans Pelicans": "NOP",
+}
+
+
+def conditional_score(draft_year: int) -> dict:
+    """Score the contingency, not the slot: first choice gone, then what?
+
+    A mock gives a point prediction and cannot say what a team does when its
+    target is taken; the cascade is the sim's one unique output. This walks
+    the ACTUAL draft - not the reconstructed order, whose lottery-free slots
+    are an artifact - and at each corpus team's real pick asks: was the
+    team's rumored first choice already taken? If so, does the actual pick
+    match the priority list's next available name?
+
+    The null is NOT unconditional slot accuracy: once the first choice is
+    gone the candidate set is the team's remaining un-taken targets, so
+    chance is 1/len(remaining) - and a case whose actual pick lies outside
+    that set is UNINFORMATIVE BY CONSTRUCTION (chance scores zero there too,
+    the same shape as the retired external_acquisition_overlap ceiling).
+    """
+    import csv as _csv
+
+    from mironba.sim.draft import load_interest, targets_by_team
+
+    truth_rows = []
+    path = EVIDENCE / f"draft-{draft_year}" / "actual-picks.csv"
+    with path.open(encoding="utf-8", newline="") as handle:
+        truth_rows = sorted(_csv.DictReader(handle), key=lambda r: int(r["slot"]))
+
+    targets = {team: [_norm(w) for w in wanted]
+               for team, wanted in targets_by_team(load_interest(draft_year)).items()}
+
+    taken: set[str] = set()
+    conditional = exhausted = first_hits = first_available = 0
+    cases = []
+    for row in truth_rows:
+        code = _TEAM_CODES.get(row["team"])
+        actual = _norm(row["player"])
+        if code in targets:
+            wanted = targets[code]
+            if wanted[0] not in taken:
+                first_available += 1
+                first_hits += actual == wanted[0]
+            else:
+                conditional += 1
+                remaining = [w for w in wanted if w not in taken]
+                if not remaining:
+                    exhausted += 1
+                else:
+                    cases.append({
+                        "slot": int(row["slot"]), "team": code,
+                        "predicted": remaining[0], "actual": actual,
+                        "hit": remaining[0] == actual,
+                        "set_size": len(remaining),
+                        "informative": actual in remaining,
+                    })
+        taken.add(actual)
+
+    informative = [c for c in cases if c["informative"]]
+    return {
+        "conditional_events": conditional,
+        "exhausted": exhausted,
+        "cases": cases,
+        "n": len(cases),
+        "n_informative": len(informative),
+        "hits": sum(c["hit"] for c in cases),
+        "null_expected": sum(1 / c["set_size"] for c in informative),
+        "first_choice_available": first_available,
+        "first_choice_hits": first_hits,
+    }
+
+
+def print_conditional(draft_year: int) -> None:
+    c = conditional_score(draft_year)
+    print()
+    print("CONDITIONAL - the cascade, scored on the ACTUAL draft walk")
+    print(f"  n = {c['n']} scoreable case(s), stated before any rate: a rate "
+          "on this few cases is a")
+    print("  diagnostic, not a measurement (the standard that retired "
+          "suitor_won at n=1).")
+    print(f"  {c['conditional_events']} first-choice-gone event(s) in "
+          f"reality; {c['exhausted']} had no remaining rumored target - "
+          "single-target teams cannot cascade.")
+    for case in c["cases"]:
+        tag = "" if case["informative"] else             "  UNINFORMATIVE BY CONSTRUCTION (actual outside the remaining set; chance scores 0 too)"
+        print(f"    slot {case['slot']:>2} {case['team']}: fallback "
+              f"{case['predicted']!r} vs actual {case['actual']!r} "
+              f"{'HIT' if case['hit'] else 'MISS'}   null 1/{case['set_size']}{tag}")
+    print(f"  fallback hits {c['hits']}/{c['n']}   conditional null "
+          f"{c['null_expected']:.2f} expected on the {c['n_informative']} "
+          "informative case(s)")
+    print(f"  (context: when the first choice was still available, teams took "
+          f"it {c['first_choice_hits']}/{c['first_choice_available']} times)")
+    print("  VERDICT: the corpus cannot support this measurement. It needs "
+          "RANKED lists 3-4 deep")
+    print("  per team (~120-150 rows shaped like GSW's ten), giving ~20-25 "
+          "informative cases -")
+    print("  enough to separate a 50% fallback rate from a 1/4 null. At n like "
+          "this, stop.")
+
+
 def main(argv=None) -> int:
     import argparse
     import sys
@@ -126,6 +234,7 @@ def main(argv=None) -> int:
     else:
         print("  vs null 2: above the consensus mock on covered slots - at "
               f"n={s['null2_slots']} treat as suggestive, not significant.")
+    print_conditional(args.draft)
     return 0
 
 

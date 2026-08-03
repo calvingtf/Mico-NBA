@@ -121,3 +121,30 @@ class TestScoring:
         a = score(2026, trials=500, seed=7)["null1_expected"]
         b = score(2026, trials=500, seed=7)["null1_expected"]
         assert a == b
+
+
+class TestTheConditionalIsScoredHonestly:
+    def test_n_is_two_and_stated_before_any_rate(self, capsys):
+        from mironba.eval.draft_score import print_conditional
+
+        print_conditional(2026)
+        out = capsys.readouterr().out
+        assert out.index("n = 2") < out.index("fallback hits")
+
+    def test_the_conditional_walks_the_actual_draft_not_the_reconstruction(self):
+        from mironba.eval.draft_score import conditional_score
+
+        c = conditional_score(2026)
+        assert c["conditional_events"] == 20
+        assert c["exhausted"] == 18, "single-target teams cannot cascade"
+        assert c["n"] == 2 and c["hits"] == 0
+
+    def test_the_null_shrinks_to_the_remaining_set_and_counts_informative_only(self):
+        from mironba.eval.draft_score import conditional_score
+
+        c = conditional_score(2026)
+        assert c["n_informative"] == 1
+        assert abs(c["null_expected"] - 0.25) < 1e-9
+        uninformative = [x for x in c["cases"] if not x["informative"]]
+        assert len(uninformative) == 1
+        assert uninformative[0]["team"] == "NOP"
