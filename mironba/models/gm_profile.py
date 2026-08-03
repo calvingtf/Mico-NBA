@@ -391,10 +391,16 @@ def validate() -> list[dict]:
         gm_err = mean(r[0] for r in rows)
         null_err = mean(r[1] for r in rows)
         wins = sum(1 for g, n in rows if g < n)
+        from math import comb
+
+        n = len(rows)
+        p_sign = sum(comb(n, k) for k in range(wins, n + 1)) / 2 ** n
         report.append({
-            "parameter": parameter, "n": len(rows),
+            "parameter": parameter, "n": n,
             "gm_mae": gm_err, "null_mae": null_err, "wins": wins,
-            "beats_null": gm_err < null_err,
+            "p": p_sign,
+            "beats_null": gm_err < null_err and p_sign <= 0.05,
+            "suggestive": gm_err < null_err and p_sign > 0.05,
         })
     return report
 
@@ -424,6 +430,12 @@ def main(argv=None) -> int:
         return 0
 
     print("\nOUT-OF-SAMPLE: fit 2016-22 under the same GM, predict 2022-25.")
+    print("p is a one-sided sign test on per-GM wins; the threshold is the "
+          "one this project refused p=0.064 at. Power: separating a true 75% "
+          "persistence rate from a coin flip needs n=23 same-GM pairs "
+          "(critical 16 wins, power 0.80); 11 exist, and the route to more "
+          "is curating predecessor tenures for the 168 unattributable "
+          "team-seasons.")
     print("Null = the league-average fit-window profile. 'Does knowing which "
           "GM it is beat knowing nothing?'")
     print(f"{'parameter':<20} {'n':>3} {'gm mae':>9} {'null mae':>9} "
@@ -433,11 +445,16 @@ def main(argv=None) -> int:
             print(f"{row['parameter']:<20} {0:>3}  not computable on the "
                   "attributable window")
             continue
-        verdict = ("beats the null" if row["beats_null"]
-                   else "DOES NOT BEAT THE NULL - do not enter the sim as if "
-                        "it had")
+        if row["beats_null"]:
+            verdict = "beats the null"
+        elif row["suggestive"]:
+            verdict = ("SUGGESTIVE - lower error but p above the 0.064 the "
+                       "era gap was refused at")
+        else:
+            verdict = "DOES NOT BEAT THE NULL - do not enter the sim as if it had"
         print(f"{row['parameter']:<20} {row['n']:>3} {row['gm_mae']:>9.3f} "
-              f"{row['null_mae']:>9.3f} {row['wins']:>5}/{row['n']:<3} {verdict}")
+              f"{row['null_mae']:>9.3f} {row['wins']:>5}/{row['n']:<3} "
+              f"p={row['p']:.3f}  {verdict}")
     return 0
 
 

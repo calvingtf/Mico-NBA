@@ -2157,3 +2157,23 @@ asserting it predicts even less.
 **Coverage honesty:** 30 sourced tenure rows, no predecessors on the sourced
 page -> 132/300 team-seasons attributable, 8/30 teams UNKNOWN at the live
 freeze, all reported rather than defaulted silently.
+
+
+## 53. The persistence passes were not passes (2026-08-03)
+
+**Number:** under a one-sided sign test at n=11, no GM-profile parameter
+clears the threshold this project refused p=0.064 at: spend_level p=0.113
+(8/11), trade_rate p=0.274 (7/11), deadline_share p=0.726, posture p=0.500.
+**What was overturned:** entry #52 and the README listed four parameters as
+'beats the null' on mean-error comparison alone. The same standard applied
+to the era gap and the draft was not applied here until asked - the
+recurring failure mode where a favourable comparison ships without its p.
+**What changed:** validate() now prints the sign-test p per row; verdicts
+are three-way (beats / SUGGESTIVE / does not); the README table carries p
+and calls the survivors SUGGESTIVE. Power costed like the draft corpus:
+n=23 same-GM pairs separates a true 75% persistence rate from chance at
+power 0.80; 11 exist; the route to more is predecessor-tenure curation for
+the 168 unattributable team-seasons.
+**Unchanged:** the refusal gate. Parameters that failed even the mean-error
+comparison still may not enter the sim, and the suggestive ones enter only
+with their label.

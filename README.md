@@ -860,20 +860,27 @@ loudly (8 of 30 teams at the current freeze).
 **Out of sample** (fit 2016-22 under the same GM, predict 2022-25, n=11
 GMs; null = the league-average fit-window profile):
 
-| parameter | n | GM mae | null mae | verdict |
-|---|---|---|---|---|
-| trade_rate | 11 | 0.918 | 0.963 | beats the null |
-| deadline_share | 11 | 0.232 | 0.259 | beats the null |
-| posture_agreement | 9 | 0.380 | 0.396 | beats the null |
-| spend_level | 11 | 0.066 | 0.082 | beats the null (8/11) |
-| aggregation_rate | 11 | 0.168 | 0.154 | **does not beat the null** |
-| pick_flow | 11 | 1.812 | 1.640 | **does not beat the null** |
-| retention_rate | 11 | 0.089 | 0.062 | **does not beat the null** |
+| parameter | n | GM mae | null mae | wins | p (sign test) | verdict |
+|---|---|---|---|---|---|---|
+| spend_level | 11 | 0.066 | 0.082 | 8/11 | 0.113 | SUGGESTIVE |
+| trade_rate | 11 | 0.918 | 0.963 | 7/11 | 0.274 | SUGGESTIVE |
+| deadline_share | 11 | 0.232 | 0.259 | 5/11 | 0.726 | SUGGESTIVE (mae only) |
+| posture_agreement | 9 | 0.380 | 0.396 | 5/9 | 0.500 | SUGGESTIVE (mae only) |
+| aggregation_rate | 11 | 0.168 | 0.154 | 6/11 | 0.500 | **does not beat the null** |
+| pick_flow | 11 | 1.812 | 1.640 | 4/11 | 0.887 | **does not beat the null** |
+| retention_rate | 11 | 0.089 | 0.062 | 3/11 | 0.967 | **does not beat the null** |
 
-Read plainly: a GM's **volume, timing and spending habits persist** out of
-sample; the parameters describing **how they construct trades do not** -
-which is consistent with the M10 observation that persona citation fell as
-model capability rose. The one parameter that reaches decision logic
+**No parameter clears the threshold this project refused p=0.064 at** - the
+best is spend_level at p=0.113, which is 8/11 under a coin-flip null. So the
+persistence results are SUGGESTIVE, not passes: read plainly, a GM's volume
+and spending habits *look* more persistent than their trade construction,
+and at n=11 that reading is not yet a measurement. The power is costed like
+the draft corpus: separating a true 75% persistence rate from chance needs
+**n=23 same-GM fit/holdout pairs** (critical 16 wins, power 0.80) against
+the 11 that exist - and the route to more pairs is curating predecessor
+tenures for the 168 unattributable team-seasons. The direction is still
+consistent with the M10 observation that persona citation fell as model
+capability rose. The one parameter that reaches decision logic
 (aggregation -> asset_hoarding -> max_assets_out in the cascade) is among
 the failures, so `to_persona` refuses to differentiate on it without an
 explicit probe flag: **a parameter that failed its null must not enter the
@@ -888,6 +895,26 @@ Clippers). So the pipe reaches the decision logic. But under the VALIDATED
 mapping the derived persona set is identical to uniform by construction,
 and the honest conclusion is: **derived personas do not change the world,
 and on present evidence they should not.**
+
+### The convergence
+
+Three independent measurements arrive at one claim: **in this domain the
+CBA explains more of what happens than the identity of the person
+deciding.**
+
+1. The ranker failed because the constraint solver had already consumed the
+   discriminative variance (p@10 6.0% vs a 5.01% null - ranking does not
+   work on features the solver has already consumed).
+2. Money and roster tier cannot separate contenders in July - the M10
+   discriminator result, and the reaction's own resolver declaring contested
+   decisions ARBITRARY because nothing available separates the offers.
+3. GM trade-construction style does not persist out of sample
+   (aggregation, pick flow, retention all fail their null), while the
+   suggestive survivors are volume and spending - properties of the
+   franchise's constraint position more than of the person.
+
+Stated as a convergence of three negatives, not proven as a theorem: each
+leg carries its own n and its own null, listed where it was measured.
 
 ## The standing boundary
 
