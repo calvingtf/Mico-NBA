@@ -17,9 +17,9 @@ from mironba.models.gm_profile import (
 
 
 class TestTheTenureTableIsSourcedOrAbsent:
-    def test_thirty_rows_each_with_source_url_and_retrieval(self):
+    def test_every_row_has_source_url_and_retrieval(self):
         rows = load_tenures()
-        assert len(rows) == 30
+        assert len(rows) == 56, "30 current + 25 sourced predecessors + 1 skip"
         for row in rows:
             assert row["source"] and row["url"].startswith("http")
             assert row["retrieved"], "a sourced row states when it was read"
@@ -27,9 +27,9 @@ class TestTheTenureTableIsSourcedOrAbsent:
     def test_unattributable_seasons_are_reported_not_guessed(self):
         cov = coverage()
         assert len(cov["attributable"]) + len(cov["unattributable"]) == 300
-        assert len(cov["attributable"]) == 132
-        chi = [s for t, s in cov["unattributable"] if t == "CHI"]
-        assert len(chi) == 10, "a 2026 hire attributes none of the ten seasons"
+        assert len(cov["attributable"]) == 255
+        mn = [s for t, s in cov["unattributable"] if t == "MIN"]
+        assert len(mn) == 6, "MIN pre-Connelly seasons stay out, undated"
 
 
 class TestStrictlyPreDate:
@@ -55,14 +55,14 @@ class TestStrictlyPreDate:
 
 
 class TestUnknownFallsBackLoudly:
-    def test_a_2026_hire_is_unknown_not_defaulted_silently(self):
-        prof = profile("CHI", date(2026, 7, 6))
+    def test_a_2025_hire_is_unknown_not_defaulted_silently(self):
+        prof = profile("DEN", date(2026, 7, 6))  # Tenzer 2025: one season
         assert prof.status == "UNKNOWN"
         assert prof.values == {}
         assert len(prof.seasons) < MIN_SEASONS
 
     def test_unknown_maps_to_a_persona_that_says_so(self):
-        persona = to_persona(profile("CHI", date(2026, 7, 6)), {})
+        persona = to_persona(profile("DEN", date(2026, 7, 6)), {})
         assert "UNKNOWN" in persona.label or "league-average" in persona.label
         assert persona.asset_hoarding == 0.5
 
@@ -124,10 +124,10 @@ class TestTheWiring:
 
         from mironba.models.gm_profile import profile, to_behavior
 
-        prof = profile("CHI", date(2026, 7, 6))  # 2026 hire -> UNKNOWN
-        behavior = to_behavior({"CHI": prof}, {"spend_level": 1.0,
+        prof = profile("DEN", date(2026, 7, 6))  # 2025 hire -> UNKNOWN
+        behavior = to_behavior({"DEN": prof}, {"spend_level": 1.0,
                                                "trade_rate": 5.0})
-        assert behavior["CHI"] == {"low_spend": False,
+        assert behavior["DEN"] == {"low_spend": False,
                                    "below_avg_trade_rate": False}
 
     def test_deadline_share_is_declared_not_wirable(self):

@@ -65,7 +65,7 @@ def load_tenures() -> list[dict]:
 def gm_for(team: str, season: str, tenures=None) -> str:
     """The sourced GM for a team-season, or '' when unattributable."""
     for row in tenures or load_tenures():
-        if row["team_id"] != team:
+        if row["team_id"] != team or row.get("skip") == "1":
             continue
         if season >= row["start_season"] and (
                 not row["end_season"] or season <= row["end_season"]):
@@ -378,9 +378,23 @@ def to_behavior(profiles: dict, averages: dict) -> dict:
 # Out-of-sample validation: early seasons predict held-out later ones?
 # --------------------------------------------------------------------------
 
-FIT_SEASONS = SEASONS[:6]      # 2016-17 .. 2021-22
-HOLD_SEASONS = SEASONS[6:9]    # 2022-23 .. 2024-25 (2025-26 kept clear of
-                               # the live scenarios' freeze)
+def stints(tenures=None) -> list[tuple[str, str, tuple[str, ...]]]:
+    """(team, gm, attributable seasons in-window), one row per sourced stint."""
+    tenures = tenures or load_tenures()
+    out = []
+    seen = set()
+    for row in tenures:
+        if row.get("skip") == "1":
+            continue
+        key = (row["team_id"], row["gm"])
+        if key in seen:
+            continue
+        seen.add(key)
+        seasons = tuple(s for s in SEASONS
+                        if gm_for(row["team_id"], s, tenures) == row["gm"])
+        if seasons:
+            out.append((row["team_id"], row["gm"], seasons))
+    return out
 
 
 def validate() -> list[dict]:
@@ -389,19 +403,22 @@ def validate() -> list[dict]:
     teams = sorted({r["team_id"] for r in tenures})
 
     fit, held = {}, {}
-    for team in teams:
-        fit_seasons = tuple(s for s in FIT_SEASONS if gm_for(team, s, tenures))
-        hold_seasons = tuple(
-            s for s in HOLD_SEASONS
-            if gm_for(team, s, tenures)
-            and gm_for(team, s, tenures) == (gm_for(team, fit_seasons[-1], tenures)
-                                             if fit_seasons else ""))
-        if len(fit_seasons) < MIN_SEASONS or len(hold_seasons) < 1:
+    for team, gm, seasons in stints(tenures):
+        # Within-stint split, declared: hold the last 2 seasons when the
+        # stint has 5+, else the last 1; the fit side needs MIN_SEASONS.
+        # One entry per (team, gm) stint, so a franchise with a handover
+        # contributes up to two independent same-GM pairs.
+        if len(seasons) < 3:
             continue
-        fit[team] = profile(team, date(2022, 8, 1), seasons=fit_seasons,
+        hold_k = 2 if len(seasons) >= 5 else 1
+        fit_seasons, hold_seasons = seasons[:-hold_k], seasons[-hold_k:]
+        if len(fit_seasons) < MIN_SEASONS:
+            continue
+        key = (team, gm)
+        fit[key] = profile(team, date(2026, 8, 1), seasons=fit_seasons,
+                           names=names)
+        held[key] = profile(team, date(2026, 8, 1), seasons=hold_seasons,
                             names=names)
-        held[team] = profile(team, date(2025, 8, 1), seasons=hold_seasons,
-                             names=names)
 
     null = {}
     for parameter in PARAMETERS:
@@ -412,11 +429,11 @@ def validate() -> list[dict]:
     report = []
     for parameter in PARAMETERS:
         rows = [
-            (abs(fit[t].values[parameter] - held[t].values[parameter]),
-             abs(null[parameter] - held[t].values[parameter]))
-            for t in fit
-            if fit[t].values.get(parameter) is not None
-            and held[t].values.get(parameter) is not None
+            (abs(fit[k].values[parameter] - held[k].values[parameter]),
+             abs(null[parameter] - held[k].values[parameter]))
+            for k in fit
+            if fit[k].values.get(parameter) is not None
+            and held[k].values.get(parameter) is not None
             and null[parameter] is not None
         ]
         if not rows:
@@ -463,13 +480,12 @@ def main(argv=None) -> int:
     if not args.validate:
         return 0
 
-    print("\nOUT-OF-SAMPLE: fit 2016-22 under the same GM, predict 2022-25.")
+    print("\nOUT-OF-SAMPLE, WITHIN-STINT: every sourced stint of 3+ seasons")
+    print("holds out its final 1-2 seasons; the fit half predicts them.")
     print("p is a one-sided sign test on per-GM wins; the threshold is the "
           "one this project refused p=0.064 at. Power: separating a true 75% "
           "persistence rate from a coin flip needs n=23 same-GM pairs "
-          "(critical 16 wins, power 0.80); 11 exist, and the route to more "
-          "is curating predecessor tenures for the 168 unattributable "
-          "team-seasons.")
+          "(critical 16 wins, power 0.80).")
     print("Null = the league-average fit-window profile. 'Does knowing which "
           "GM it is beat knowing nothing?'")
     print(f"{'parameter':<20} {'n':>3} {'gm mae':>9} {'null mae':>9} "
