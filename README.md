@@ -981,7 +981,16 @@ unmeasured" as free-to-run work that has not been run.
   across an hour, including a 45-minute zero-request cooldown, consistent
   with a shared-egress IP saturating GDELT's limiter. Infeasible to measure
   from this network today, claimed as exactly that; the spike is committed
-  and re-runs any day the API answers. Historical scenarios stay
+  and re-runs any day the API answers. The cheap network discriminator is
+  UNRUN, not failed: both in-reach alternates - WebFetch and a
+  remote-isolated agent - were measured (via ipify, before trusting any
+  result through them) to egress from the same residential IP as the
+  throttled machine, so IP-scoped-vs-GDELT-wide cannot be separated from
+  this seat. A ten-minute hotspot run of the spike settles it (entry #60);
+  the wrapper lesson - gdeltdoc's empty RateLimitError hid the server's
+  own 429 body until the raw call surfaced it - is entry #59, with the
+  standing note: when a dependency's error path obscures the server's
+  answer, drop to the raw call. Historical scenarios stay
   hand-curated; UNRECOVERABLE-BY-RSS gaps stay declared. The standing
   archive is the only source of future PRE evidence.
 - **Market model resolution** - BLOCKED at current inputs: the value model's

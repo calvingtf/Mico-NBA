@@ -2297,3 +2297,40 @@ conclusion), and the committed spike re-runs any day the API answers,
 printing the full two-level recall analysis (exact-source and
 claim-level) it was built to produce. No pipeline was built, per the
 brief, and none would be until that number exists.
+
+
+## 59. The wrapper that swallowed the diagnosis (2026-08-03)
+
+**What happened:** gdeltdoc raised ``RateLimitError()`` with an empty
+message. The throttling was undiagnosable - no status code, no body, no
+retry hint - until the raw DOC API call surfaced GDELT's own answer: HTTP
+429 with "Please limit requests to one every 5 seconds", which is what
+made the penalty-window behaviour (and the eventual network-level verdict)
+readable at all.
+**The family this belongs to:** a library that swallows the response
+needed to diagnose it is the same failure class as a mechanism whose
+success and failure look alike at the call site - the quote-mechanism
+lesson (entry 43's unread-output species) wearing a dependency's clothes.
+**Standing note:** when a dependency's error path obscures the server's
+own answer, drop to the raw call. The committed spike queries the DOC API
+directly for exactly this reason.
+
+## 60. The discriminator that wasn't: both alternates shared the egress (2026-08-03)
+
+**What was attempted:** the cheap network test - re-run one GDELT probe
+from a different egress. Two in-reach alternates were tried and BOTH were
+measured to egress from the same residential IP (136.52.76.203) as the
+throttled machine: WebFetch (pinned via api.ipify.org BEFORE interpreting
+any GDELT result through it) and an Agent launched with remote isolation
+(which executed locally and said so; its own ipify line matched).
+**Why the pinning mattered:** without measuring the alternate's IP first,
+a 429 through WebFetch would have read as "429 from a second network -
+GDELT-wide," a false confirmation manufactured by the assumption that a
+different tool is a different network.
+**Status:** the discriminator is UNRUN, not failed. From one egress it is
+impossible to separate the two live hypotheses - an IP-scoped limiter
+saturated by a shared-egress neighbour, versus GDELT-wide load shedding.
+A ten-minute run of ``python -m mironba.data.ingest.gdelt_spike`` from a
+phone hotspot answers it; until then the route stays PENDING exactly as
+entry #58 wrote it, and the local egress constraint is recorded as
+network-local-unconfirmed rather than GDELT-wide.
