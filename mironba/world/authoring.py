@@ -309,6 +309,13 @@ def _validate_package(draft: Draft) -> None:
                 f"{move['player_name']} has no {season} contract row; a draft "
                 "cannot invent a salary")
             return
+        on_team = next((r["team_id"] for r in rows if r["player_id"] == pid), "")
+        if on_team != move["from_team"]:
+            draft.errors.append(
+                f"{move['player_name']} is on {on_team} in the {season} "
+                f"snapshot, not {move['from_team']} - the draft may not move "
+                "a player from a team the snapshot does not place him on")
+            return
         players.append(PlayerAsset(
             player_id=pid, name=move["player_name"], salary=salaries[pid],
             from_team=move["from_team"], to_team=move["to_team"]))
@@ -344,9 +351,12 @@ def scenario_yaml(draft: Draft, scenario_id: str) -> str:
     if not draft.ok:
         raise AuthoringError("draft has open errors or ambiguities; not yamlable")
     seed = date.fromisoformat(draft.seed_date)
-    season = f"{seed.year}-{str(seed.year + 1)[-2:]}" if seed.month >= 7 else \
-             f"{seed.year - 1}-{str(seed.year)[-2:]}"
-    next_season = f"{seed.year}-{str(seed.year + 1)[-2:]}" if seed.month >= 7 else season
+    # Project convention (see the curry yaml): `season` is the completed
+    # season the snapshots describe; `next_season` is the league year the
+    # event lands in. A July seed sits between the two.
+    season = f"{seed.year - 1}-{str(seed.year)[-2:]}"
+    next_season = (f"{seed.year}-{str(seed.year + 1)[-2:]}"
+                   if seed.month >= 7 else season)
     lines = [
         f"id: {scenario_id}",
         f"kind: {draft.kind}",
@@ -362,6 +372,7 @@ def scenario_yaml(draft: Draft, scenario_id: str) -> str:
         lines.append(f"  - {draft.resolved[name]}")
     for code in draft.team_codes:
         lines.append(f"  - {code}")
+    lines.append(f'next_season: "{next_season}"')
     lines += ["decision: >", f"  {draft.decision}"]
     if draft.kind == "stipulated":
         lines += ["scored_teams: []", "stipulation:",

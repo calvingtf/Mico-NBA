@@ -1,0 +1,30 @@
+id: giannis-knicks-2026
+kind: stipulated
+season: "2025-26"
+freeze: 2026-07-06
+freeze_rationale: >
+  Drafted from: 'Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns and Mohamed Diawara on 2026-07-06'. The seed date was proposed by the
+  drafting model and confirmed by a human; state a better rationale
+  here before running anything that will be reported.
+subjects:
+  - antetgi01
+  - townska01
+  - diawamo01
+  - MIA
+  - NYK
+next_season: "2026-27"
+decision: >
+  Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns and Mohamed Diawara
+scored_teams: []
+stipulation:
+  label: Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns and Mohamed Diawara on 2026-07-06
+  players:
+    - player_id: antetgi01
+      from: MIA
+      to: NYK
+    - player_id: townska01
+      from: NYK
+      to: MIA
+    - player_id: diawamo01
+      from: NYK
+      to: MIA
