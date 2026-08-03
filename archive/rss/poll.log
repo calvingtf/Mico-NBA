@@ -1,0 +1,9 @@
+archive health: 4/4 day(s) covered since 2026-07-31; 0 unrecoverable day(s)
+feed        dated  undated                 window  appended   dup  reach
+espn-nba       12        0 2026-07-31..2026-08-03         0    12     3d
+nba-com    EXCLUDED - fetch failed: HTTP Error 404: Not Found
+yahoo-nba      50        0 2026-07-31..2026-08-03         1    49     3d
+
+measured reach: espn-nba=3d, yahoo-nba=3d   (recovery scope: 3d, measured not assumed)
+
+coverage: 4/4 day(s) COVERED since 2026-07-31
