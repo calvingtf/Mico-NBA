@@ -67,3 +67,4 @@ delta-error.json
 # Read only by llm/providers/anthropic.py, never committed.
 .secrets/
 .secrets.env
+archive/rss/poll.log

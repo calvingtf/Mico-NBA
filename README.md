@@ -589,6 +589,16 @@ Every line traces to one event in `events.jsonl` by sequence number. Nothing is
 inferred and no model is involved in the rendering — full example in
 [`docs/example-timeline.txt`](docs/example-timeline.txt).
 
+**What the timeline's granularity actually is:** there is no in-world clock
+anywhere in the system. A GM-tick run logs 11-15 events across 8-11 distinct
+kinds; the timestamps are wall-clock capture times of the generating process
+(21-30 seconds end to end on the local model, ~7 minutes hosted), and event
+ORDER is the only temporal structure. The 30-team reaction persists no event
+log at all - scheduler counters only (119-137 events per run), with no
+timestamps. Nothing maps any event to a simulated hour or day; a reader
+should treat the feed as sequence-ordered news with provenance, not as a
+calendar.
+
 **The report agent cannot oversell, structurally.** The numbers and the
 limitation block are module constants appended after the model's prose, so no
 prompt failure can drop them, and a filter removes any sentence that presents a
@@ -854,6 +864,18 @@ unmeasured" as free-to-run work that has not been run.
   legality (M9), but the PROPOSER still generates two-team packages plus a
   near-miss absorber; free-form k-team generation is unbuilt and its search
   space grows combinatorially. No measurement claims cover it.
+- **Follow-on trades in the reaction** - COSTED: the 30-team reaction is
+  structurally signings-only - its single commit path books a signing route,
+  and both stipulated worlds produced 121 signings across 29 teams and zero
+  generated trades (the seed trade is stipulated, not produced). The trade
+  machinery exists on the other side of the codebase - the GM-tick path
+  (LLM intent -> deterministic solver -> rules verdict) that the measured
+  runs exercise - but the two are not wired together. The cost is per-team
+  trade ticks inside the reaction loop (LLM calls x30 teams, or a
+  deterministic intent proposer first) plus extending stipulation integrity
+  to generated trades. The original chain-reaction goal is therefore HALF
+  built: seeded trade -> signing cascade exists; seeded trade -> further
+  trades does not.
 - **Pick valuation** - COSTED: pick assets validate in trades, but no value
   curve is fitted, so a pick-heavy package cannot be compared to a
   player-heavy one; the published-curve comparison from the M9 brief is the
