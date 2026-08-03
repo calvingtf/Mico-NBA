@@ -838,6 +838,57 @@ that came back fine.
 - **The counterfactual branch.** Unfalsifiable by construction. Run and
   reported, never scored.
 
+### GM personas: revealed disposition, not a belief model
+
+`models/gm_profile.py` derives per-GM parameters from transaction history -
+and it is named for what it is: **revealed disposition from behaviour. It
+says what a front office has done, not what it thinks.** Limit 1 as
+originally posed - whether the persona models anything a GM believes - stays
+open by choice: a belief model would need the permutation control below to
+even be checkable, and behaviour is what ten seasons of transactions can
+actually testify about.
+
+The tenure table is sourced or absent, never recalled: 30 rows from one
+sourced page (retrieved 2026-08-03), which carries no predecessors - so
+**132/300 team-seasons are attributable and 168 are unattributable**,
+reported per team (four 2026 hires attribute nothing). A profile is a
+function of (team, as_of): parameters compute from seasons strictly before
+the date, within the sourced tenure, registered in DERIVED_FACTS; under
+`MIN_SEASONS` the profile is UNKNOWN and falls back to league average,
+loudly (8 of 30 teams at the current freeze).
+
+**Out of sample** (fit 2016-22 under the same GM, predict 2022-25, n=11
+GMs; null = the league-average fit-window profile):
+
+| parameter | n | GM mae | null mae | verdict |
+|---|---|---|---|---|
+| trade_rate | 11 | 0.918 | 0.963 | beats the null |
+| deadline_share | 11 | 0.232 | 0.259 | beats the null |
+| posture_agreement | 9 | 0.380 | 0.396 | beats the null |
+| spend_level | 11 | 0.066 | 0.082 | beats the null (8/11) |
+| aggregation_rate | 11 | 0.168 | 0.154 | **does not beat the null** |
+| pick_flow | 11 | 1.812 | 1.640 | **does not beat the null** |
+| retention_rate | 11 | 0.089 | 0.062 | **does not beat the null** |
+
+Read plainly: a GM's **volume, timing and spending habits persist** out of
+sample; the parameters describing **how they construct trades do not** -
+which is consistent with the M10 observation that persona citation fell as
+model capability rose. The one parameter that reaches decision logic
+(aggregation -> asset_hoarding -> max_assets_out in the cascade) is among
+the failures, so `to_persona` refuses to differentiate on it without an
+explicit probe flag: **a parameter that failed its null must not enter the
+sim as if it had.**
+
+**The derived-vs-uniform experiment**, two layers, both reported: run as an
+explicitly-labelled wiring probe (aggregation forced through), derived
+personas change the world - 0 of 121 signings differ but **8 of ~9 generated
+trades differ by identity** (Houston at max-4 ships a four-player package
+for LaVine; Oklahoma City at max-1 loses the Haliburton deal to the
+Clippers). So the pipe reaches the decision logic. But under the VALIDATED
+mapping the derived persona set is identical to uniform by construction,
+and the honest conclusion is: **derived personas do not change the world,
+and on present evidence they should not.**
+
 ## The standing boundary
 
 What remains open, and for each why it is BLOCKED (no route exists with the

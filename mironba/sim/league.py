@@ -346,6 +346,17 @@ def _rows(path: Path) -> list[dict]:
 #: default. "Could this be computed at the freeze with only pre-freeze
 #: information?" is the question each entry answers.
 DERIVED_FACTS = {
+    "gm_profile": dict(freeze_computable=True, direction="constructor",
+                       note="models/gm_profile.py: revealed disposition per "
+                            "(team, as_of) from transactions/contracts in "
+                            "seasons STRICTLY before as_of, within a SOURCED "
+                            "tenure (evidence/league/gm-tenures.csv). "
+                            "UNKNOWN under MIN_SEASONS falls back to league "
+                            "average, reported. Out-of-sample: 4 of 7 "
+                            "parameters beat the league-average null; "
+                            "aggregation_rate - the only one reaching "
+                            "decision logic - does NOT, and to_persona "
+                            "refuses it without an explicit probe flag"),
     "load": dict(freeze_computable=False, direction="constructor",
                  note="loads the table; consumers below decide what leaks"),
     "arrivals": dict(freeze_computable=False, direction="cleaning+target",

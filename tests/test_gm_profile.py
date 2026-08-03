@@ -1,0 +1,100 @@
+"""Revealed disposition: sourced tenures, pre-date derivation, gated entry."""
+
+from __future__ import annotations
+
+from datetime import date
+
+from mironba.models.gm_profile import (
+    MIN_SEASONS,
+    PARAMETERS,
+    Profile,
+    _seasons_before,
+    coverage,
+    load_tenures,
+    profile,
+    to_persona,
+)
+
+
+class TestTheTenureTableIsSourcedOrAbsent:
+    def test_thirty_rows_each_with_source_url_and_retrieval(self):
+        rows = load_tenures()
+        assert len(rows) == 30
+        for row in rows:
+            assert row["source"] and row["url"].startswith("http")
+            assert row["retrieved"], "a sourced row states when it was read"
+
+    def test_unattributable_seasons_are_reported_not_guessed(self):
+        cov = coverage()
+        assert len(cov["attributable"]) + len(cov["unattributable"]) == 300
+        assert len(cov["attributable"]) == 132
+        chi = [s for t, s in cov["unattributable"] if t == "CHI"]
+        assert len(chi) == 10, "a 2026 hire attributes none of the ten seasons"
+
+
+class TestStrictlyPreDate:
+    def test_a_july_date_admits_the_season_that_just_ended(self):
+        assert "2025-26" in _seasons_before(date(2026, 7, 6))
+
+    def test_an_in_season_date_does_not_admit_the_running_season(self):
+        assert "2025-26" not in _seasons_before(date(2026, 2, 1))
+        assert "2024-25" in _seasons_before(date(2026, 2, 1))
+
+    def test_an_earlier_as_of_uses_strictly_fewer_seasons(self):
+        early = profile("OKC", date(2019, 8, 1))
+        late = profile("OKC", date(2025, 8, 1))
+        assert set(early.seasons) < set(late.seasons)
+        assert max(early.seasons) <= "2018-19"
+
+    def test_the_derivation_is_registered(self):
+        from mironba.sim.league import DERIVED_FACTS
+
+        entry = DERIVED_FACTS["gm_profile"]
+        assert entry["freeze_computable"] is True
+        assert "aggregation_rate" in entry["note"]
+
+
+class TestUnknownFallsBackLoudly:
+    def test_a_2026_hire_is_unknown_not_defaulted_silently(self):
+        prof = profile("CHI", date(2026, 7, 6))
+        assert prof.status == "UNKNOWN"
+        assert prof.values == {}
+        assert len(prof.seasons) < MIN_SEASONS
+
+    def test_unknown_maps_to_a_persona_that_says_so(self):
+        persona = to_persona(profile("CHI", date(2026, 7, 6)), {})
+        assert "UNKNOWN" in persona.label or "league-average" in persona.label
+        assert persona.asset_hoarding == 0.5
+
+
+class TestTheValidationGate:
+    def _extreme(self):
+        return Profile("XXX", "Test GM", date(2026, 7, 6), ("2023-24", "2024-25"),
+                       "OK", {"aggregation_rate": 0.9})
+
+    def test_a_parameter_that_failed_its_null_does_not_enter_the_sim(self):
+        persona = to_persona(self._extreme(), {"aggregation_rate": 0.3})
+        assert persona.asset_hoarding == 0.5, (
+            "aggregation failed its out-of-sample null; the mapping must not "
+            "differentiate on it without an explicit probe flag"
+        )
+        assert "failed its null" in persona.label
+
+    def test_the_wiring_probe_is_explicit_and_moves_the_parameter(self):
+        persona = to_persona(self._extreme(), {"aggregation_rate": 0.3},
+                             force_unvalidated=True)
+        assert persona.asset_hoarding == 0.2
+
+
+class TestWhatThisIsNamed:
+    def test_revealed_disposition_not_belief_modelling(self):
+        import mironba.models.gm_profile as gm_profile
+
+        doc = gm_profile.__doc__
+        assert "REVEALED DISPOSITION" in doc
+        assert "it thinks, wants, or will do" in doc
+
+    def test_every_declared_parameter_is_a_key_of_an_ok_profile(self):
+        prof = profile("OKC", date(2026, 7, 6))
+        assert prof.status == "OK"
+        assert set(prof.values) == set(PARAMETERS)

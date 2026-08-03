@@ -2134,3 +2134,26 @@ fix does not touch (stipulated= defaults empty; the lebron numbers are
 asserted unchanged by the suite). Nothing needed regeneration; the pre-fix
 outputs survive only as quoted history in commit messages, which is where a
 violation record belongs.
+
+
+## 52. Revealed disposition: habits persist, trade construction does not (2026-08-03)
+
+**Number:** out of sample (fit 2016-22, predict 2022-25 under the same GM,
+n=11), 4 of 7 derived GM parameters beat the league-average null
+(trade_rate, deadline_share, posture_agreement, spend_level) and 3 do not
+(aggregation_rate, pick_flow, retention_rate).
+**The finding said plainly:** knowing which GM it is beats knowing nothing
+for volume, timing and spending habits - and does NOT for how trades are
+constructed. The one parameter wired into decision logic (aggregation ->
+max_assets_out) is among the failures, so the mapping refuses it without an
+explicit probe flag.
+**The wiring probe (labelled, not a claim):** forcing the failed parameter
+through anyway, 8 of ~9 generated trades differ by identity while 0 of 121
+signings do - the pipe reaches the decision logic, so the null result above
+is about the parameter, not the plumbing.
+**Consistent with:** M10's persona-citation decline with capability - if a
+GM's own history barely predicts their trade construction, a text persona
+asserting it predicts even less.
+**Coverage honesty:** 30 sourced tenure rows, no predecessors on the sourced
+page -> 132/300 team-seasons attributable, 8/30 teams UNKNOWN at the live
+freeze, all reported rather than defaulted silently.
