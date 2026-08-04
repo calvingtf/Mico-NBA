@@ -974,36 +974,23 @@ unmeasured" as free-to-run work that has not been run.
 - **Historical news** - BLOCKED: RSS reaches back ~3 measured days, the
   archive reaches back to its first partition (2026-07-31), and the Wayback
   CDX spike came back 0/26 - the source articles were never captured at all.
-  A GDELT DOC 2.0 spike (entry #58) adds one route whose dating guarantee is
-  sound - seendate is a third-party existed-by timestamp, a conservative PRE
-  gate - but its recall is UNMEASURED: after one successful probe (250
-  articles, seendate on every row) the API answered 429 to every request
-  across an hour, including a 45-minute zero-request cooldown, consistent
-  with a shared-egress IP saturating GDELT's limiter. Infeasible to measure
-  from this network today, claimed as exactly that; the spike is committed
-  and re-runs any day the API answers. The network discriminator was answered by an operator tether run
-  (entry #61): from egress 174.195.129.132 the API answered four queries -
-  the full draft half, 991 articles - then 429'd on the fifth. Two causes,
-  recorded as such: the home egress is saturated by another party
-  (first-request 429 after 45 silent minutes); the tether hit our OWN
-  budget (~4 requests per rolling window despite the documented
-  one-per-5s). The route is VIABLE; sustained volume is the constraint.
-  The pre-fix spike discarded those 991 articles at the fifth query's
-  failure - the incremental-writer lesson again - so results now persist
-  as each query returns (append-only, stamped with egress and label) and
-  `--offline` recomputes recall from persisted batches, stating truncation
-  beside the number: three of four tether queries returned exactly 250,
-  collapsing effective coverage to the window's final ~2 days, and every
-  curated draft row is dated before that collapse point - absence in a
-  capped query is structural, not evidentiary. Draft-half recall is one
-  persisted 4-query session away; the lebron half stays UNMEASURED until
-  its two queries run. A 90-day scenario backfill at the measured budget
-  is ~26-135 requests (window-slicing; the DOC API has no pagination) =
-  7-34 tether sessions - costed, not designed around. The wrapper lesson
-  stands (entry #59): when a dependency's error path obscures the
-  server's answer, drop to the raw call. Historical scenarios stay
+  A GDELT route exists and is COSTED in its own
+  entry below (entries #58-#61). Historical scenarios stay
   hand-curated; UNRECOVERABLE-BY-RSS gaps stay declared. The standing
   archive is the only source of future PRE evidence.
+- **GDELT backfill** - COSTED: the route is VIABLE and slow - the
+  constraint is sustained volume on a throttled egress, not access. The
+  dating guarantee is sound (seendate is a third-party existed-by timestamp,
+  a conservative PRE gate), the limiter is IP-scoped (tether run answered
+  where home could not), and the measured budget is ~4 requests per rolling
+  window. A full scenario window (broad + subject streams) is ~85-135
+  requests = 7-34 tether sessions - a multi-week manual campaign
+  (subjects-only floor ~26 requests). The recall measurement is cheap by
+  comparison: the sliced draft plan is 12 queries ≈ 3 tether sessions,
+  persisted per query and resumable (`--recall-run` skips already-persisted
+  slices); the LeBron half adds its own slices and stays UNMEASURED until
+  they run. Attempted from home 2026-08-04: 429 on the first slice,
+  self-labelled, zero loss (run record on disk).
 - **Market model resolution** - BLOCKED at current inputs: the value model's
   win-delta error is 10.48 wins, so contention tiers separate only extremes,
   and single-star trades can flatten to zero projected-win shift (reported

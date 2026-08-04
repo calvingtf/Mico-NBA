@@ -168,3 +168,56 @@ class TestOfflineRecall:
         out = capsys.readouterr().out
         assert "UNMEASURED" in out
         assert "not inferred from the draft half" in out
+
+
+class TestTheRecallPlan:
+    def test_twelve_queries_cover_every_curated_row_date(self):
+        from mironba.data.ingest.gdelt_spike import _draft_rows, build_recall_plan
+
+        plan = build_recall_plan()
+        assert len(plan) == 12, "expected count stated before running"
+        for row in _draft_rows():
+            day = row["date"].replace("-", "")
+            assert any(w[0][:8] <= day < w[1][:8] for _, _, w, _ in plan), \
+                f"{row['id']} ({row['date']}) falls in no slice"
+
+    def test_every_subject_is_in_exactly_one_batch_per_slice(self):
+        from mironba.data.ingest.gdelt_spike import _draft_rows, build_recall_plan
+
+        plan = build_recall_plan()
+        subjects = {r["player"] for r in _draft_rows()}
+        first_slice = [entry for entry in plan
+                       if entry[0].startswith("draft recall 20260508")]
+        covered = [n for _, _, _, names in first_slice for n in names]
+        assert sorted(covered) == sorted(subjects)
+
+    def test_labels_reach_the_offline_draft_filter(self):
+        from mironba.data.ingest.gdelt_spike import build_recall_plan
+
+        assert all(label.startswith("draft")
+                   for label, _, _, _ in build_recall_plan())
+
+    def test_the_cost_is_stated_before_the_first_request(self):
+        import inspect
+
+        from mironba.data.ingest.gdelt_spike import recall_run
+
+        src = inspect.getsource(recall_run)
+        assert src.index("EXPECTED REQUEST COUNT, stated before running") \
+            < src.index("_query")
+
+    def test_untruncated_denominator_reported_beside_the_never_list(self, tmp_path):
+        from mironba.data.ingest.gdelt_spike import offline_recall
+
+        path = tmp_path / "articles.jsonl"
+        _batch("draft recall 20260612..20260619 b1", ["Yaxel Lendeborg"],
+               [{"url": LENDEBORG_URL,
+                 "title": "Warriors host Yaxel Lendeborg for workout",
+                 "seendate": "20260613T120000Z", "domain": "hoopsrumors.com"}],
+               False, path, window=("20260612000000", "20260619000000"))
+        result = offline_recall(path)
+        # only the 8 Lendeborg rows are inside a fully-searched slice
+        assert result["searched_total"] == 8
+        assert result["exact_searched"] == 8
+        assert result["claims_searched"] == 1
+        assert len(result["never_searched"]) == 18

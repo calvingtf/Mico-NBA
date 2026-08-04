@@ -1,2 +1,3 @@
 {"ran_at": "2026-08-04T00:31:48.142007+00:00", "egress_ip": "136.52.76.203", "verdict": "throttled", "failed_at": "draft volume", "error": "<HTTPError 429: 'Too Many Requests'>"}
 {"ran_at": "2026-08-04T08:15:35.618628+00:00", "egress_ip": "174.195.129.132", "verdict": "throttled", "failed_at": "lebron window", "error": "<HTTPError 429: 'Too Many Requests'>"}
+{"ran_at": "2026-08-04T16:41:02.702168+00:00", "egress_ip": "136.52.76.203", "mode": "recall-run", "verdict": "throttled", "failed_at": "draft recall 20260508..20260515 b1", "error": "<HTTPError 429: 'Too Many Requests'>", "persisted": {}}

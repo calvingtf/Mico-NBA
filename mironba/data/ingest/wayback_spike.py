@@ -33,6 +33,16 @@ from pathlib import Path
 
 EVIDENCE = Path(__file__).resolve().parents[3] / "evidence"
 
+#: Absent-writer check (entry #62): this concluded spike HOLDS its CDX
+#: results in memory - the printed report is the artifact, the conclusion
+#: (0/26, never captured) is recorded in entry #58, and CDX answered
+#: unthrottled, so a re-run is cheap. Declared rather than silently kept.
+ACQUIRERS = {
+    "cdx_query": ("holds-in-memory", "report-only spike; conclusion recorded"),
+    "snapshot_fetchable": ("holds-in-memory", "boolean probe; nothing to keep"),
+    "_ever_captured": ("holds-in-memory", "boolean probe; nothing to keep"),
+}
+
 CDX = "https://web.archive.org/cdx/search/cdx"
 PUBLISHER = "hoopsrumors.com"
 #: The 2026 draft period: first curated row (May 10) to draft night (June 23).

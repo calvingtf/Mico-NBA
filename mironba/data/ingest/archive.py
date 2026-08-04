@@ -62,6 +62,14 @@ PARTITIONED = frozenset({"write_archive_rows"})
 WHOLE_TABLE: frozenset = frozenset()
 
 
+#: Absent-writer check (entry #62).
+ACQUIRERS = {
+    "poll": ("persists-per-unit",
+             "write_archive_rows runs per feed inside the loop, and the "
+             "__poll__ marker lands even on an empty poll"),
+}
+
+
 def is_marker(row: dict) -> bool:
     return row.get("feed", "").startswith("__")
 

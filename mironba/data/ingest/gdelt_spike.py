@@ -72,6 +72,15 @@ DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 #: (entry #60 is what an unlabelled 429 costs). Append-only.
 RUN_RECORD = EVIDENCE / "spikes" / "gdelt-runs.jsonl"
 
+#: Absent-writer check (entry #62): the module this lesson was learned in.
+ACQUIRERS = {
+    "_query": ("persists-per-unit",
+               "write_articles appends each query's batch the moment it "
+               "returns, before the next request can fail the run"),
+    "egress_ip": ("persists-per-unit",
+                  "stamped into every run record and article batch"),
+}
+
 #: Per-query article batches, one JSON line per query, appended the moment
 #: the query returns - BEFORE the next request can fail the run.
 ARTICLES = EVIDENCE / "spikes" / "gdelt-articles.jsonl"
@@ -270,10 +279,17 @@ def offline_recall(path: Path = ARTICLES) -> dict:
         if not covered:
             never_searched.append(row)
 
+    never_ids = {r["id"] for r in never_searched}
+    searched_rows = [r for r in draft_rows if r["id"] not in never_ids]
     return {
         "batches": batches, "draft_batches": draft_batches,
         "exact": exact, "claims": claims, "total": len(draft_rows),
         "never_searched": never_searched,
+        "searched_total": len(searched_rows),
+        "exact_searched": sum(1 for r in searched_rows
+                              if _norm_url(r["url"]) in indexed),
+        "claims_searched": sum(1 for r in searched_rows
+                               if claim_matches(r, draft_articles, r["player"])),
         "lebron_measured": bool(lebron_batches),
     }
 
@@ -293,8 +309,13 @@ def render_offline(path: Path = ARTICLES) -> int:
         cap = "CAPPED at 250" if batch["capped"] else "uncapped"
         print(f"  {batch['label']:<22} {batch['returned']:>4} articles  {cap}"
               f"  effective window {lo}..{hi}  [egress {batch['egress_ip']}]")
-    print(f"\n  draft recall (a) exact-source: {result['exact']}/{result['total']}")
-    print(f"  draft recall (b) claim-level:  {result['claims']}/{result['total']}")
+    print(f"\n  draft recall over UNTRUNCATED coverage only "
+          f"({result['searched_total']} of {result['total']} rows searched):")
+    print(f"    (a) exact-source: {result['exact_searched']}/{result['searched_total']}")
+    print(f"    (b) claim-level:  {result['claims_searched']}/{result['searched_total']}")
+    print(f"  over all curated rows (truncation included): "
+          f"exact {result['exact']}/{result['total']}, "
+          f"claim {result['claims']}/{result['total']}")
     ns = result["never_searched"]
     print(f"  TRUNCATION: {len(ns)} of {result['total']} curated rows fell in "
           "windows never fully searched -")
@@ -307,6 +328,84 @@ def render_offline(path: Path = ARTICLES) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# The re-scoped recall run: narrow slices, not broad windows
+# --------------------------------------------------------------------------
+
+#: The curated rows span 2026-05-10..06-18. Broad queries cap at 250
+#: newest-first and collapse to the window's final ~2 days, never reaching
+#: them - so the recall run slices that span into 7-day windows, each small
+#: enough to plausibly return under the cap, and the machinery FLAGS any
+#: slice that still caps (its dates join the never-fully-searched list and
+#: the slice gets halved in a later session rather than silently trusted).
+RECALL_SLICES = (
+    ("20260508000000", "20260515000000"),
+    ("20260515000000", "20260522000000"),
+    ("20260522000000", "20260529000000"),
+    ("20260529000000", "20260605000000"),
+    ("20260605000000", "20260612000000"),
+    ("20260612000000", "20260619000000"),
+)
+
+
+def build_recall_plan() -> list:
+    """12 queries: 2 subject batches x 6 seven-day slices. Stated cost: at
+    the measured ~4-requests-per-window tether budget, ~3 sessions; per-
+    query persistence makes every session's progress durable."""
+    subjects = sorted({r["player"] for r in _draft_rows()})
+    half = (len(subjects) + 1) // 2
+    batches = [subjects[:half], subjects[half:]]
+    plan = []
+    for lo, hi in RECALL_SLICES:
+        for i, batch in enumerate(batches, 1):
+            label = f"draft recall {lo[:8]}..{hi[:8]} b{i}"
+            plan.append((label, _or_batch(batch), (lo, hi), batch))
+    return plan
+
+
+def recall_run() -> int:
+    """Run the sliced plan, persisting per query. A mid-run 429 costs
+    nothing already fetched; the run stops at the first throttle and is
+    resumable - already-persisted labels are skipped."""
+    from datetime import datetime, timezone
+
+    plan = build_recall_plan()
+    egress = egress_ip()
+    print("GDELT RECALL RUN - narrow slices over the curated span")
+    print(f"  egress IP {egress}")
+    print(f"  EXPECTED REQUEST COUNT, stated before running: {len(plan)} queries")
+    print("  against the measured ~4-per-window tether budget: ~3 sessions; "
+          "each query persists on return, so a 429 mid-run costs nothing "
+          "already fetched.")
+    record = {"ran_at": datetime.now(timezone.utc).isoformat(),
+              "egress_ip": egress, "mode": "recall-run"}
+    persisted: dict = {}
+    done = [json.loads(line)["label"] for line in ARTICLES.read_text(
+        encoding="utf-8").splitlines() if line.strip()] if ARTICLES.is_file() else []
+    for label, raw, window, names in plan:
+        if label in done:
+            print(f"  {label}: already persisted, skipped")
+            continue
+        try:
+            articles = _query(raw, window)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  query failed ({label}): {exc!r}")
+            print(f"  stopping - {sum(persisted.values())} article(s) from "
+                  f"{len(persisted)} quer(ies) this session are already on "
+                  "disk. Resume from the next window.")
+            record.update(verdict="throttled", failed_at=label,
+                          error=repr(exc), persisted=persisted)
+            write_run_record(record)
+            return 1
+        report_window(label, articles)
+        write_articles(egress, label, window, names, articles)
+        persisted[label] = len(articles)
+    record.update(verdict="answered", persisted=persisted)
+    write_run_record(record)
+    print(chr(10) + "  plan complete - offline recall follows:")
+    return render_offline()
+
+
 def main(argv=None) -> int:
     import argparse
 
@@ -317,9 +416,15 @@ def main(argv=None) -> int:
     parser.add_argument("--offline", action="store_true",
                         help="recompute recall from persisted batches; "
                              "zero network calls")
+    parser.add_argument("--recall-run", action="store_true",
+                        help="run the sliced recall plan (12 queries over "
+                             "the curated span); persists per query, "
+                             "resumable after a 429")
     args = parser.parse_args(argv)
     if args.offline:
         return render_offline()
+    if args.recall_run:
+        return recall_run()
 
     print("GDELT DOC 2.0 SPIKE - feasibility only; stop at the verdict.")
     egress = egress_ip()

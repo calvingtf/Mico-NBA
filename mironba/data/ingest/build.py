@@ -263,6 +263,11 @@ def ingest_contracts(*, force: bool = False) -> tuple[list[bbref.ContractYear], 
 #: second season lands beside the first rather than inside the same file -
 #: partition-by-directory, declared as such.
 PARTITIONED = frozenset({"write_contract_snapshot"})
+
+#: Absent-writer check (entry #62). build defines no acquirer of its own -
+#: its network access is cache.fetch(), declared where it is defined; the
+#: acquisition loops here also write their snapshots per season.
+ACQUIRERS: dict = {}
 WHOLE_TABLE: frozenset = frozenset()
 
 

@@ -2385,3 +2385,45 @@ a LeBron). A lebron-2026-like backfill (broad + two subjects) is roughly
 multi-week manual campaign, costed before anything is designed around
 it. The cheap wins are near-term: the draft half is ONE 4-query session
 (now persisted as it goes); the lebron half is two queries more.
+
+
+## 62. The absent-writer check: the writer that should have existed (2026-08-04)
+
+**The gap:** the enumerated writer test covers writers that exist - it
+proves each declared writer merges/appends correctly. The 991 discarded
+GDELT articles were invisible to it because no writer was ever called:
+the failure was a module that should have written and did not.
+
+**The complement, now enforced:** any function that acquires data at cost
+(network, quota, long runtime) must be declared in its module's
+``ACQUIRERS`` map with a discipline - ``persists-per-unit`` (data reaches
+disk before the next fallible operation, and the declaration says where)
+or ``holds-in-memory`` (permitted only where declared, with the reason).
+Discovery is by enumeration over every data/ingest module (names carrying
+fetch/query/poll), the same move as the writer registry; declared sets may
+exceed discovery, never trail it.
+
+**What the audit found:**
+- ``nba_stats.main`` held EVERY fetched season in memory and wrote once at
+  the end - a crash at season nine of a throttled ten-season backfill would
+  have lost eight. Its writers already merge, so the fix was moving the
+  write inside the loop; a test now crashes season B and asserts season A
+  survives on disk.
+- ``cache.fetch`` - a module the hand audit MISSED and the enumeration
+  found - is the per-unit persistence for every bbref page (body + meta
+  written inside fetch itself), which is also why build.py needed no fix.
+- ``archive.poll`` and ``rss._fetch`` were already per-unit (writes inside
+  the feed loop). ``gdelt_spike`` is per-unit since the fix this entry
+  generalises.
+- The one declared residual: the concluded wayback spike's three probes
+  hold in memory - report-only, conclusion recorded at entry #58, re-run
+  cheap. A new in-memory holder must appear in that pinned list
+  deliberately or the test fails.
+
+**Companion re-scope (items 2-3 of the same brief):** the sliced recall
+plan replaces broad windows - 12 queries (2 subject batches x 6 seven-day
+slices) covering 2026-05-08..06-19, cost stated before the first request,
+per-query persistence, resumable, capped slices flagged rather than
+trusted; offline recall now reports the untruncated-coverage denominator
+beside the never-fully-searched list. Attempted from home: first-request
+429, self-labelled, zero loss. The number awaits ~3 tether sessions.

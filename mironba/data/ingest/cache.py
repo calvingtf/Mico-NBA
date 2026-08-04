@@ -74,6 +74,17 @@ class Fetched:
         return self.retrieved_at[:10]
 
 
+#: Absent-writer check (entry #62): this module IS the per-unit persistence
+#: for every bbref page - the body and its provenance meta land on disk
+#: inside fetch() itself, before control returns to any caller that could
+#: fail. (Found by the check's enumeration, not by hand.)
+ACQUIRERS = {
+    "fetch": ("persists-per-unit",
+              "body_path/meta_path are written inside fetch() before it "
+              "returns; a re-run reads the cache instead of the network"),
+}
+
+
 def _paths(url: str, cache_dir: Path) -> tuple[Path, Path]:
     key = hashlib.sha1(url.encode("utf-8")).hexdigest()[:20]
     return cache_dir / f"{key}.html", cache_dir / f"{key}.json"

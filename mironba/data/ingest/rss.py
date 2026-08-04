@@ -44,6 +44,16 @@ FEEDS = {
 }
 
 
+#: Absent-writer check (entry #62): cost-acquired data reaches disk before
+#: the next fallible operation.
+ACQUIRERS = {
+    "_fetch": ("persists-per-unit",
+               "main() enqueues each feed's scoped rows inside the loop, "
+               "before the next fetch; unscoped items are discarded BY DESIGN "
+               "- archive.py is the keeper of everything dated"),
+}
+
+
 class CurationError(RuntimeError):
     """A row tried to enter the store without confirmation."""
 

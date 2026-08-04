@@ -178,3 +178,83 @@ class TestTheRealSnapshotIsIntact:
             pytest.skip("snapshot not present")
         missing = sorted(data - prov)
         assert not missing, f"seasons with data but no provenance: {missing}"
+
+
+class TestTheAbsentWriterCheck:
+    """The complement: a module that ACQUIRES at cost must say how acquired
+    data reaches disk before the next fallible operation. The enumerated
+    writer test covers writers that exist; this covers the writer that
+    should have existed - the tether run's 991 discarded articles were
+    invisible to the writer test because no writer was ever called."""
+
+    DISCIPLINES = {"persists-per-unit", "holds-in-memory"}
+
+    @staticmethod
+    def _discovered(mod):
+        return sorted(
+            name for name, obj in vars(mod).items()
+            if inspect.isfunction(obj) and obj.__module__ == mod.__name__
+            and ("fetch" in name or "query" in name or name == "poll")
+        )
+
+    def test_every_cost_acquirer_is_declared(self):
+        undeclared = []
+        for mod in INGEST_MODULES:
+            discovered = self._discovered(mod)
+            if not discovered:
+                continue
+            declared = getattr(mod, "ACQUIRERS", None)
+            if declared is None:
+                undeclared.append(f"{mod.__name__}: no ACQUIRERS at all")
+                continue
+            for name in discovered:
+                if name not in declared:
+                    undeclared.append(f"{mod.__name__}.{name}")
+        assert not undeclared, (
+            "cost-acquiring functions with no persistence declaration: "
+            + ", ".join(undeclared)
+        )
+
+    def test_every_declaration_names_a_discipline_and_a_where(self):
+        for mod in INGEST_MODULES:
+            for name, (discipline, where) in getattr(mod, "ACQUIRERS", {}).items():
+                assert discipline in self.DISCIPLINES, f"{mod.__name__}.{name}"
+                assert len(where) > 10, f"{mod.__name__}.{name}: say where"
+
+    def test_in_memory_holders_are_the_named_residual(self):
+        """holds-in-memory is permitted only where declared - and the current
+        set is exactly the concluded wayback spike's probes. A new one must
+        show up here deliberately."""
+        holders = sorted(
+            f"{mod.__name__.rsplit('.', 1)[-1]}.{name}"
+            for mod in INGEST_MODULES
+            for name, (discipline, _) in getattr(mod, "ACQUIRERS", {}).items()
+            if discipline == "holds-in-memory"
+        )
+        assert holders == ["wayback_spike._ever_captured",
+                           "wayback_spike.cdx_query",
+                           "wayback_spike.snapshot_fetchable"], holders
+
+    def test_nba_stats_persists_each_season_before_the_next_fetch(
+            self, tmp_path, monkeypatch):
+        """The live defect the check found: a crash at season two must not
+        lose season one. Season B's fetch raises an UNCAUGHT error; season
+        A's rows must already be on disk."""
+        import pytest
+
+        from mironba.data.ingest import nba_stats
+
+        monkeypatch.setattr(nba_stats, "SNAPSHOT_ROOT", tmp_path)
+
+        def fake_fetch(season, **kwargs):
+            if season == "B":
+                raise RuntimeError("simulated crash mid-backfill")
+            return [{"GAME_ID": "1", "GAME_DATE": "2026-01-01"}]
+
+        monkeypatch.setattr(nba_stats, "fetch_game_log", fake_fetch)
+        with pytest.raises(RuntimeError):
+            nba_stats.main(["--games", "--seasons", "A", "B"])
+        scopes = _scopes(tmp_path / "nba-stats" / "game_logs.csv", "season")
+        assert scopes == {"A"}, (
+            f"season A was lost to season B's crash: {scopes}"
+        )

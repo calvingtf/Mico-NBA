@@ -215,6 +215,23 @@ def write_player_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
 #: loads. Three writers here had that defect, found one at a time.
 PARTITIONED = frozenset({"write_game_logs", "write_player_game_logs", "write_snapshot"})
 
+#: The absent-writer check (entry #62): every function that acquires data at
+#: cost declares how that data reaches disk BEFORE the next fallible
+#: operation. Enforced by enumeration in tests/test_writers_merge.py.
+ACQUIRERS = {
+    "fetch_season": ("persists-per-unit",
+                     "main() writes each SeasonPull via write_snapshot the "
+                     "moment it returns"),
+    "fetch_game_log": ("persists-per-unit",
+                       "main() writes each season via write_game_logs inside "
+                       "the loop"),
+    "fetch_player_game_log": ("persists-per-unit",
+                              "callers write via write_player_game_logs per "
+                              "season (merging writer)"),
+    "fetch_careers": ("persists-per-unit",
+                      "single fetch, written immediately by main()"),
+}
+
 #: Writers that legitimately replace the whole table, because their input is
 #: the whole table. Declared so a new writer cannot be ambiguous about which
 #: kind it is; tests/test_writers_merge.py fails on anything undeclared.
@@ -410,24 +427,30 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.games:
-        logs, failures = {}, []
+        written, failures = 0, []
         for season in args.seasons:
             try:
-                logs[season] = fetch_game_log(season)
+                rows = fetch_game_log(season)
             except StatsFetchError as exc:
                 failures.append(str(exc))
                 print(f"  ! {exc}", flush=True)
                 continue
-            dates = [r["GAME_DATE"] for r in logs[season]]
-            print(f"  {season}: {len(logs[season])} team-games, "
-                  f"{min(dates)} -> {max(dates)}", flush=True)
-        if not logs:
+            dates = [r["GAME_DATE"] for r in rows]
+            # Persist THIS season before the next fetch can fail the run:
+            # cost-acquired data never waits in memory across a fallible
+            # operation (entry #62 - the 991 discarded GDELT articles).
+            write_game_logs({season: rows}, root=SNAPSHOT_ROOT)
+            written += 1
+            print(f"  {season}: {len(rows)} team-games, "
+                  f"{min(dates)} -> {max(dates)} -> written", flush=True)
+        if not written:
             return 1
-        print(f"\nOK  {len(logs)} season(s) -> {write_game_logs(logs)}")
+        print(f"\nOK  {written} season(s) -> {SNAPSHOT_ROOT / 'nba-stats'}")
         return 0 if not failures else 1
 
-    pulls: list[SeasonPull] = []
-    failures: list[str] = []
+    written = 0
+    failures = []
+    directory = None
     for season in args.seasons:
         try:
             pull = fetch_season(season)
@@ -435,16 +458,19 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(str(exc))
             print(f"  ! {exc}", flush=True)
             continue
-        pulls.append(pull)
-        print(f"  {season}: {len(pull.players)} players, {len(pull.teams)} teams",
-              flush=True)
+        # Persist immediately: write_snapshot merges per season, so a later
+        # crash costs nothing already fetched (entry #62).
+        directory = write_snapshot([pull], root=SNAPSHOT_ROOT)
+        written += 1
+        print(f"  {season}: {len(pull.players)} players, {len(pull.teams)} "
+              "teams -> written", flush=True)
 
-    if failures or not pulls:
-        print(f"\nSKIPPED: {len(failures)} season(s) failed")
+    if failures or not written:
+        print(f"\nSKIPPED/partial: {len(failures)} season(s) failed, "
+              f"{written} written")
         return 1
 
-    directory = write_snapshot(pulls)
-    print(f"\nOK  {len(pulls)} seasons -> {directory}")
+    print(f"\nOK  {written} seasons -> {directory}")
     return 0
 
 
