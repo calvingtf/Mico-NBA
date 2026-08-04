@@ -59,6 +59,41 @@ RETRY_BACKOFF_S = 240
 
 DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 
+#: One JSON line per spike run: egress IP, verdict, and the recall numbers
+#: when a run produces them - so a result is interpretable on its own later
+#: (entry #60 is what an unlabelled 429 costs). Append-only.
+RUN_RECORD = EVIDENCE / "spikes" / "gdelt-runs.jsonl"
+
+#: Writer declaration for the enumerated writer test: append-only event log,
+#: a third declared kind - never opens 'w', never merges, only appends.
+APPEND_ONLY = frozenset({"write_run_record"})
+PARTITIONED: frozenset = frozenset()
+WHOLE_TABLE: frozenset = frozenset()
+
+
+def egress_ip() -> str:
+    """The network this run speaks from, fetched BEFORE any GDELT request.
+
+    A throttle verdict without the IP that produced it cannot be interpreted
+    without asking the operator - the ambiguity entry #60 warns about.
+    """
+    try:
+        request = urllib.request.Request(
+            "https://api.ipify.org?format=json",
+            headers={"User-Agent": "mironba-gdelt-spike/1.0 (research)"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return json.loads(response.read())["ip"]
+    except Exception as exc:  # noqa: BLE001 - unknown is reportable, not fatal
+        return f"unknown (ipify unreachable: {type(exc).__name__})"
+
+
+def write_run_record(record: dict, path: Path = RUN_RECORD) -> Path:
+    """THE spike's writer: one JSON line appended per run, never rewritten."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record) + chr(10))
+    return path
+
 
 def _query(raw_query: str, window: tuple[str, str], *, retried=False) -> list[dict]:
     params = urllib.parse.urlencode({
@@ -142,8 +177,13 @@ def report_window(label: str, articles: list[dict]) -> None:
 
 
 def main(argv=None) -> int:
+    from datetime import datetime, timezone
+
     sys.stdout.reconfigure(encoding="utf-8")
     print("GDELT DOC 2.0 SPIKE - feasibility only; stop at the verdict.")
+    egress = egress_ip()
+    record = {"ran_at": datetime.now(timezone.utc).isoformat(),
+              "egress_ip": egress}
 
     draft_rows = _draft_rows()
     lebron_rows = _lebron_rows()
@@ -160,14 +200,17 @@ def main(argv=None) -> int:
              ("davis window", '"Anthony Davis"', LEBRON_WINDOW,
               ["Anthony Davis"])]
 
-    print(f"  request budget: {len(plan)} queries, {PAUSE_S}s apart")
+    print(f"  egress IP {egress}   request budget: {len(plan)} queries, "
+          f"{PAUSE_S}s apart")
     for label, raw, window, names in plan:
         try:
             articles = _query(raw, window)
         except Exception as exc:  # noqa: BLE001
             print(f"  query failed ({label}): {exc!r}")
-            print("  RESULT: infeasible to measure today (throttled); "
-                  "claimed as exactly that and nothing more.")
+            print(f"  RESULT: infeasible to measure today (throttled) from "
+                  f"egress {egress}; claimed as exactly that and nothing more.")
+            record.update(verdict="throttled", failed_at=label, error=repr(exc))
+            write_run_record(record)
             return 1
         report_window(label, articles)
         all_articles.extend(articles)
@@ -212,8 +255,16 @@ def main(argv=None) -> int:
 
     total = len(draft_rows) + len(lebron_rows)
     claims_total = draft_claims + lebron_claims
-    print(f"\n  VERDICT INPUTS: exact {draft_exact + lebron_exact}/{total}, "
+    print(f"\n  VERDICT INPUTS (egress {egress}): "
+          f"exact {draft_exact + lebron_exact}/{total}, "
           f"claim-level {claims_total}/{total}")
+    record.update(
+        verdict="answered",
+        recall_exact={"draft": draft_exact, "lebron": lebron_exact},
+        recall_claim={"draft": draft_claims, "lebron": lebron_claims},
+        domains=len(all_domains),
+    )
+    write_run_record(record)
     if claims_total < total / 2:
         print("  RECALL IS POOR. Historical stays hand-curated, exactly as "
               "the Wayback spike concluded. Stop.")

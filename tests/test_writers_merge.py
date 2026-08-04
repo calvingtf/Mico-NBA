@@ -70,7 +70,8 @@ def test_the_writer_inventory_is_not_empty():
 def test_every_writer_is_declared_partitioned_or_not(mod, writer):
     """A writer must say which it is, so a new one cannot be ambiguous."""
     declared = (getattr(mod, "PARTITIONED", frozenset())
-                | getattr(mod, "WHOLE_TABLE", frozenset()))
+                | getattr(mod, "WHOLE_TABLE", frozenset())
+                | getattr(mod, "APPEND_ONLY", frozenset()))
     assert writer in declared, (
         f"{writer} is neither in PARTITIONED nor WHOLE_TABLE. A new writer must "
         "declare whether it takes season-partitioned data: if it does and it "
