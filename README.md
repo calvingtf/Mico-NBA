@@ -981,16 +981,27 @@ unmeasured" as free-to-run work that has not been run.
   across an hour, including a 45-minute zero-request cooldown, consistent
   with a shared-egress IP saturating GDELT's limiter. Infeasible to measure
   from this network today, claimed as exactly that; the spike is committed
-  and re-runs any day the API answers. The cheap network discriminator is
-  UNRUN, not failed: both in-reach alternates - WebFetch and a
-  remote-isolated agent - were measured (via ipify, before trusting any
-  result through them) to egress from the same residential IP as the
-  throttled machine, so IP-scoped-vs-GDELT-wide cannot be separated from
-  this seat. A ten-minute hotspot run of the spike settles it (entry #60);
-  the wrapper lesson - gdeltdoc's empty RateLimitError hid the server's
-  own 429 body until the raw call surfaced it - is entry #59, with the
-  standing note: when a dependency's error path obscures the server's
-  answer, drop to the raw call. Historical scenarios stay
+  and re-runs any day the API answers. The network discriminator was answered by an operator tether run
+  (entry #61): from egress 174.195.129.132 the API answered four queries -
+  the full draft half, 991 articles - then 429'd on the fifth. Two causes,
+  recorded as such: the home egress is saturated by another party
+  (first-request 429 after 45 silent minutes); the tether hit our OWN
+  budget (~4 requests per rolling window despite the documented
+  one-per-5s). The route is VIABLE; sustained volume is the constraint.
+  The pre-fix spike discarded those 991 articles at the fifth query's
+  failure - the incremental-writer lesson again - so results now persist
+  as each query returns (append-only, stamped with egress and label) and
+  `--offline` recomputes recall from persisted batches, stating truncation
+  beside the number: three of four tether queries returned exactly 250,
+  collapsing effective coverage to the window's final ~2 days, and every
+  curated draft row is dated before that collapse point - absence in a
+  capped query is structural, not evidentiary. Draft-half recall is one
+  persisted 4-query session away; the lebron half stays UNMEASURED until
+  its two queries run. A 90-day scenario backfill at the measured budget
+  is ~26-135 requests (window-slicing; the DOC API has no pagination) =
+  7-34 tether sessions - costed, not designed around. The wrapper lesson
+  stands (entry #59): when a dependency's error path obscures the
+  server's answer, drop to the raw call. Historical scenarios stay
   hand-curated; UNRECOVERABLE-BY-RSS gaps stay declared. The standing
   archive is the only source of future PRE evidence.
 - **Market model resolution** - BLOCKED at current inputs: the value model's

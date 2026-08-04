@@ -29,11 +29,20 @@ evidentiary timestamp with the self-reported date kept for display only.
   one) - the more useful number, since an equivalent ESPN report serves
   the same evidentiary purpose as a HoopsRumors post.
 
-**Quota discipline.** GDELT rate-limits per IP and its 429 penalty windows
-run long; the spike therefore batches subjects into OR-queries - seven
-requests total - and retries a 429 exactly once after a long backoff. If it
-is still throttled the verdict is "infeasible to measure today", claimed as
-exactly that and nothing more.
+**Quota discipline, measured (entry #61).** Two egresses answered
+differently: the home IP 429s on the FIRST request after 45 silent minutes
+- saturated by another party; a tether egress answered four queries at 12s
+spacing and then 429'd - our own budget, roughly four requests per rolling
+window despite the documented one-per-5-seconds. Different causes, one
+consequence each: no automatic retry (a request inside a penalty extends
+it), and results PERSIST TO DISK AS EACH QUERY RETURNS - stamped with
+egress and query label, append-only - so a later failure never loses
+earlier successes (the incremental-backtest-writer lesson; the pre-fix run
+discarded 991 fetched articles at its fifth query). ``--offline``
+recomputes recall from persisted batches with zero network, stating
+truncation beside the number: a capped query sorted newest-first covers
+only the TAIL of its window, so absence in it is structural, not
+evidentiary.
 
 No pipeline is built on a good result; a poor result ends it: historical
 stays hand-curated, exactly as the Wayback spike concluded.
@@ -55,7 +64,6 @@ DRAFT_WINDOW = ("20260501000000", "20260624000000")
 LEBRON_WINDOW = ("20260510000000", "20260706000000")
 
 PAUSE_S = 12
-RETRY_BACKOFF_S = 240
 
 DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -64,9 +72,13 @@ DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 #: (entry #60 is what an unlabelled 429 costs). Append-only.
 RUN_RECORD = EVIDENCE / "spikes" / "gdelt-runs.jsonl"
 
-#: Writer declaration for the enumerated writer test: append-only event log,
+#: Per-query article batches, one JSON line per query, appended the moment
+#: the query returns - BEFORE the next request can fail the run.
+ARTICLES = EVIDENCE / "spikes" / "gdelt-articles.jsonl"
+
+#: Writer declaration for the enumerated writer test: append-only event logs,
 #: a third declared kind - never opens 'w', never merges, only appends.
-APPEND_ONLY = frozenset({"write_run_record"})
+APPEND_ONLY = frozenset({"write_run_record", "write_articles"})
 PARTITIONED: frozenset = frozenset()
 WHOLE_TABLE: frozenset = frozenset()
 
@@ -88,14 +100,41 @@ def egress_ip() -> str:
 
 
 def write_run_record(record: dict, path: Path = RUN_RECORD) -> Path:
-    """THE spike's writer: one JSON line appended per run, never rewritten."""
+    """One JSON line appended per run, never rewritten."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record) + chr(10))
     return path
 
 
-def _query(raw_query: str, window: tuple[str, str], *, retried=False) -> list[dict]:
+def write_articles(egress: str, label: str, window: tuple[str, str],
+                   names: list, articles: list[dict],
+                   path: Path = ARTICLES) -> Path:
+    """Persist one query's results the moment they return. Append-only.
+
+    A later failure must never lose earlier successes - the tethered run
+    fetched 991 articles across four queries and the pre-fix code discarded
+    all of them when the fifth 429'd.
+    """
+    from datetime import datetime, timezone
+
+    line = {
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+        "egress_ip": egress, "label": label,
+        "window_start": window[0], "window_end": window[1],
+        "names": list(names), "returned": len(articles),
+        "capped": len(articles) >= 250,
+        "articles": [{"url": a.get("url", ""), "title": a.get("title", ""),
+                      "seendate": a.get("seendate", ""),
+                      "domain": a.get("domain", "")} for a in articles],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(line) + chr(10))
+    return path
+
+
+def _query(raw_query: str, window: tuple[str, str]) -> list[dict]:
     params = urllib.parse.urlencode({
         "query": raw_query, "mode": "artlist", "format": "json",
         "startdatetime": window[0], "enddatetime": window[1],
@@ -107,10 +146,10 @@ def _query(raw_query: str, window: tuple[str, str], *, retried=False) -> list[di
     try:
         with urllib.request.urlopen(request, timeout=90) as response:
             payload = json.loads(response.read() or b"{}")
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429 and not retried:
-            time.sleep(RETRY_BACKOFF_S)
-            return _query(raw_query, window, retried=True)
+    except urllib.error.HTTPError:
+        # No automatic retry: the tether measurement (entry #61) showed a
+        # request inside a penalty window extends it, and persistence makes
+        # stopping cheap - partial progress is already on disk.
         raise
     except json.JSONDecodeError:
         return []
@@ -176,10 +215,112 @@ def report_window(label: str, articles: list[dict]) -> None:
           f"window {dates[0]}..{dates[-1]}")
 
 
+# --------------------------------------------------------------------------
+# Offline recall: persisted batches only, zero network
+# --------------------------------------------------------------------------
+
+
+def _effective_window(batch: dict) -> tuple[str, str]:
+    """The slice of the window a batch actually searched, as yyyymmdd.
+
+    A capped query sorted newest-first returns only the newest 250, so its
+    coverage collapses to [oldest seendate returned .. window end]. An
+    uncapped query covered its whole window.
+    """
+    end = batch["window_end"][:8]
+    if not batch["capped"]:
+        return batch["window_start"][:8], end
+    seen = sorted(a["seendate"][:8] for a in batch["articles"] if a.get("seendate"))
+    return (seen[0] if seen else end), end
+
+
+def offline_recall(path: Path = ARTICLES) -> dict:
+    """Draft-half recall from persisted batches. Never touches the network.
+
+    The lebron half is reported UNMEASURED whenever its queries are absent
+    from the persisted log - it is never inferred from the draft half.
+    """
+    if not path.is_file():
+        return {"batches": []}
+    batches = [json.loads(l) for l in
+               path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    draft_batches = [b for b in batches if b["label"].startswith("draft")]
+    lebron_batches = [b for b in batches
+                      if b["label"] in ("lebron window", "davis window")]
+
+    draft_rows = _draft_rows()
+    indexed = {_norm_url(a["url"]) for b in batches for a in b["articles"]}
+    draft_articles = [a for b in draft_batches for a in b["articles"]]
+
+    exact = sum(1 for r in draft_rows if _norm_url(r["url"]) in indexed)
+    claims = sum(1 for r in draft_rows
+                 if claim_matches(r, draft_articles, r["player"]))
+
+    never_searched = []
+    for row in draft_rows:
+        covered = False
+        for batch in draft_batches:
+            in_scope = (not batch["names"]) or (row["player"] in batch["names"])
+            if not in_scope:
+                continue
+            lo, hi = _effective_window(batch)
+            if lo <= row["date"].replace("-", "") <= hi:
+                covered = True
+                break
+        if not covered:
+            never_searched.append(row)
+
+    return {
+        "batches": batches, "draft_batches": draft_batches,
+        "exact": exact, "claims": claims, "total": len(draft_rows),
+        "never_searched": never_searched,
+        "lebron_measured": bool(lebron_batches),
+    }
+
+
+def render_offline(path: Path = ARTICLES) -> int:
+    result = offline_recall(path)
+    print("OFFLINE RECALL - persisted batches only, zero network")
+    if not result["batches"]:
+        print("  no persisted batches on disk. The tethered run predates the")
+        print("  persistence fix and its 991 articles were discarded at the")
+        print("  fifth query (entry #61) - there is nothing to compute from.")
+        print("  One 4-query tether session now yields the draft half, "
+              "persisted as it goes.")
+        return 0
+    for batch in result["batches"]:
+        lo, hi = _effective_window(batch)
+        cap = "CAPPED at 250" if batch["capped"] else "uncapped"
+        print(f"  {batch['label']:<22} {batch['returned']:>4} articles  {cap}"
+              f"  effective window {lo}..{hi}  [egress {batch['egress_ip']}]")
+    print(f"\n  draft recall (a) exact-source: {result['exact']}/{result['total']}")
+    print(f"  draft recall (b) claim-level:  {result['claims']}/{result['total']}")
+    ns = result["never_searched"]
+    print(f"  TRUNCATION: {len(ns)} of {result['total']} curated rows fell in "
+          "windows never fully searched -")
+    print("  absence for these is structural, not evidentiary:")
+    for row in ns:
+        print(f"    {row['id']}  {row['date']}  {row['team']} / {row['player']}")
+    if not result["lebron_measured"]:
+        print("  lebron half: UNMEASURED - its queries are not in the "
+              "persisted log, and it is not inferred from the draft half.")
+    return 0
+
+
 def main(argv=None) -> int:
+    import argparse
+
     from datetime import datetime, timezone
 
     sys.stdout.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--offline", action="store_true",
+                        help="recompute recall from persisted batches; "
+                             "zero network calls")
+    args = parser.parse_args(argv)
+    if args.offline:
+        return render_offline()
+
     print("GDELT DOC 2.0 SPIKE - feasibility only; stop at the verdict.")
     egress = egress_ip()
     record = {"ran_at": datetime.now(timezone.utc).isoformat(),
@@ -202,6 +343,7 @@ def main(argv=None) -> int:
 
     print(f"  egress IP {egress}   request budget: {len(plan)} queries, "
           f"{PAUSE_S}s apart")
+    persisted: dict = {}
     for label, raw, window, names in plan:
         try:
             articles = _query(raw, window)
@@ -209,10 +351,13 @@ def main(argv=None) -> int:
             print(f"  query failed ({label}): {exc!r}")
             print(f"  RESULT: infeasible to measure today (throttled) from "
                   f"egress {egress}; claimed as exactly that and nothing more.")
-            record.update(verdict="throttled", failed_at=label, error=repr(exc))
+            record.update(verdict="throttled", failed_at=label,
+                          error=repr(exc), persisted=persisted)
             write_run_record(record)
             return 1
         report_window(label, articles)
+        write_articles(egress, label, window, names or [], articles)
+        persisted[label] = len(articles)
         all_articles.extend(articles)
         for name in names or []:
             bucket = articles_by_subject.setdefault(name, [])
@@ -260,6 +405,7 @@ def main(argv=None) -> int:
           f"claim-level {claims_total}/{total}")
     record.update(
         verdict="answered",
+        persisted=persisted,
         recall_exact={"draft": draft_exact, "lebron": lebron_exact},
         recall_claim={"draft": draft_claims, "lebron": lebron_claims},
         domains=len(all_domains),

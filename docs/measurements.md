@@ -2334,3 +2334,54 @@ A ten-minute run of ``python -m mironba.data.ingest.gdelt_spike`` from a
 phone hotspot answers it; until then the route stays PENDING exactly as
 entry #58 wrote it, and the local egress constraint is recorded as
 network-local-unconfirmed rather than GDELT-wide.
+
+
+## 61. Two egresses, two causes - and 991 articles lost to a missing writer (2026-08-04)
+
+**The discriminator from entry #60, answered by an operator tether run.**
+The run record (evidence/spikes/gdelt-runs.jsonl) now holds both lines:
+
+- home egress 136.52.76.203: 429 on the FIRST request ("draft volume")
+  after 45 silent minutes - saturated by another party; nothing this
+  project does changes it.
+- tether egress 174.195.129.132: four queries answered at 12s spacing -
+  the full draft half, 991 articles, three of four at exactly 250 (the
+  record cap) - then 429 on the fifth ("lebron window"). That is OUR OWN
+  budget: roughly four requests per rolling window, despite the
+  documented one-per-5-seconds. The rolling window's length is
+  unmeasured; four-at-12s is the only data point.
+
+Different causes, and the verdict changes accordingly: the route is
+VIABLE - the limiter is IP-scoped, the home constraint is network-local
+(confirmed, closing #60) - and sustained volume is the constraint.
+
+**The lost articles.** The pre-fix spike held results in memory and
+discarded all 991 at the fifth query's failure - the incremental-
+backtest-writer failure again (entry #49's writer class), in a module
+written after that lesson was recorded. Results now persist to disk AS
+EACH QUERY RETURNS (append-only, stamped with egress and query label),
+and ``--offline`` recomputes recall from persisted batches with zero
+network.
+
+**Draft recall today: NOT COMPUTABLE - and not inferred.** Nothing from
+the tether run survives on disk, so the offline command reports exactly
+that. What IS stated, so the eventual number reads correctly: three of
+four draft queries were capped and sorted newest-first, collapsing their
+effective coverage to the window's final ~2 days (~June 22-24) - and
+every one of the 26 curated rows is dated 2026-05-10..2026-06-18, BEFORE
+the collapse point. Exact-source recall from that run would have been
+structurally ~0 for capped queries regardless of GDELT's index: absence
+there is truncation, not evidence. The offline machinery computes and
+prints this per-row (never-fully-searched list) whenever batches exist.
+The lebron half stays UNMEASURED.
+
+**Re-costed at the real budget.** maxrecords caps at 250 and the DOC API
+has no pagination - coverage extends by window-slicing. Broad NBA volume
+saturates a slice in ~2 days (measured once), so a 90-day scenario
+window costs ~45 broad requests; per-subject streams run 13-45 requests
+each depending on subject heat (7-day slices for quiet names, ~2-day for
+a LeBron). A lebron-2026-like backfill (broad + two subjects) is roughly
+26-135 requests = 7-34 tether sessions at the measured ~4/session - a
+multi-week manual campaign, costed before anything is designed around
+it. The cheap wins are near-term: the draft half is ONE 4-query session
+(now persisted as it goes); the lebron half is two queries more.
