@@ -209,11 +209,56 @@ def write_player_game_logs(logs: dict, root: Path = SNAPSHOT_ROOT) -> Path:
     return directory
 
 
+BIO_FIELDS = ("PLAYER_ID", "PLAYER_NAME", "AGE")
+
+
+def fetch_player_bio(season: str, *, timeout: int = 120) -> list[dict]:
+    """Per-player AGE for a season, one request per season.
+
+    The player-ranker's age feature. leaguedashplayerbiostats returns every
+    rostered player's age in a single call - the alternative (per-player
+    commonplayerinfo) is ~550 requests per season and was rejected on quota
+    grounds.
+    """
+    from nba_api.stats.endpoints import leaguedashplayerbiostats
+
+    _throttle()
+    try:
+        frame = leaguedashplayerbiostats.LeagueDashPlayerBioStats(
+            season=season, timeout=timeout
+        ).get_data_frames()[0]
+    except Exception as exc:  # noqa: BLE001
+        raise StatsFetchError(f"{season} bio: {type(exc).__name__}: {exc}") from exc
+    if len(frame) < 300:
+        raise StatsFetchError(f"{season}: only {len(frame)} bio rows")
+    return frame[list(BIO_FIELDS)].to_dict("records")
+
+
+def write_player_bio(rows_by_season: dict, root: Path = SNAPSHOT_ROOT) -> Path:
+    """Write player bio rows, merging with seasons already on disk."""
+    directory = root / "nba-stats"
+    directory.mkdir(parents=True, exist_ok=True)
+    existing = directory / "player_bio.csv"
+    merged: dict[str, list[dict]] = {}
+    if existing.is_file():
+        with existing.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                merged.setdefault(row["season"], []).append(row)
+    merged.update(rows_by_season)
+    with existing.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(("season", *BIO_FIELDS))
+        for season, rows in sorted(merged.items()):
+            for row in rows:
+                writer.writerow((season, *(row.get(f) for f in BIO_FIELDS)))
+    return directory
+
+
 #: Writers whose input is season-partitioned. These MUST merge with what is
 #: already stored: opening "w" with only the current pull destroys every other
 #: season, and does it silently - the file still parses and the loader still
 #: loads. Three writers here had that defect, found one at a time.
-PARTITIONED = frozenset({"write_game_logs", "write_player_game_logs", "write_snapshot"})
+PARTITIONED = frozenset({"write_game_logs", "write_player_game_logs", "write_player_bio", "write_snapshot"})
 
 #: The absent-writer check (entry #62): every function that acquires data at
 #: cost declares how that data reaches disk BEFORE the next fallible
@@ -230,6 +275,9 @@ ACQUIRERS = {
                               "season (merging writer)"),
     "fetch_careers": ("persists-per-unit",
                       "single fetch, written immediately by main()"),
+    "fetch_player_bio": ("persists-per-unit",
+                         "backfill loops write via write_player_bio per "
+                         "season (merging writer)"),
 }
 
 #: Writers that legitimately replace the whole table, because their input is

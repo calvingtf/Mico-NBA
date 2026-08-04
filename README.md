@@ -299,6 +299,37 @@ many of its pairs surface.
 **p@10 of 6.0% against 5.01% is 1.20x on 61 trades across ten folds — inside
 noise.** The ranker does not beat a random ranker.
 
+**The player-level reframe (entry #63) — a different unit, and this one
+works.** The pair result above stands untouched; the new question is *will
+this player be traded at this deadline?* — n=5,631 (player, deadline) rows
+across ten deadlines, 353 positives (6.3% base rate), stated with per-class
+feature missingness before fitting. Leave-one-season-out logistic regression:
+
+| | observed | null | ratio / headroom |
+| --- | --- | --- | --- |
+| mean p@25 | **12.4%** | 6.3% class-balance | 1.97x, +6.5% of chance-to-perfect |
+| mean p@25 | **12.4%** | **7.2% within-team** (preserves each team's trade frequency; absorbs the team_prior_rate feature) | **1.72x** |
+| mean test AUC | **0.650** | 0.5 random | train 0.662 — no meaningful overfit gap |
+
+The within-team permutation p is ≤0.002 in nine of ten folds (the tenth,
+2023-24, has 10 positives and p=0.341 — underpowered, said so). **The
+ablation is the claim's own control**: salary + prior team rate alone score
+p@25 6.4% — the base rate, i.e. nothing — and adding availability and age
+carries the entire lift (+6.0 points). Availability comes from the player
+game logs under a **narrowed fence**: the ranker is the one permitted
+consumer outside the display surface; the planner and value model still may
+not read it, because nothing about its effect on GM behaviour or player
+value has been validated. Expiring-contract status is **not computable for
+any season** and was dropped with the reason recorded: the only structure
+snapshot is forward-looking, so contracts that ended before retrieval had
+already left the page — and absence from a forward snapshot inversely
+encodes the label through post-deadline outcomes, a leak the test built to
+pin the feature is what exposed. The two ranker results are consistent, not
+contradictory: features the solver has already consumed carry no ranking
+signal (pair level); pre-solver signals — who is paid what, who is playing —
+do (player level). Recorded in `bench-player-ranker.json`; regenerate with
+`python -m mironba.eval.player_ranker --fit`.
+
 Two things it would be easy to over-read, and neither says what it looks like:
 
 - **p@1 = 0% in all ten folds is uninformative.** Under a 5.01% baseline, zero
@@ -1147,7 +1178,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,031 tests**, run on every commit by the pre-commit gate
+**1,039 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an

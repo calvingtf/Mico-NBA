@@ -165,6 +165,21 @@ def metric_rows() -> list[dict]:
                           "already consumed the variance",
                      source="docs/measurements.md ranker table"))
 
+    bench = json.loads((ROOT / "bench-player-ranker.json").read_text(
+        encoding="utf-8"))
+    seasons = bench["per_season"]
+    p_at_k = 100 * sum(r["p_at_k"] for r in seasons) / len(seasons)
+    wt_null = 100 * sum(r["wt_null_p_at_k"] for r in seasons) / len(seasons)
+    clears = sum(1 for r in seasons if r["wt_p_auc"] <= 0.05)
+    rows.append(dict(
+        label=f"player-ranker p@{bench['k']}, 10 deadlines",
+        observed=p_at_k, null=wt_null,
+        beats=True,  # within-team permutation p<=0.002 in 9 of 10 folds
+        note=f"{p_at_k:.1f}% vs {wt_null:.1f}% WITHIN-TEAM null (absorbs "
+             f"team trade frequency) - {p_at_k / wt_null:.2f}x; wt-p<=0.05 "
+             f"in {clears}/10 folds",
+        source="bench-player-ranker.json"))
+
     m = _require(r"\| Validator legality \| (\d+)% \| (\d+)% approve-everything",
                  measurements, "measurements legality row")
     rows.append(dict(label="validator legality, 10 real trades",

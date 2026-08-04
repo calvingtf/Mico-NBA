@@ -82,14 +82,24 @@ class TestDisplayOnly:
         assert "not a planner input" in CONTEXT_MARKER
 
     def test_no_sim_path_can_read_availability(self):
-        """The fence: availability is surface context, never behaviour."""
+        """The fence, NARROWED rather than removed: availability stays out of
+        the planner (sim/), the agents, the value model (models/) and the
+        rules - nothing about its effect on GM behaviour or player value has
+        been validated. The ranker is the ONE permitted consumer outside the
+        display surface: it is exactly the pre-deadline signal a ranker is
+        for, and ranker outputs feed no simulation. Widening this allowlist
+        requires widening this test, deliberately."""
+        allowed = {"player_ranker.py"}
         offenders = []
-        for package in ("sim", "agents", "models", "rules"):
+        for package in ("sim", "agents", "models", "rules", "eval"):
             for path in (ROOT / package).rglob("*.py"):
+                if package == "eval" and path.name in allowed:
+                    continue
                 text = path.read_text(encoding="utf-8")
                 if "world.availability" in text or "import availability" in text:
                     offenders.append(str(path))
         assert not offenders, (
-            f"sim-side code reaches availability: {offenders}. It is display "
-            "context; nothing about its effect on GM behaviour is measured."
+            f"code outside the allowlist reaches availability: {offenders}. "
+            "It is display context plus a ranker feature; the planner and "
+            "value model may not read it."
         )

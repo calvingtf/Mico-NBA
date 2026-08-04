@@ -2427,3 +2427,39 @@ per-query persistence, resumable, capped slices flagged rather than
 trusted; offline recall now reports the untruncated-coverage denominator
 beside the never-fully-searched list. Attempted from home: first-request
 429, self-labelled, zero loss. The number awaits ~3 tether sessions.
+
+
+## 63. The player-level ranker: properly powered, and it works (2026-08-04)
+
+**Reframe:** unit moved from the team pair (~71 positives / 435 candidates,
+chronically underpowered, recorded negative untouched) to the player -
+n=5,631 (player, deadline) rows over ten deadlines, 353 positives, 6.3%
+base rate. n, class balance and both nulls stated before fitting;
+missingness reported by class first (largest gap 5.8pts on availability -
+below the flag line; the miss-indicators enter the model as columns so any
+residual class correlation is absorbed transparently, not silently).
+
+**Result (leave-one-season-out logistic):** mean test AUC 0.650 (train
+0.662 - no meaningful overfit gap); mean p@25 12.4% vs 6.3% class-balance
+null (1.97x, +6.5% normalized headroom) and vs 7.2% WITHIN-TEAM null
+(1.72x) - the null that preserves each team-season's trade count exactly
+and therefore absorbs the team_prior_rate feature. Within-team permutation
+p<=0.002 in 9/10 folds; 2023-24 (10 positives) p=0.341, underpowered and
+said so. Feature importance: log_salary 1.18, availability 0.32, age 0.15,
+team_prior_rate 0.12.
+
+**The ablation is the claim's control:** salary+team_rate alone score p@25
+6.4% - the base rate, nothing - so the orthogonal features carry the
+entire +6.0-point lift. Consistent with the pair negative rather than
+against it: solver-consumed features carry no ranking signal; pre-solver
+signals do.
+
+**Two discipline notes.** (1) The availability fence was NARROWED, not
+removed: eval/player_ranker.py is the one permitted consumer outside the
+display surface, enforced by the fence test's allowlist; planner and value
+model still may not read it. (2) expiring-contract status is NOT COMPUTABLE
+for any season: the only structure snapshot is forward-looking, contracts
+that ended pre-retrieval had left the page, and forward-absence inversely
+encodes the label through post-deadline outcomes - the season+1 leak. The
+test written to pin the feature to 2025-26 is what exposed it; the feature
+was dropped with the reason kept greppable in place.
