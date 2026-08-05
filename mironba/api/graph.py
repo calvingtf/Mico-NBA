@@ -118,7 +118,13 @@ def stipulated_runs() -> list:
 
 
 def league_graph(run_id: str | None = None) -> dict:
-    """Nodes and edges for one recorded run. Reading only."""
+    """The graph for one run, chosen by id or newest-first.
+
+    Kept for the standalone page and the hero. ``run_graph`` is the one that
+    matters: it draws from a manifest directly, so a scenario authored a
+    minute ago has a graph the moment it finishes rather than only once it
+    happens to be the newest recorded demo.
+    """
     runs = stipulated_runs()
     if not runs:
         return {}
@@ -128,7 +134,20 @@ def league_graph(run_id: str | None = None) -> dict:
             return {}
     else:
         chosen = runs[0]
-    run_id, manifest = chosen
+    return run_graph(chosen[1], chosen[0], all_runs=[r[0] for r in runs])
+
+
+def run_graph(manifest: dict, run_id: str, all_runs=None) -> dict:
+    """Nodes and edges for ONE run's manifest. Reading only.
+
+    Draws for any manifest carrying a reaction. A run with no generated
+    trades, a cascade that terminated at depth zero, or no contested player
+    is not a broken graph - it is a graph with fewer edges, and the thin
+    cases are named in ``notes`` so the page can say WHICH is the case
+    instead of rendering a bare grid of nodes and letting a reader guess.
+    """
+    if not manifest.get("reaction"):
+        return {}
 
     season = manifest.get("data_snapshot") or "2026-27"
     bands = _payroll_bands(season)
@@ -232,6 +251,53 @@ def league_graph(run_id: str | None = None) -> dict:
             (x1, y1), (x2, y2) = xy[edge["source"]], xy[edge["target"]]
             drawable.append(dict(edge, x1=x1, y1=y1, x2=x2, y2=y2))
 
+    by_kind = {"seed": 0, "trade": 0, "contest": 0}
+    for edge in drawable:
+        by_kind[edge["kind"]] = by_kind.get(edge["kind"], 0) + 1
+
+    # THE THIN CASES, NAMED. Each of these is a real and reportable outcome
+    # of a run, not a rendering failure, and each looks identical to a
+    # broken graph unless the page says which it is.
+    notes = []
+    if not trades:
+        notes.append(
+            "NO GENERATED TRADES. The cascade proposed none that survived "
+            f"the gates - {cascade.get('killed_by_counterparty_gate', 0)} "
+            "candidate pairs were killed by the counterparty gate and "
+            f"{cascade.get('killed_by_solver', 0)} by the solver finding no "
+            "legal package. The absence of trade edges below is that "
+            "result, not a missing layer.")
+    elif not attributable:
+        notes.append(
+            f"NO TRADE IS ATTRIBUTABLE TO THE SEED. All {len(trades)} "
+            "generated trades also happen in the run without it, so no edge "
+            "below is highlighted as caused. A cascade that would have "
+            "happened anyway is not a cascade.")
+    if cascade and cascade.get("depth_reached") == 0:
+        notes.append(
+            "THE CASCADE TERMINATED AT DEPTH ZERO. Nothing woke a second "
+            "round: the seed's direct consequences produced no further "
+            "intent that reached the solver.")
+    if by_kind["contest"] == 0:
+        notes.append(
+            "NO CONTESTED PLAYERS CHANGED HANDS. Either no player drew "
+            "offers from more than one team, or every contest was won by a "
+            "team that lost none - so there are no contested-player edges "
+            "to draw.")
+    if by_kind["seed"] == 0:
+        notes.append(
+            "NO SEED EDGE. The manifest records no stipulated trade or "
+            "signing with both endpoints on the map - a signing seed has "
+            "only a destination, so it colours a node rather than drawing "
+            "a line.")
+    if not drawable:
+        notes.append(
+            f"NO EDGES AT ALL. The {len(nodes)} node(s) below are the league "
+            "at the freeze, with payrolls from this run's own reaction "
+            "record. Nothing connected them, and that is the run's result. "
+            "(Counted, not assumed: a hardcoded 'thirty' here was wrong "
+            "for any run whose reaction covers fewer teams.)")
+
     return {
         "run_id": run_id,
         "scenario": manifest.get("scenario", ""),
@@ -239,6 +305,9 @@ def league_graph(run_id: str | None = None) -> dict:
         "season": season, "bands": bands,
         "nodes": nodes,
         "edges": drawable,
+        "by_kind": by_kind,
+        "notes": notes,
+        "thin": bool(notes),
             "seed_label": (manifest.get("trade")
                            or manifest.get("signing")
                            or {}).get("label", ""),
@@ -248,7 +317,7 @@ def league_graph(run_id: str | None = None) -> dict:
             "unseeded": len(cascade.get("unseeded_trades", [])),
             "gate_kills": cascade.get("killed_by_counterparty_gate", 0),
         },
-        "runs": [r[0] for r in runs],
+        "runs": list(all_runs or []),
     }
 
 

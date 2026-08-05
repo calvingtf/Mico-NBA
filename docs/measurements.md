@@ -3039,3 +3039,58 @@ versus 12/12, and 176s versus 49s, so a reader can tell a measured rule from
 a cautious one — with the explicit warning not to split every multi-field
 call on principle. "No accuracy without its predicted distribution" is a new
 non-negotiable, alongside "no metric without its null".
+
+## #76 — the graph is a view of a manifest, not a property of two demos
+
+The league graph rendered on one page, for whichever recorded run happened to
+be newest. A scenario authored a minute ago therefore had no graph unless it
+won that race. `run_graph(manifest, run_id)` draws from a manifest directly,
+so the graph is embedded on every run view, linked full width at
+`/runs/{id}/league`, and present the moment a UI-started run finishes.
+
+**The thin cases are the point.** A new scenario can produce few edges, no
+generated trades, or a cascade that stops at depth zero. All three look
+identical to a broken renderer - thirty nodes and nothing joining them - so
+each is named rather than left to be inferred. Verified output:
+
+| case | edges drawn | what the figure says |
+|---|---|---|
+| no generated trades | seed only | "NO GENERATED TRADES … 7 candidate pairs killed by the counterparty gate and 3 by the solver … that result, not a missing layer" |
+| cascade at depth zero | seed only | "TERMINATED AT DEPTH ZERO. Nothing woke a second round" |
+| no contested players | seed only | "NO CONTESTED PLAYERS CHANGED HANDS. Either no player drew offers from more than one team, or every contest was won by a team that lost none" |
+| nothing at all | 0 | "NO EDGES AT ALL. The N node(s) below are the league at the freeze … Nothing connected them, and that is the run's result" |
+
+The notes stack: a run with none of the three says all of it. And they must
+NOT fire on a healthy run, or they are decoration - `curry-lakers-2026`
+carries zero notes, pinned by test.
+
+That last note first read "the thirty nodes below". Wrong for any run whose
+reaction covers fewer teams, and wrong in exactly the way a hardcoded count
+always is - invisibly, on the case nobody looked at. It counts now.
+
+**The real signing run is a thin case already.** `lebron-warriors-2026` draws
+103 edges and still carries two notes: **no trade is attributable to the
+seed** (all ten generated trades happen in the unseeded run too), and **no
+seed edge** (a signing has only a destination, so it colours a node rather
+than drawing a line). A reader looking at 103 edges without those two
+sentences would take the whole picture for a consequence of the stipulation.
+It is not.
+
+**The caption is the fix for the same misreading.** Every graph now states
+the run, the edge counts split by type, and how many generated trades are
+attributable by the unseeded diff. `curry-lakers-2026`: 107 edges - 3 seed,
+9 generated trade, 95 contested-player - of which **4 of the 9 generated
+trades are attributable**, against a null of 10 in the unseeded run. Ninety-
+five of those edges are the market resolving and are explicitly not claimed
+as consequences.
+
+The graph also comes under the figure-null rule now, on all three pages that
+draw it. It was outside that rule only because it was not a `<figure>`.
+
+**Kept unchanged, deliberately:** disposition read off the record with
+`unclassified` where the artifact does not say (a run where every team was
+classified would mean the UI guessed - pinned by test), fixed geographic
+positions rather than a force layout (two calls must place a team
+identically or two runs cannot be compared - also pinned), and edges
+animating in recorded order with the seed at order -1, ahead of everything
+it caused.

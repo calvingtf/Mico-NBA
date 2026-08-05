@@ -139,6 +139,9 @@ def league_view(request: Request, run: str | None = None):
     if not graph:
         raise HTTPException(404, "no recorded run carries a reaction and a "
                                  "cascade to draw")
+    # /league is the newest run by default. Per-run graphs live at
+    # /runs/{id}/league and are linked from each run view, so a freshly
+    # authored scenario does not have to become the newest demo to be seen.
     return templates.TemplateResponse(request, "league.html", {
         "g": graph, "llm_label": LLM_PATH_LABEL,
         "unfalsifiable": graph["unfalsifiable"]})
@@ -522,10 +525,11 @@ def run_view(request: Request, run_id: str):
 
         feed = load_run(run_dir)
     from mironba.api.graph import (cascade_payoff, obligations_view,
-                                   pursuit_view, signing_view)
+                                   pursuit_view, run_graph, signing_view)
 
     return templates.TemplateResponse(request, "run.html", {
         "run_id": run_id, "manifest": manifest, "feed": feed,
+        "g": run_graph(manifest, run_id),
         "payoff": cascade_payoff(manifest),
         "duties": obligations_view(manifest),
         "pursuit": pursuit_view(manifest),
@@ -533,6 +537,33 @@ def run_view(request: Request, run_id: str):
         "trade": manifest.get("trade") or {},
         "unfalsifiable": manifest.get("unfalsifiable", False),
         "llm_label": LLM_PATH_LABEL})
+
+
+
+@app.get("/runs/{run_id}/league", response_class=HTMLResponse)
+def run_league(request: Request, run_id: str):
+    """The graph for ONE run, full width.
+
+    The same figure the run view embeds - not a second implementation.
+    Every completed run has one, including a scenario authored a minute
+    ago; the graph is a view of a manifest, not a property of the two
+    recorded demos.
+    """
+    from mironba.api.graph import run_graph
+
+    run_dir = RUNS / run_id
+    if not run_dir.is_dir() or ".." in run_id:
+        raise HTTPException(404)
+    manifest = _manifest(run_dir)
+    graph = run_graph(manifest, run_id)
+    if not graph:
+        raise HTTPException(
+            404, "this run recorded no reaction, so there is no league state "
+                 "to draw. A manifest-only run is not an empty graph - it is "
+                 "a run that never reached the reaction.")
+    return templates.TemplateResponse(request, "league.html", {
+        "g": graph, "llm_label": LLM_PATH_LABEL,
+        "unfalsifiable": graph["unfalsifiable"]})
 
 
 # -- (c) branch comparison ---------------------------------------------------

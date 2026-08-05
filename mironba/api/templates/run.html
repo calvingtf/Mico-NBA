@@ -229,6 +229,16 @@ simulation and read back off the manifest it wrote.</p>
 </div>
 {% endif %}
 
+{% if g %}
+<h2>The league after this run
+  <a class="cta ghost small" href="/runs/{{ run_id }}/league">open full
+    width →</a></h2>
+{% include "_graph.html" %}
+{% else %}
+<p class="muted">No league graph: this run recorded no reaction, so there is
+no league state to draw. That is different from an empty graph.</p>
+{% endif %}
+
 {% if trade %}
 <h2>The stipulated seed</h2>
 <div class="panel">

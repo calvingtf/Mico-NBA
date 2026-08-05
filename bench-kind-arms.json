@@ -1,0 +1,124 @@
+{
+  "field": "kind",
+  "n": 12,
+  "arm_a": {
+    "correct": 12,
+    "predicted": {
+      "stipulated": 6,
+      "pending_decision": 6
+    },
+    "degenerate": false,
+    "never_predicted": [],
+    "median_s": 79.5
+  },
+  "arm_b": {
+    "correct": 12,
+    "predicted": {
+      "stipulated": 6,
+      "pending_decision": 6
+    },
+    "degenerate": false,
+    "never_predicted": [],
+    "median_s": 17.5,
+    "p": 0.000244140625
+  },
+  "null_correct": 6,
+  "rows": [
+    {
+      "sentence": "Stephen Curry traded from GSW to LAL for Austin Reaves and Quentin Grimes",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 85.5,
+      "arm_b": "stipulated",
+      "b_s": 23.0
+    },
+    {
+      "sentence": "LeBron James signs with the Golden State Warriors",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 56.9,
+      "arm_b": "stipulated",
+      "b_s": 14.2
+    },
+    {
+      "sentence": "Victor Wembanyama traded to the Warriors",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 101.1,
+      "arm_b": "stipulated",
+      "b_s": 14.8
+    },
+    {
+      "sentence": "Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 77.3,
+      "arm_b": "stipulated",
+      "b_s": 21.4
+    },
+    {
+      "sentence": "Paul George joins the Nets in free agency",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 75.5,
+      "arm_b": "stipulated",
+      "b_s": 13.3
+    },
+    {
+      "sentence": "The Lakers deal Rui Hachimura to Chicago for Nikola Vucevic",
+      "truth": "stipulated",
+      "arm_a": "stipulated",
+      "a_s": 75.4,
+      "arm_b": "stipulated",
+      "b_s": 14.1
+    },
+    {
+      "sentence": "Where does LeBron James sign this offseason?",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 84.0,
+      "arm_b": "pending_decision",
+      "b_s": 18.6
+    },
+    {
+      "sentence": "Will Giannis Antetokounmpo be traded before the deadline?",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 87.1,
+      "arm_b": "pending_decision",
+      "b_s": 10.8
+    },
+    {
+      "sentence": "Does Paul George opt in or test free agency?",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 70.2,
+      "arm_b": "pending_decision",
+      "b_s": 11.0
+    },
+    {
+      "sentence": "Who wins the race to sign DeMar DeRozan?",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 71.2,
+      "arm_b": "pending_decision",
+      "b_s": 19.4
+    },
+    {
+      "sentence": "Whether the Lakers extend Austin Reaves is still open.",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 79.5,
+      "arm_b": "pending_decision",
+      "b_s": 21.8
+    },
+    {
+      "sentence": "It is undecided whether Terry Rozier stays in Charlotte.",
+      "truth": "pending_decision",
+      "arm_a": "pending_decision",
+      "a_s": 91.4,
+      "arm_b": "pending_decision",
+      "b_s": 17.5
+    }
+  ]
+}

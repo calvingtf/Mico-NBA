@@ -1,0 +1,155 @@
+{# The league graph for ONE run. Included inline on the run view and by the
+   standalone page, so both draw the same thing from the same data. #}
+<figure class="graphfig">
+  <div class="graphwrap">
+    <svg viewBox="0 0 100 100" class="league" role="img"
+         aria-label="thirty team nodes with trade and contested-player edges">
+      <g class="edges">
+      {% for e in g.edges %}
+        <line class="edge {{ e.kind }}{% if e.attributable %} attributable{% endif %}"
+              x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}"
+              style="--i: {{ loop.index0 }}"><title>{{ e.label }}</title></line>
+      {% endfor %}
+      </g>
+      <g class="nodes">
+      {% for n in g.nodes %}
+        <circle class="node {{ n.disposition }}" cx="{{ n.x }}" cy="{{ n.y }}"
+                r="{{ 1.1 + (n.payroll / 260000000) * 2.6 }}"
+                tabindex="0"
+                data-team="{{ n.team }}"
+                data-payroll="{{ '{:,}'.format(n.payroll) }}"
+                data-start="{{ '{:,}'.format(n.payroll_start) }}"
+                data-band="{{ n.band_label }}"
+                data-roster="{{ n.roster }}"
+                data-disposition="{{ n.disposition }}"
+                data-role="{{ n.role }}"
+                data-signed="{{ n.signed|join(', ') }}"
+                data-lost="{{ n.lost|join(', ') }}"><title>{{ n.team }}</title></circle>
+        <text class="nodelabel" x="{{ n.x }}" y="{{ n.y + 0.6 }}">{{ n.team }}</text>
+      {% endfor %}
+      </g>
+    </svg>
+
+    <aside class="teamcard" id="teamcard">
+      <div class="tc-empty">Hover or focus a team.</div>
+      <div class="tc-body" hidden>
+        <div class="tc-head"><b class="tc-team"></b>
+          <span class="chip tc-disp"></span></div>
+        <div class="tc-bar">
+          <i class="tc-fill"></i>
+          <span class="tc-line cap"></span><span class="tc-line tax"></span>
+          <span class="tc-line ap1"></span><span class="tc-line ap2"></span>
+        </div>
+        <div class="tc-pay step"></div>
+        <div class="tc-meter"><i class="tc-meterfill"></i></div>
+        <div class="tc-roster step"></div>
+        <div class="tc-moves"></div>
+        <div class="tc-role step"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot seller"></i> seller</span>
+    <span><i class="dot buyer-side"></i> buyer-side</span>
+    <span><i class="dot unclassified"></i> unclassified</span>
+    <span><i class="lin seed"></i> the stipulated seed</span>
+    <span><i class="lin trade"></i> generated trade</span>
+    <span><i class="lin contest"></i> contested-player outcome</span>
+    <span>node size = payroll</span>
+  </div>
+
+  {# ITEM 4: what this graph IS. Without the attributable count a reader
+     assumes every edge is a consequence of the scenario, and the unseeded
+     diff already says most are not. #}
+  <figcaption>
+    <b>{{ g.scenario or g.run_id }}</b> — the league after this run.
+    <span class="mono">{{ g.run_id }}</span><br>
+
+    <b>{{ g.edges|length }}</b> edges:
+    <b>{{ g.by_kind.seed }}</b> seed,
+    <b>{{ g.by_kind.trade }}</b> generated trade,
+    <b>{{ g.by_kind.contest }}</b> contested-player.
+
+    {% if g.by_kind.trade %}
+      <b>Of the {{ g.by_kind.trade }} generated trades,
+      {{ g.counts.attributable }} are attributable to the seed</b> by the
+      unseeded diff{% if g.by_kind.trade > g.counts.attributable %} — the
+      other {{ g.by_kind.trade - g.counts.attributable }} happen in the run
+      without it too{% endif %}.
+    {% else %}
+      <b>No trade edges: the cascade generated none.</b>
+    {% endif %}
+
+    {% if g.by_kind.contest %}
+    The {{ g.by_kind.contest }} contested-player edges are the market
+    resolving and are <b>not</b> claimed as consequences of the seed — the
+    run view's diff names the ones that changed.
+    {% endif %}
+
+    Null: the unseeded run generated <b>{{ g.counts.unseeded }}</b> trades of
+    its own. Edges animate in recorded order; positions are fixed geography.
+  </figcaption>
+
+  {% if g.notes %}
+  <div class="thinnotes">
+    {% for note in g.notes %}<div class="thinnote">{{ note }}</div>{% endfor %}
+  </div>
+  {% endif %}
+</figure>
+
+<p class="marker">
+  <b>What the colours honestly say.</b> Disposition is read off the record,
+  never recomputed here: the cascade's counterparty gate admits only SELLER
+  teams, so a team recorded as a counterparty was seller-classified at run
+  time and an acquirer passed the not-a-seller gate. A team that did not
+  participate is <b>unclassified</b> — the artifact does not say, and this
+  page does not guess. Positions are fixed geography, not a force layout:
+  a layout that rearranged per load would make two runs impossible to
+  compare. Node size is payroll from this run's own reaction record; the
+  bars in the hover card mark the published cap, tax and apron lines for
+  {{ g.season }}.
+</p>
+
+<script>
+(function () {
+  const card = document.getElementById("teamcard");
+  if (!card) { return; }
+  const empty = card.querySelector(".tc-empty");
+  const body = card.querySelector(".tc-body");
+  const bands = {{ g.bands|tojson }};
+  const top = bands.apron2 * 1.12;
+  for (const [cls, value] of [["cap", bands.cap], ["tax", bands.tax],
+                              ["ap1", bands.apron1], ["ap2", bands.apron2]]) {
+    const el = card.querySelector(".tc-line." + cls);
+    if (el) { el.style.left = (value / top * 100) + "%"; }
+  }
+  function show(node) {
+    const d = node.dataset;
+    empty.hidden = true; body.hidden = false;
+    card.querySelector(".tc-team").textContent = d.team;
+    const disp = card.querySelector(".tc-disp");
+    disp.textContent = d.disposition;
+    disp.className = "chip tc-disp " + d.disposition;
+    const payroll = Number(d.payroll.replace(/,/g, ""));
+    card.querySelector(".tc-fill").style.width = (payroll / top * 100) + "%";
+    card.querySelector(".tc-pay").textContent =
+      "$" + d.payroll + " committed — " + d.band + " (from $" + d.start + ")";
+    const roster = Number(d.roster);
+    card.querySelector(".tc-meterfill").style.width =
+      Math.min(100, roster / 15 * 100) + "%";
+    card.querySelector(".tc-roster").textContent =
+      roster + " under contract (15 is a full roster)";
+    const moves = document.createElement("div");
+    if (d.signed) { moves.innerHTML += "<div><b>signed</b> " + d.signed + "</div>"; }
+    if (d.lost) { moves.innerHTML += "<div><b>lost contests</b> " + d.lost + "</div>"; }
+    if (!d.signed && !d.lost) { moves.innerHTML = "<div class='step'>no moves recorded</div>"; }
+    card.querySelector(".tc-moves").replaceChildren(moves);
+    card.querySelector(".tc-role").textContent = d.role;
+  }
+  for (const node of document.querySelectorAll("circle.node")) {
+    node.addEventListener("mouseenter", () => show(node));
+    node.addEventListener("focus", () => show(node));
+  }
+})();
+</script>

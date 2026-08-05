@@ -143,6 +143,25 @@ class TestNoValueWithoutItsNull:
         assert page.count("Null:") == figure_count, (
             f"{figure_count} figures but {page.count('Null:')} nulls")
 
+    @pytest.mark.parametrize("path", [
+        "/runs/curry-lakers-2026",
+        "/runs/curry-lakers-2026/league",
+        "/league",
+    ])
+    def test_the_league_graph_is_a_figure_and_carries_its_null(self, path):
+        """The graph moved onto the run view, so it comes under the same
+        rule as every other figure. Its null is the unseeded run's own
+        trade count - without it a reader takes every edge for a
+        consequence of the scenario, and the diff says most are not."""
+        response = client.get(path)
+        if response.status_code == 404:
+            pytest.skip(f"{path} has no recorded run to draw")
+        page = response.text
+        assert page.count("<figure") >= 1
+        assert page.count("Null:") >= page.count("<figure"), (
+            "a figure shipped without its null")
+        assert "attributable to the seed" in page or "generated none" in page
+
 
 class TestPostFreezeNeverRenders:
     def test_branch_page_contains_no_post_partition_item(self):
