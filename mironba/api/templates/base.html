@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MiroNBA — {% block title %}{% endblock %}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+<style>
+  :root { --ink:#202124; --grey:#9aa0a6; --accent:#1a73e8; --bad:#b3261e;
+          --paper:#fff; --panel:#f6f8fa; }
+  * { box-sizing:border-box; }
+  body { font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;
+         color:var(--ink); margin:0; background:var(--paper); }
+  header { border-bottom:1px solid #e0e0e0; padding:.7rem 1.2rem;
+           display:flex; gap:1.2rem; align-items:baseline; flex-wrap:wrap; }
+  header b { font-size:1.05rem; }
+  header a { color:var(--ink); text-decoration:none; opacity:.75; }
+  header a:hover { opacity:1; }
+  main { max-width:64rem; margin:1.4rem auto; padding:0 1.2rem; }
+  h1 { font-size:1.35rem; } h2 { font-size:1.1rem; margin-top:1.6rem; }
+  table { border-collapse:collapse; width:100%; font-size:.88rem; }
+  th, td { text-align:left; padding:.3rem .55rem; border-bottom:1px solid #eee; }
+  .panel { background:var(--panel); border:1px solid #e0e0e0;
+           border-radius:8px; padding: .9rem 1.1rem; margin: .8rem 0; }
+  .badge { display:inline-block; padding:.05rem .5rem; border-radius:9px;
+           font-size:.75rem; font-weight:600; }
+  .badge.unf { background:var(--bad); color:#fff; }
+  .badge.rep { background:#188038; color:#fff; }
+  .badge.norep { background:var(--grey); color:#fff; }
+  .refusal { border-left:4px solid var(--bad); padding-left:.6rem;
+             background:#fdf3f2; }
+  .entry { margin:.35rem 0; padding:.25rem .4rem; }
+  .quote { color:#444; font-style:italic; }
+  .marker { border:1px dashed var(--grey); padding:.6rem .8rem;
+            font-size:.85rem; margin:.7rem 0; background:#fffdf3; }
+  .ok { color:#188038; font-weight:600; padding:.6rem 0; }
+  .err { color:var(--bad); }
+  figure { margin:1.4rem 0; }
+  figure img { max-width:100%; border:1px solid #eee; }
+  figcaption { font-size:.85rem; color:#444; margin-top:.3rem; }
+  footer { border-top:1px solid #e0e0e0; margin-top:2.5rem;
+           padding:1rem 1.2rem; font-size:.8rem; color:#555; }
+  input[type=text] { width:100%; padding:.5rem; font-size:1rem; }
+  button { padding:.45rem .9rem; font-size:.95rem; cursor:pointer; }
+  pre { white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <b>MiroNBA</b>
+  <a href="/">home</a>
+  <a href="/authoring">new scenario</a>
+  <a href="/runs">runs</a>
+  <a href="/branches/lebron-2026">branches</a>
+  <a href="/report">report</a>
+  <a href="/results">results</a>
+</header>
+<main>
+{% block body %}{% endblock %}
+</main>
+<footer>
+  {{ llm_label }} · Presentation only: this UI reads committed artifacts and
+  computes nothing — the import fence is a test.
+</footer>
+</body>
+</html>

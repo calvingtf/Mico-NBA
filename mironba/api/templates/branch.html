@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}branches — {{ scenario_id }}{% endblock %}
+{% block body %}
+<h1>Branch comparison — {{ scenario_id }} (frozen {{ freeze }})</h1>
+{% if interest %}
+<div class="marker">
+  <b>Known at the freeze — dated, sourced inputs:</b>
+  {% for row in interest %}
+    <div>{{ row.date }} · {{ row.team }} in on {{ row.player }}
+         <small>[{{ row.id }} ← {{ row.anchors }}] {{ row.source }}</small></div>
+  {% endfor %}
+  <p>{{ input_marker }}</p>
+</div>
+{% endif %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+{% for b in branches %}
+  <div class="panel">
+    {% if b.falsifiable %}
+      <h2>{{ b.label }} — this is what happened (scored)</h2>
+    {% else %}
+      <h2><span class="badge unf">UNFALSIFIABLE</span> {{ b.label }}</h2>
+      <p>This branch did not happen and never will have ground truth. Its
+         value is comparative: same GM, same freeze state, different answer.
+         It is never scored.</p>
+    {% endif %}
+    <b>Moves</b>
+    <table>
+    {% for m in b.moves %}
+      <tr><td>{{ m.name }}</td><td>{{ m.route }}</td>
+          <td>${{ "{:,}".format(m.first_year_salary) }}</td></tr>
+    {% endfor %}
+    </table>
+    <b>Conditionals in this branch</b>
+    {% for c in b.conditionals %}
+      <div>{% if c.fired %}<b>FIRED</b>{% else %}<small>did not fire</small>{% endif %}
+        <code>{{ c.id }}</code> — <span class="quote">“{{ c.condition }}”</span>
+        → {{ c.commitment }}</div>
+    {% endfor %}
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

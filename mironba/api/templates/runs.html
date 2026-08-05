@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}runs{% endblock %}
+{% block body %}
+<h1>Run gallery</h1>
+<p>{{ total }} recorded runs; newest 60 shown. No manifest, no result.</p>
+<table>
+<tr><th>run</th><th>scenario</th><th>model</th><th>seed</th><th>snapshot</th>
+    <th>gpu</th><th>reproducible</th></tr>
+{% for r in rows %}
+<tr>
+  <td>{% if r.has_events %}<a href="/runs/{{ r.id }}">{{ r.id }}</a>
+      {% else %}{{ r.id }}{% endif %}
+      {% if r.unfalsifiable %}<span class="badge unf">UNFALSIFIABLE</span>{% endif %}</td>
+  <td>{{ r.scenario }}</td>
+  <td>{{ r.model }}</td>
+  <td>{{ r.seed if r.seed is not none else "—" }}</td>
+  <td>{{ r.snapshot }}</td>
+  <td>{{ r.gpu_fraction if r.gpu_fraction is not none else "—" }}</td>
+  <td>{% if r.reproducible %}<span class="badge rep">yes</span>
+      {% elif r.reproducible is false %}<span class="badge norep">NO</span>
+      {% else %}—{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

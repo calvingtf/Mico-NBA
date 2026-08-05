@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}new scenario{% endblock %}
+{% block body %}
+<h1>Scenario input — the CLI flow, in a browser</h1>
+<p>The model proposes structure (it cannot state a salary — the schema has no
+field for one); determinism validates names, teams, dates and the trade
+package through <code>rules/</code> before anything can be written. Ambiguity
+surfaces as a choice. Writing is a separate, explicit confirmation.</p>
+<form hx-post="/authoring/draft" hx-target="#draft" hx-indicator="#busy">
+  <input type="text" name="sentence" required
+         placeholder="Stephen Curry traded from GSW to LAL for Austin Reaves and Quentin Grimes on 2026-07-06">
+  <p><button type="submit">Draft it</button>
+     <span id="busy" class="htmx-indicator">drafting on the local model — ~30s…</span></p>
+</form>
+<div id="draft"></div>
+{% endblock %}

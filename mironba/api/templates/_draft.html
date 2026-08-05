@@ -1,0 +1,34 @@
+<div class="panel">
+  <p><b>{{ draft.sentence }}</b><br>
+     proposed: kind={{ draft.kind }} · seed {{ draft.seed_date }}</p>
+  {% for name, pid in draft.resolved.items() %}
+    <div>resolved: {{ name }} → <code>{{ pid }}</code></div>
+  {% endfor %}
+  {% if draft.ambiguities %}
+    <form hx-post="/authoring/resolve" hx-target="#draft">
+      <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
+      {% for name, candidates in draft.ambiguities.items() %}
+        <p><b>AMBIGUOUS: “{{ name }}” — a human must choose:</b></p>
+        {% for pid, full in candidates %}
+          <label><input type="radio" name="choose:{{ name }}" value="{{ pid }}" required>
+                 {{ full }} (<code>{{ pid }}</code>)</label><br>
+        {% endfor %}
+      {% endfor %}
+      <p><button type="submit">Resolve</button></p>
+    </form>
+  {% endif %}
+  {% for f in draft.findings %}<div>{{ f }}</div>{% endfor %}
+  {% for e in draft.errors %}<div class="err">ERROR {{ e }}</div>{% endfor %}
+  {% if not draft.errors and not draft.ambiguities %}
+    <p class="ok">valid — the rules verdict above is shown BEFORE anything is written</p>
+    <form hx-post="/authoring/write" hx-target="#draft">
+      <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
+      <p><input type="text" name="scenario_id" placeholder="scenario-id" required></p>
+      <label><input type="checkbox" name="confirmed" value="yes">
+        I reviewed the draft and confirm the write — the same human gate as the CLI</label>
+      <p><button type="submit">Write scenario file</button></p>
+    </form>
+  {% else %}
+    <p>NOT WRITABLE until the above is resolved.</p>
+  {% endif %}
+</div>

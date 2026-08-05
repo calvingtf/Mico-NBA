@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}results{% endblock %}
+{% block body %}
+<h1>Results — generated from recorded data, never typed into plotting code</h1>
+{% for f in figures %}
+<figure>
+  <img src="/figures/{{ f.file }}" alt="{{ f.title }}">
+  <figcaption><b>{{ f.title }}.</b> Null: {{ f.null }}.</figcaption>
+</figure>
+{% endfor %}
+{% endblock %}

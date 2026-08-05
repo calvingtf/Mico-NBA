@@ -1,0 +1,16 @@
+# Core (deterministic pipeline + eval)
+pyyaml
+numpy
+pandas
+scikit-learn
+matplotlib
+pydantic
+
+# Data ingest
+nba_api
+
+# Web UI (presentation only; python -m mironba.api.serve)
+fastapi
+uvicorn
+jinja2
+httpx2

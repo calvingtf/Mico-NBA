@@ -754,6 +754,25 @@ artifacts. It turned out to be the backup.
 
 ## See it
 
+**The web UI** — presentation only; it reads committed artifacts and a test
+fences it from ever computing (no imports from `sim/`, `models/` or
+`eval/`):
+
+```bash
+python -m mironba.api.serve        # http://127.0.0.1:8300, Ctrl+C stops everything
+```
+
+Six screens: scenario input (the CLI authoring flow with its confirm gate
+intact — writing without the explicit checkbox is a 400), the run gallery
+with every manifest (model, seed, snapshot, gpu_fraction, reproducible),
+run timelines with refusals leading and validator reasons quoted verbatim,
+branch comparison with the counterfactual headlined UNFALSIFIABLE and
+conditionals shown fired-or-not per branch, the report agent's recorded
+output with its undismissable limitations block, and the generated figures
+each captioned with its null. Every page footer carries the label: one
+model per tick in the intent loop — not thirty agents.
+
+
 Three commands, each reading a completed run. None of them changes a result.
 
 ```bash
@@ -1286,7 +1305,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,050 tests**, run on every commit by the pre-commit gate
+**1,065 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}home{% endblock %}
+{% block body %}
+<h1>MiroNBA — counterfactual NBA offseasons, measured against their nulls</h1>
+<p>Everything on these pages is a committed artifact: recorded runs, bench
+files, evidence stores, generated figures. Nothing is computed here.</p>
+<ul>
+  <li><a href="/authoring">Scenario input</a> — plain language in, drafted
+      scenario out; the rules verdict shows before anything is written and
+      writing takes an explicit confirmation.</li>
+  <li><a href="/runs">Run gallery</a> — every recorded run with its manifest:
+      model, seed, snapshot, reproducibility.</li>
+  <li><a href="/branches/lebron-2026">Branch comparison</a> — the two worlds
+      side by side; the counterfactual is labelled unfalsifiable.</li>
+  <li><a href="/report">Report</a> — the report agent's recorded output with
+      its limitations block, which cannot be dismissed.</li>
+  <li><a href="/results">Results</a> — the generated figures, each with its
+      null.</li>
+</ul>
+{% endblock %}

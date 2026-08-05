@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}report{% endblock %}
+{% block body %}
+<h1>Report — recorded output of the report agent</h1>
+{% if text %}
+<p><small>source: <code>{{ source }}</code> (llm_calls.jsonl, the recorded
+completion — nothing regenerated for this page)</small></p>
+<div class="panel"><pre>{{ text }}</pre></div>
+{% else %}
+<p>No recorded report run found under runs/.</p>
+{% endif %}
+<div class="marker">
+  <b>LIMITATIONS — appended in code, structurally undismissable; no prompt
+  failure can drop them and this page cannot collapse them:</b>
+  <ul>
+  {% for item in limitations %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}
