@@ -78,16 +78,35 @@ def known_scenarios() -> list[str]:
 
 
 def _drain(run_id: str, proc: subprocess.Popen) -> None:
+    """Read the child to EOF, then CLOSE the pipe and reap it.
+
+    Leaving stdout open leaks a file descriptor per run. It surfaced as a
+    ResourceWarning raised inside an unrelated test, because this project
+    runs pytest with filterwarnings=error and a warning from a garbage
+    collection lands on whatever happens to be executing - a failure
+    attributed to a test that did nothing wrong.
+    """
     job = RUNNING[run_id]
-    for line in proc.stdout:  # type: ignore[union-attr]
-        job["lines"].append(line.rstrip("\n"))
-    proc.wait()
+    try:
+        for line in proc.stdout:  # type: ignore[union-attr]
+            job["lines"].append(line.rstrip("\n"))
+    finally:
+        if proc.stdout is not None:
+            proc.stdout.close()
+        proc.wait()
     job["returncode"] = proc.returncode
     job["finished"] = time.monotonic()
 
 
 def start(scenario_id: str) -> str:
     """Spawn the CLI for ``scenario_id``; return the run directory name."""
+    from mironba.world.paths import as_component
+
+    # A form field arrives as a string, but the allowlist below compares it
+    # to filenames and the run id is built from it - so the type is asserted
+    # rather than assumed. See world/paths.py for why that distinction cost
+    # a debugging session.
+    scenario_id = as_component(scenario_id, "scenario id")
     if scenario_id not in known_scenarios():
         raise ValueError(
             f"no declared scenario {scenario_id!r}; the UI starts runs only "
@@ -163,10 +182,15 @@ def start_report(run_id: str) -> str:
 
 
 def _drain_report(report_id: str, proc: subprocess.Popen) -> None:
+    """Same discipline as _drain: close the pipe, reap the child."""
     job = REPORTS[report_id]
-    for line in proc.stdout:  # type: ignore[union-attr]
-        job["lines"].append(line.rstrip("\n"))
-    proc.wait()
+    try:
+        for line in proc.stdout:  # type: ignore[union-attr]
+            job["lines"].append(line.rstrip("\n"))
+    finally:
+        if proc.stdout is not None:
+            proc.stdout.close()
+        proc.wait()
     job["returncode"] = proc.returncode
     job["finished"] = time.monotonic()
 

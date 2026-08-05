@@ -162,7 +162,10 @@ def draft_rows(article: Article, scenario, client=None) -> list[dict]:
 
 
 def queue_path(scenario_id: str) -> Path:
-    return EVIDENCE_ROOT / scenario_id / "review-queue.csv"
+    from mironba.world.paths import as_component
+
+    return (EVIDENCE_ROOT / as_component(scenario_id, "scenario id")
+            / "review-queue.csv")
 
 
 QUEUE_FIELDS = ("kind", "team", "player_id", "condition", "commitment",

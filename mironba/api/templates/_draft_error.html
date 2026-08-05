@@ -1,1 +1,16 @@
+{% if crash %}
+<div class="panel">
+  <div class="err"><b>THE CHECK CRASHED — this is not a verdict</b>
+    <div class="nextstep">{{ error }}</div>
+    <div class="nextstep">Your scenario was <b>not</b> judged and nothing was
+      written. Nothing about the sentence is implied to be wrong; the loader
+      failed before it could decide. The traceback is below.</div>
+  </div>
+  {% if traceback %}
+  <details class="tb"><summary>traceback</summary>
+    <pre class="runline mono">{{ traceback }}</pre></details>
+  {% endif %}
+</div>
+{% else %}
 <div class="panel err">drafting failed and nothing was written: {{ error }}</div>
+{% endif %}

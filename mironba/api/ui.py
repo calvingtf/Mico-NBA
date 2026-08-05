@@ -310,6 +310,48 @@ def authoring_page(request: Request):
     })
 
 
+
+
+def _draft_from_form(form) -> "object":
+    """Rebuild the Draft a form is carrying, or 400 with the reason.
+
+    Three handlers do this and all three used to construct it bare, so a
+    malformed or truncated payload surfaced as an unhandled TypeError and a
+    500. A bad request is the client's to fix and should say so; a 500 says
+    the server broke, which is a different claim.
+    """
+    from mironba.world.authoring import Draft
+
+    raw = form.get("draft_json")
+    if not raw:
+        raise HTTPException(400, "the form carried no draft; nothing was "
+                                 "written. Draft the sentence again.")
+    try:
+        payload = json.loads(raw)
+    except ValueError as exc:
+        raise HTTPException(
+            400, f"the draft payload is not valid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "the draft payload is not an object")
+    try:
+        return Draft(**payload)
+    except TypeError as exc:
+        raise HTTPException(
+            400, f"the draft payload does not describe a draft: {exc}. "
+                 "Nothing was written.") from exc
+
+
+def _derived_id(draft) -> str:
+    """The id this draft would be written under, for display and default."""
+    from mironba.world.authoring import (derive_scenario_id,
+                                         existing_scenario_ids)
+
+    try:
+        return derive_scenario_id(draft, taken=existing_scenario_ids())
+    except Exception:  # noqa: BLE001 - a naming failure must not lose a draft
+        return ""
+
+
 def _validated(draft):
     from mironba.world.authoring import validate_draft
 
@@ -354,6 +396,7 @@ def authoring_job(request: Request, job_id: str):
         return templates.TemplateResponse(request, "_draft.html", {
             "draft": draft, "draft_json": json.dumps(asdict(draft)),
             "elapsed": job.get("elapsed"), "steps": job["steps"],
+            "derived_id": _derived_id(draft),
             "typical_s": runner.TYPICAL_RUN_S})
     return templates.TemplateResponse(request, "_job.html", {
         "job_id": job_id, "job": job, "latency": measured_latency()})
@@ -370,7 +413,7 @@ async def authoring_package(request: Request):
     from mironba.world.authoring import AuthoringError, Draft, choose_package
 
     form = await request.form()
-    draft = Draft(**json.loads(form["draft_json"]))
+    draft = _draft_from_form(form)
     try:
         choose_package(draft, int(form["package"]))
     except (AuthoringError, ValueError, KeyError) as exc:
@@ -381,6 +424,7 @@ async def authoring_package(request: Request):
 
     return templates.TemplateResponse(request, "_draft.html", {
         "draft": draft, "draft_json": json.dumps(asdict(draft)),
+        "derived_id": _derived_id(draft),
         "typical_s": runner.TYPICAL_RUN_S})
 
 
@@ -389,7 +433,7 @@ async def authoring_resolve(request: Request):
     from mironba.world.authoring import Draft, choose
 
     form = await request.form()
-    draft = Draft(**json.loads(form["draft_json"]))
+    draft = _draft_from_form(form)
     for key, value in form.items():
         if key.startswith("choose:") and value:
             choose(draft, key.split(":", 1)[1], str(value))
@@ -398,6 +442,7 @@ async def authoring_resolve(request: Request):
 
     return templates.TemplateResponse(request, "_draft.html", {
         "draft": draft, "draft_json": json.dumps(asdict(draft)),
+        "derived_id": _derived_id(draft),
         "typical_s": runner.TYPICAL_RUN_S})
 
 
@@ -405,22 +450,38 @@ async def authoring_resolve(request: Request):
 async def authoring_write(request: Request):
     """THE GATE. write_scenario(confirmed=True) is reached only from the
     explicit checkbox; anything else is 400 and nothing touches disk."""
-    from mironba.world.authoring import AuthoringError, Draft, write_scenario
+    from mironba.world.authoring import (AuthoringCrash, AuthoringError,
+                                         Draft, write_scenario)
 
     form = await request.form()
     if form.get("confirmed") != "yes":
         raise HTTPException(400, "confirmation is a human act: check the "
                                  "confirm box; nothing was written")
-    scenario_id = str(form.get("scenario_id", "")).strip()
-    if not scenario_id:
-        raise HTTPException(400, "a scenario id is required; nothing was written")
-    draft = Draft(**json.loads(form["draft_json"]))
+    draft = _draft_from_form(form)
     draft = _validated(draft)
+    # DERIVED, not demanded. The id is a function of what resolved, so a
+    # user who never types one still gets a stable, readable, non-numeric
+    # name - and str() is not decorative here: a numeric id is what crashed
+    # the loader on a path join.
+    scenario_id = str(form.get("scenario_id", "") or "").strip()
+    if not scenario_id:
+        scenario_id = _derived_id(draft)
+    if not scenario_id:
+        raise HTTPException(
+            400, "no scenario id could be derived from this draft and none "
+                 "was supplied; nothing was written")
     try:
         path = write_scenario(draft, scenario_id, confirmed=True)
     except AuthoringError as exc:
+        # A verdict: the scenario was judged and rejected.
         return templates.TemplateResponse(request, "_draft_error.html", {
             "error": str(exc)})
+    except AuthoringCrash as exc:
+        # NOT a verdict. Saying "your scenario is invalid" here would be a
+        # claim nobody made - the check never finished.
+        return templates.TemplateResponse(request, "_draft_error.html", {
+            "error": str(exc), "crash": True,
+            "traceback": getattr(exc, "traceback", "")})
     from mironba.api import runner
 
     # WRITE AND RUN, as one action. The confirm checkbox is the gate on

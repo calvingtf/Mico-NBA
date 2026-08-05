@@ -37,4 +37,10 @@ markers = [
     # so a routine test run never bills anything or eats a five-hour window.
     "sdk: calls the Claude Agent SDK over the local subscription",
     "api: calls a hosted model over HTTP with an API key",
+    # Drives the UI handlers exactly as a browser does, drafting step
+    # included - which is a local model call of several minutes. Opt-in with
+    # -m browser. Everything in that file which does NOT need the model runs
+    # by default, because the field-and-form contracts are what shipped
+    # broken and they are cheap to check.
+    "browser: walks the UI end to end, model call included",
 ]

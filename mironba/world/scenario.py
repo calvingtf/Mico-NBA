@@ -93,6 +93,20 @@ class BranchScenario:
     evidence_dir: Path = field(default=None)  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
+        # THE ID IS A STRING, checked before anything joins a path with it.
+        # An unquoted numeric id in yaml (`id: 2026`) parses as an int, and
+        # the first `EVIDENCE_ROOT / self.id` then raises
+        # "unsupported operand type(s) for /: 'WindowsPath' and 'int'" -
+        # which the authoring round-trip used to report as "drafted yaml
+        # would not load as a scenario", turning a crash into a verdict.
+        # Raised as a ScenarioError so it IS a verdict, with the fix in it.
+        if not isinstance(self.id, str):
+            raise ScenarioError(
+                f"scenario id must be a string; got "
+                f"{type(self.id).__name__} {self.id!r}. A bare numeric id in "
+                "yaml parses as a number and then fails on the first path "
+                "join - quote it: id: \"{}\"".format(self.id)
+            )
         missing = [
             name for name in ("id", "season", "freeze_rationale", "decision")
             if not getattr(self, name)

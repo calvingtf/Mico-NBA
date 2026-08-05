@@ -3266,3 +3266,76 @@ simulation. And for these runs it cannot run at all: the report agent
 summarises an *event log*, and a stipulated run writes a manifest only. The
 page says exactly that instead of offering a button that can only fail —
 "Nothing is missing; the narrative path simply does not apply here."
+
+## #80 — a crash wearing a verdict's clothes, and the join that only sometimes fails
+
+**The bug.** A scenario id written unquoted — `id: 2026` — round-trips out of
+yaml as an **int**. `BranchScenario.__post_init__` then does
+`EVIDENCE_ROOT / self.id` and raises
+
+    TypeError: unsupported operand type(s) for /: 'WindowsPath' and 'int'
+
+which `write_scenario` caught with a blanket `except Exception` and reported
+as *"drafted yaml would not load as a scenario"*. That sentence is correct for
+a rejection and a lie for a crash: the loader judged nothing, and a reader
+following the message goes to inspect their sentence instead of the path join.
+
+**Why it hid.** The same int is harmless at every f-string join —
+`f"{scenario_id}.yaml"` formats anything — so `CONFIG_DIR / f"{id}.yaml"`
+worked while `EVIDENCE_ROOT / id` two lines later did not. **It fails only
+where the value is passed bare.** One code path crashes and its neighbours
+look healthy, which is what makes this a class rather than an incident.
+
+**The enumeration.** `world/paths.py` AST-lists every bare `Path / name` join
+in the package — 18 sites, 9 distinct (module, name) pairs after literals and
+f-strings are excluded — each with a stated reason why the name is a string by
+the time it arrives. A test fails on an unregistered join *and* on a registry
+entry whose join is gone: `data/ingest/rss.py` was in that table for exactly
+as long as it took to guard it, and a registry that keeps naming vanished code
+is how a list stops describing anything.
+
+`as_component()` **refuses rather than coerces**. `str(value)` would make
+`2026` and `"2026"` the same directory, which is how a numeric id gets a
+second life instead of being rejected where somebody can still fix it. It is a
+`ValueError`, not a `TypeError`: three of its four checks are about the value,
+and — more practically — every caller already guards with `except ValueError`.
+Raising a TypeError would have sailed past `api/ui.py`'s handler and become a
+500, *the same substitution this entry is about*. Caught by an existing test.
+
+**Crashes and verdicts are now different types.** `AuthoringError` says what
+to change; `AuthoringCrash` says the check never ran, carries the traceback,
+and renders as "THE CHECK CRASHED — this is not a verdict … Your scenario was
+**not** judged". The test asserts an injected `ZeroDivisionError` does not
+surface as a validation message and is not catchable as `AuthoringError`.
+
+**The id is derived, never typed.** `curry-to-lakers-2026` — surname, "to",
+destination nickname, season year — from the resolved content, slugged with
+rules stated in the module: unicode folded to ascii, non-alphanumerics to
+separators, runs collapsed, lowercased. Always a non-empty string, never
+numeric-looking, and a collision takes `-2` rather than overwriting. The
+writer still refuses to overwrite: the suffix stops a user *meeting* that
+refusal, it does not replace it.
+
+**Two bugs the new tests found immediately.** Moving the id check after the
+draft construction meant a malformed `draft_json` reached `Draft(**{})` and
+500'd — three handlers built the draft bare, so all three now go through
+`_draft_from_form`, which 400s with the reason. And `runner._drain` never
+closed the child's stdout: one descriptor leaked per run, surfacing as a
+`ResourceWarning` raised *inside an unrelated SDK test*, because this project
+runs `filterwarnings=error` and a warning from a collection lands on whatever
+is executing. A failure attributed to a test that did nothing wrong.
+
+**Handler coverage, audited as a test so it cannot go stale.** Every route
+declares which test drives it as a browser would, or why none does. Five gaps
+are named rather than implied: `/live/{run_id}/events` and
+`/runs/{run_id}/narrative/{report_id}` (polled fragments),
+`/authoring/package` and `/authoring/resolve` (need a draft with package
+options or an ambiguity — unit-tested, never form-posted), and
+`/runs/{run_id}/narrative`'s spawning branch (needs a run with an event log,
+which no stipulated run writes). The audit is not asserted empty — that would
+be a lie by test — it is asserted *named*.
+
+The full walk with no id supplied is `-m browser`: it drafts
+"Terry Rozier signs with the Portland Trail Blazers" through the real handlers,
+confirms with exactly the browser's payload, and lands on a run whose graph
+precedes its manifest. 3.5 minutes, all of it the model.

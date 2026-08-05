@@ -221,13 +221,23 @@ class TestTheConfirmGate:
         assert "nothing was written" in response.text
         assert sorted((ROOT / "configs" / "branch").glob("*.yaml")) == before
 
-    def test_write_without_an_id_is_400(self):
+    def test_write_without_an_id_derives_one_rather_than_refusing(self):
+        """The id used to be required and the user had to invent it. It is
+        derived from the resolved content now, so an absent id is normal -
+        but a MALFORMED draft payload is still a 400 with the reason, not a
+        500. Both halves matter: the first is the flow, the second is that a
+        bad request must not read as a server crash."""
         response = client.post("/authoring/write", data={
             "draft_json": "{}", "confirmed": "yes"})
         assert response.status_code == 400
+        assert "does not describe a draft" in response.text
 
+    def test_the_confirm_gate_is_unchanged_by_the_derived_id(self):
+        """Deriving the id must not have loosened the human gate."""
+        response = client.post("/authoring/write", data={"draft_json": "{}"})
+        assert response.status_code == 400
+        assert "confirmation is a human act" in response.text
 
-class TestScreensRender:
     def test_the_run_view_quotes_validator_reasons_verbatim(self):
         gallery = client.get("/runs").text
         import re

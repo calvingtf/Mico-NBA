@@ -76,7 +76,14 @@
     worth looking at.</p>
     <form hx-post="/authoring/write" hx-target="#draft">
       <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
-      <p><input type="text" name="scenario_id" placeholder="scenario-id" required></p>
+      <p class="idrow">
+        <label for="scenario_id">will be written as</label>
+        <input type="text" id="scenario_id" name="scenario_id"
+               value="{{ derived_id }}" spellcheck="false">
+        <span class="step">derived from what resolved — the player, the
+          destination and the season. Edit it if you want a different name;
+          you do not have to.</span>
+      </p>
       <label class="choice"><input type="checkbox" name="confirmed" value="yes">
         <span>I reviewed the draft and confirm the write — the same human
         gate as the CLI</span></label>

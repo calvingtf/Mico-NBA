@@ -26,15 +26,30 @@ from __future__ import annotations
 
 import csv
 import re
+import traceback
 import unicodedata
 from dataclasses import dataclass, field
 
 NL = chr(10)
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs" / "branch"
+
+
+class AuthoringCrash(RuntimeError):
+    """The machinery broke. NOT a judgement about the scenario.
+
+    Separate from ``AuthoringError`` because the two call for opposite
+    responses from a reader: an AuthoringError says what to change about
+    the scenario, and this says the check never ran. Collapsing them sends
+    someone to edit a sentence that was never the problem.
+    """
+
+    def __init__(self, message: str, traceback: str = "") -> None:
+        super().__init__(message)
+        self.traceback = traceback
 
 
 class AuthoringError(RuntimeError):
@@ -1095,6 +1110,95 @@ def choose(draft: Draft, name: str, player_id: str) -> Draft:
     return draft
 
 
+
+def team_nicknames() -> dict:
+    """code -> nickname ("LAL" -> "lakers"), from the ingested team tables."""
+    out: dict[str, str] = {}
+    for directory in sorted(SNAPSHOTS.glob("bbref-2*")):
+        path = directory / "teams.csv"
+        if not path.is_file():
+            continue
+        with path.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                out.setdefault(row["team_id"], _slug_part(row["name"]))
+    return out
+
+
+def _slug_part(text: str) -> str:
+    """One slug component: ascii, lowercase, hyphen-separated, no empties.
+
+    SLUG RULES, stated once and applied everywhere:
+
+    * unicode is folded to ascii (Porziņģis -> porzingis), because a
+      filename is a path and a path is not a place for combining marks;
+    * everything that is not a letter or digit becomes a separator;
+    * runs of separators collapse and the ends are trimmed;
+    * the result is lowercased.
+
+    Never returns something that could be read as a number by yaml on its
+    own - the caller always joins at least one alphabetic component - and
+    never returns an empty string to the caller: ``derive_scenario_id``
+    drops empty parts and falls back rather than emitting "--2026".
+    """
+    folded = unicodedata.normalize("NFKD", str(text))
+    ascii_only = folded.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-",
+                                     ascii_only.lower())).strip("-")
+
+
+def derive_scenario_id(draft: Draft, taken=None) -> str:
+    """A scenario id from the RESOLVED content. The user never types one.
+
+    ``<subject>-to-<destination>-<season year>`` - "curry-to-lakers-2026".
+    The subject is the first moving player's surname, the destination the
+    team he arrives at (nickname where the ingest knows one, code
+    otherwise), the year the seed date's.
+
+    Always a non-empty string and never numeric-looking, because it is used
+    as a filename and as a path component and because an id that yaml can
+    reparse as an int crashes the first join that touches it.
+
+    ``taken`` is an iterable of ids already in use: a collision gets ``-2``,
+    ``-3`` and so on rather than overwriting. ``write_scenario`` still
+    refuses to overwrite regardless - this only stops the refusal from
+    being the user's first news of the clash.
+    """
+    move = draft.moves[0] if draft.moves else {}
+    name = str(move.get("player_name") or
+               (draft.player_names[0] if draft.player_names else ""))
+    surname = _slug_part(name.split()[-1]) if name.split() else ""
+    destination = str(move.get("to_team") or
+                      (draft.team_codes[0] if draft.team_codes else ""))
+    nick = team_nicknames().get(destination, "")
+    where = nick or _slug_part(destination)
+    year = ""
+    if draft.seed_date:
+        year = _slug_part(str(draft.seed_date).split("-")[0])
+
+    parts = [p for p in (surname, "to", where, year) if p and p != "to"]
+    if surname and where:
+        parts = [surname, "to", where] + ([year] if year else [])
+    base = "-".join(parts) if parts else ""
+    if not base or not any(ch.isalpha() for ch in base):
+        # Nothing usable resolved. A timestamp is ugly and unambiguous,
+        # which beats an id that yaml will turn back into a number.
+        base = "scenario-" + datetime.now(timezone.utc).strftime(
+            "%Y%m%dT%H%M%SZ")
+    taken = set(taken or ())
+    if base not in taken:
+        return base
+    for n in range(2, 1000):
+        candidate = f"{base}-{n}"
+        if candidate not in taken:
+            return candidate
+    return f"{base}-{datetime.now(timezone.utc).strftime('%H%M%S')}"
+
+
+def existing_scenario_ids(config_dir: Path = CONFIG_DIR) -> set:
+    """Ids already declared, so a derived one can step around them."""
+    return {path.stem for path in config_dir.glob("*.yaml")}
+
+
 def scenario_yaml(draft: Draft, scenario_id: str) -> str:
     if not draft.ok:
         raise AuthoringError("draft has open errors or ambiguities; not yamlable")
@@ -1106,7 +1210,10 @@ def scenario_yaml(draft: Draft, scenario_id: str) -> str:
     next_season = (f"{seed.year}-{str(seed.year + 1)[-2:]}"
                    if seed.month >= 7 else season)
     lines = [
-        f"id: {scenario_id}",
+        # QUOTED. Unquoted, `id: 2026` round-trips out of yaml as an int and
+        # crashes the first path join that uses it. Quoting is the fix at
+        # the writing end; scenario.py checks the type at the reading end.
+        f'id: "{scenario_id}"',
         f"kind: {draft.kind}",
         f'season: "{season}"',
         f"freeze: {draft.seed_date}",
@@ -1183,12 +1290,33 @@ def write_scenario(draft: Draft, scenario_id: str, *, confirmed: bool = False,
 
     from mironba.world.scenario import scenario_from_raw
 
+    # A REJECTION AND A CRASH ARE DIFFERENT ANSWERS.
+    #
+    # ScenarioError means the loader looked at the file and judged it: the
+    # message says what is wrong and what would fix it, and "drafted yaml
+    # would not load as a scenario" is the right thing to say.
+    #
+    # Anything else means the loader BROKE. It did not judge the scenario,
+    # so reporting a verdict would be a claim nobody made - and it hid a
+    # real bug for exactly that reason: an unquoted numeric id raised
+    # "unsupported operand type(s) for /: 'WindowsPath' and 'int'" and the
+    # blanket handler dressed it up as a validation failure, sending anyone
+    # reading it to look at their sentence instead of at the path join.
+    from mironba.world.scenario import ScenarioError
+
     try:
         scenario_from_raw(_yaml.safe_load(text))
-    except Exception as exc:
+    except ScenarioError as exc:
         raise AuthoringError(
             f"drafted yaml would not load as a scenario; nothing was "
             f"written: {exc}") from exc
+    except Exception as exc:
+        raise AuthoringCrash(
+            f"the scenario loader crashed while checking the drafted yaml; "
+            f"nothing was written. This is NOT a verdict on the scenario - "
+            f"it was never judged. {type(exc).__name__}: {exc}",
+            traceback=traceback.format_exc(),
+        ) from exc
     path.write_text(text, encoding="utf-8")
     return path
 
