@@ -1176,7 +1176,14 @@ unmeasured" as free-to-run work that has not been run.
   persisted per query and resumable (`--recall-run` skips already-persisted
   slices); the LeBron half adds its own slices and stays UNMEASURED until
   they run. Attempted from home 2026-08-04: 429 on the first slice,
-  self-labelled, zero loss (run record on disk).
+  self-labelled, zero loss (run record on disk). The egress ledger is now
+  closed (entry #69): home sustains ZERO at any probed spacing (30/60/120s
+  ladders, first-request 429s), GitHub Actions' Azure egress is throttled
+  identically (measured, not assumed), and no VPN exists on the machine —
+  the tether remains the only egress that has ever answered. The committed
+  `--rate-probe` ladder spends its streak on the recall queries, so one
+  tether session measures the sustainable spacing and collects the recall
+  data in the same requests.
 - **Market model resolution** - BLOCKED at current inputs: the value model's
   win-delta error is 10.48 wins, so contention tiers separate only extremes,
   and single-star trades can flatten to zero projected-win shift (reported
