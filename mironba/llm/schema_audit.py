@@ -18,6 +18,9 @@ count nobody has looked at. Each entry declares a disposition:
 
 ``MEASURED``
     Split, or kept, on the strength of a measurement with its own null.
+    Both outcomes have now happened inside one schema: `event` was split
+    (#74), `kind` was measured and KEPT (#77). "Measured" does not mean
+    "split".
 
 ``CANDIDATE``
     Multi-field and plausibly splittable, not yet measured. Named so, with
@@ -84,12 +87,16 @@ CALL_AUDIT: tuple[CallAudit, ...] = (
     CallAudit(
         purpose="scenario_draft", module="world/authoring.py",
         schema="Proposal", disposition=CANDIDATE,
-        note="The schema #74 was measured inside. `event` was split out of "
-             "it and went 6/12 -> 12/12. VIABLE to split further: `kind` is "
-             "the other CLASSIFIER in the schema, so it can be measured the "
-             "same way against the same kind of null, and `moves` was "
-             "already split for the same symptom (empty on 3 of 4 "
-             "sentences). COST: +1 round trip per draft, ~49s measured, "
+        note="Two of its fields are now measured and they disagree. "
+             "`event` was inert inside this schema (6/12, never emitted the "
+             "minority class) and 12/12 alone, so it was split - #74. "
+             "`kind`, the OTHER classifier in the same schema, scores 12/12 "
+             "INSIDE it, both classes emitted, identical to the dedicated "
+             "call - #77 - so it stays, and splitting it would cost a round "
+             "trip for nothing. A large schema is therefore not the "
+             "diagnosis; it is the place to look. The remaining fields are "
+             "extractions rather than labels and are UNMEASURED. COST of "
+             "splitting one more: +1 round trip per draft, ~49s measured, "
              "against a p50 of 3.2 min - about 25% more wall clock, paid "
              "once per authored scenario rather than per tick.",
     ),

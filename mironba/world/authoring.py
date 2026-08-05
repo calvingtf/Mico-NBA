@@ -485,13 +485,23 @@ KIND_SET = (
 def classify_kind(sentence: str, client) -> str:
     """Stipulated or pending decision, as its OWN one-field call.
 
-    NOT wired into the drafting flow. It exists to be measured against
-    ``KIND_SET`` the way ``classify_event`` was measured against
-    ``CLASSIFIER_SET``, because the lesson of #74 is that a field inside a
-    large schema can be inert - not that every field is. Splitting this one
-    on the strength of the other field's result would be generalising from
-    n=1, which is the mistake the null discipline exists to prevent, and it
-    would cost a round trip (~49s measured) on every draft.
+    NOT wired into the drafting flow, and MEASURED SO (#77):
+
+        null, always "stipulated"        6 / 12
+        `kind` in the full schema       12 / 12   both classes emitted, 80s
+        this call                       12 / 12   both classes emitted, 18s
+
+    The field is not inert inside the large schema. It is perfect there, and
+    this call buys nothing but a round trip - so the flow keeps using the
+    schema field and this function stays as the measured-and-rejected arm,
+    the same way ``authoring_nothink`` is kept in models.yaml.
+
+    That is the more useful half of #74. A field inside a large schema *can*
+    be inert; it is not inert *because* the schema is large. `event` and
+    `kind` sit in the same eight-field schema, are both Literal classifiers
+    of the same shape, and one was a constant while the other was flawless.
+    Schema size says where to look, never what you will find - which is why
+    the rule is "measure one candidate", not "split multi-field calls".
     """
     from typing import Literal
 

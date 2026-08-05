@@ -3094,3 +3094,46 @@ positions rather than a force layout (two calls must place a team
 identically or two runs cannot be compared - also pinned), and edges
 animating in recorded order with the seed at order -1, ahead of everything
 it caused.
+
+## #77 — the candidate was measured and it says DO NOT SPLIT
+
+The one candidate, measured the way #74 was: `kind`, the other `Literal`
+classifier in the same eight-field `Proposal` schema that `event` was inert
+inside. `KIND_SET` is six stipulated sentences and six pending-decision ones,
+declared before the run so the set could not be chosen to suit the answer,
+which puts the majority-class null at 6/12 by construction.
+
+| arm | correct | predicted | median latency |
+|---|---|---|---|
+| null — always "stipulated" | 6 / 12 | — | — |
+| `kind` inside the full schema | **12 / 12** | stipulated x6, pending_decision x6 | 79.5s |
+| dedicated one-field call | **12 / 12** | stipulated x6, pending_decision x6 | 17.5s |
+
+**The field is not inert.** It is perfect inside the large schema, emits both
+classes evenly, and the dedicated call is indistinguishable from it on
+accuracy. Splitting would cost +1 round trip — ~49s, about 25% more wall
+clock per authored scenario — and buy nothing measurable. `classify_kind`
+stays in the tree as the measured-and-rejected arm, the way
+`authoring_nothink` is kept in `models.yaml`.
+
+**This is the more useful half of #74.** `event` and `kind` sit in the same
+schema, are the same shape — a two-value `Literal` with a described field —
+and one was a constant while the other was flawless. So the lesson is not
+"large schemas break fields". It is:
+
+> Schema size says where to look, never what you will find.
+
+Had the #74 result been generalised, every multi-field call would have been
+split on the strength of n=1, every draft would have cost an extra round
+trip, and the change would have been justified by a rule of thumb rather
+than by evidence — the exact failure the null discipline exists to prevent,
+arriving through a fix rather than a metric.
+
+**The distribution column earned its place again.** Both arms score 12/12
+here, and both are non-degenerate. In #74 the accuracy alone was 6/12 for
+arm A, which reads as "weak"; only `predicted: trade x12` showed it was a
+constant. The rule catches both directions: it names a degenerate predictor,
+and it certifies a genuine one. Recorded raw in `bench-kind-arms.json`.
+
+Registry updated: `MEASURED` now explicitly does not mean "split" — one field
+in `scenario_draft` was split on measurement and another was kept on it.

@@ -130,10 +130,16 @@ Small local models drift from JSON schemas. Defenses, in order:
 
    **Do not split every multi-field call on principle.** That is the same
    error facing the other way — a change made on a rule of thumb rather
-   than evidence. `mironba/llm/schema_audit.py` enumerates every call site
-   with a derived field count and a declared disposition (measured,
-   candidate, by-design); measure a candidate against its own null before
-   moving it.
+   than evidence. The counter-example is in the same schema: `kind`, the
+   other `Literal` classifier sitting beside `event`, scores **12/12
+   inside** it, both classes emitted, indistinguishable from its dedicated
+   call (#77). One field was a constant and its neighbour was flawless.
+   Schema size says where to look, never what you will find.
+
+   `mironba/llm/schema_audit.py` enumerates every call site with a derived
+   field count and a declared disposition (measured, candidate, by-design).
+   Measure a candidate against its own null before moving it — and note
+   that "measured" does not mean "split".
 
 ### Throughput
 
