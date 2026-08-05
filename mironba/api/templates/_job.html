@@ -1,0 +1,32 @@
+<div class="panel jobpanel"
+     hx-get="/authoring/job/{{ job_id }}"
+     hx-trigger="every 1s"
+     hx-swap="outerHTML"
+     hx-target="this">
+  <div class="jobhead">
+    <span class="pulse">drafting</span>
+    <span class="step">
+      {% if job.steps %}{{ job.steps[-1].at }}s elapsed{% else %}starting…{% endif %}
+      {% if latency.p50 %}· measured p50 {{ (latency.p50 / 60)|round(1) }} min,
+      worst {{ (latency.worst / 60)|round(1) }} min on this machine{% endif %}
+    </span>
+  </div>
+  <div class="joblog">
+    {% for s in job.steps %}
+      <div class="jobstep reveal" style="--i: {{ loop.index0 }}">
+        <span class="jobtick">✓</span>
+        <span class="jobat mono">{{ "%5.1f"|format(s.at) }}s</span>
+        <span class="jobname">{{ s.name }}</span>
+        {% if s.detail %}<div class="jobdetail">{{ s.detail }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="jobstep pending">
+      <span class="jobtick spin">◌</span>
+      <span class="jobname">
+        {% if not job.steps %}loading the model…
+        {% elif job.steps|length < 2 %}extracting structure — the slow step
+        {% else %}working…{% endif %}
+      </span>
+    </div>
+  </div>
+</div>

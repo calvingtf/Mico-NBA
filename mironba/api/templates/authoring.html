@@ -1,24 +1,41 @@
 {% extends "base.html" %}
 {% block title %}new scenario{% endblock %}
 {% block body %}
-<h1>Scenario input — the CLI flow, in a browser</h1>
-<p>The model proposes structure (it cannot state a salary — the schema has no
-field for one); determinism resolves player <i>and team</i> names, derives
-what the snapshot already knows (a blank from-team, an unstated date gets the
-declared rule), and runs the trade package through <code>rules/</code> before
-anything can be written. Ambiguity surfaces as a choice. Writing is a
-separate, explicit confirmation.</p>
-<form hx-post="/authoring/draft" hx-target="#draft" hx-indicator="#busy">
-  <input type="text" name="sentence" required
+<h1>Write a scenario</h1>
+<p class="lede">A scenario sentence names a counterfactual move in plain
+English — who goes where, and optionally when. <b>The return side is
+optional:</b> if you name only the incoming player, the solver enumerates
+every legal package the destination could send and you pick one.</p>
+
+<div class="examples">
+  <div class="step">Three examples, each demonstrating a different behaviour
+    — one click loads it:</div>
+  {% for ex in examples %}
+  <button type="button" class="example" data-sentence="{{ ex.sentence }}">
+    <b>{{ ex.demonstrates }}</b>
+    <span class="mono exsentence">“{{ ex.sentence }}”</span>
+    <span class="exnote">{{ ex.expect }}</span>
+  </button>
+  {% endfor %}
+</div>
+
+<form hx-post="/authoring/draft" hx-target="#draft" hx-swap="innerHTML">
+  <input type="text" id="sentence" name="sentence" required
          placeholder="Curry traded to the lakers for Reaves and Grimes">
-  <p><button type="submit">Draft it</button>
-     <span id="busy" class="htmx-indicator step">step 1/2 — proposing structure.
-     {% if latency.p50 %}Measured on this machine: p50
-     {{ (latency.p50 / 60)|round(1) }} min, warm {{ (latency.warm / 60)|round(1) }} min,
-     worst {{ (latency.worst / 60)|round(1) }} min over {{ latency.n }} drafts —
-     a local 27B model with thinking on. Thinking off returns in 4s and
-     extracts nothing (measured, entry #71), so the wait is the price of a
-     usable draft.{% else %}Latency not yet measured on this machine.{% endif %}</span></p>
+  <p><button type="submit">Draft it →</button>
+     <span class="step">the model proposes structure; determinism resolves
+     names, derives what the snapshot knows, and runs the package through
+     <code>rules/</code> — you confirm before anything is written</span></p>
 </form>
+
 <div id="draft"></div>
+
+<script>
+for (const button of document.querySelectorAll(".example")) {
+  button.addEventListener("click", () => {
+    document.getElementById("sentence").value = button.dataset.sentence;
+    document.getElementById("sentence").focus();
+  });
+}
+</script>
 {% endblock %}

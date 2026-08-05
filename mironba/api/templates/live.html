@@ -1,16 +1,31 @@
 {% extends "base.html" %}
-{% block title %}live{% endblock %}
+{% block title %}watch a run{% endblock %}
 {% block body %}
-<h1>Live run view</h1>
-<p class="muted">This watches a run directory <b>as the CLI writes it</b> —
-elapsed and events measured, not estimated. The UI cannot start a run: the
-import fence keeps <code>sim/</code> out of this package, which is why a
-scenario is executed from the command line and observed here.</p>
-<div class="panel">
-  <b class="mono">python -m mironba.sim.stipulated --scenario curry-lakers-2026 --out runs/&lt;id&gt;/manifest.json</b>
-  <div class="step">start a run in a terminal, then open it below — new
-  events appear as they are produced</div>
+<h1>Watch a simulation run</h1>
+
+<div class="twokinds">
+  <div class="kind ours">
+    <div class="kindhead">The UI does this — and streams it</div>
+    <p><b>Drafting a scenario.</b> Started from <a href="/authoring">the
+    authoring page</a>, run in this process, and streamed step by step as it
+    happens: structure extraction, movements, name resolution, the solver,
+    the rules verdict. You watch it work.</p>
+    <a class="cta" href="/authoring">Draft a scenario →</a>
+  </div>
+  <div class="kind theirs">
+    <div class="kindhead">Started outside — the UI can only watch</div>
+    <p><b>A simulation run.</b> The import fence keeps <code>sim/</code> out
+    of this package, so the UI cannot start one — that is deliberate, and it
+    is why this page observes rather than launches. Start a run in a
+    terminal and it appears below as its event log is written.</p>
+    <div class="mono cmd">python -m mironba.sim.stipulated --scenario
+      curry-lakers-2026 --out runs/&lt;id&gt;/manifest.json</div>
+  </div>
 </div>
+
+<h2>Run directories</h2>
+<p class="muted">Newest first. Ones with an event log can be watched live;
+the rest recorded a manifest only.</p>
 <div class="cards">
 {% for r in rows %}
   <a class="card door" href="/live/{{ r.id }}">

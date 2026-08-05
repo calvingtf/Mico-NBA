@@ -2743,3 +2743,29 @@ schema change.
 **Incidental confirmation:** the model returned ``to_team="Warriors"`` - a
 nickname - and the new team resolver mapped it to GSW. The resolver earned
 its keep on its first live sentence.
+
+## #72 — the 404 was a stale process, not a route
+
+`/live` returned 404 in the browser while `TestClient` returned 200 for the
+same path in the same working tree. The route was never wrong: PID 23660 was
+still LISTENING on 8300, left over from an earlier background smoke test, and
+it was serving the code it had started with — from before `/live` existed.
+
+A server holds the code it booted with. Editing a file does not change what an
+already-running process serves, so a 404 from a long-lived dev server is
+evidence about *that process's* age, not about the route table. The check that
+settles it costs one command: compare the in-process route list
+(`[r.path for r in app.routes]`) against what the port returns.
+
+`api/serve.py` now probes the port before binding and refuses to start behind
+another listener, printing the reason and the command to clear it. The failure
+it prevents is not a crash — it is reading a stale page and believing it.
+
+**Streaming, measured.** Drafting `Victor Wembanyama traded to the Warriors`
+end to end through the job endpoint: POST returned in under a second, the first
+step landed at 0s, structure extraction finished at 88s, and the finished panel
+offered 8 solver packages. Previously the same request held one HTTP connection
+open for its full duration with no output. The work takes the same time; what
+changed is that its progress is now observable while it runs. The measured
+distribution (p50 3.2 min, worst 8 min) is printed in the watcher header so the
+elapsed counter has a scale to be read against.

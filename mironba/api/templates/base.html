@@ -344,6 +344,56 @@
     .hero-node, .reveal { animation: none; opacity: 1; transform: none; }
     .pulse { animation: none; }
   }
+
+  /* ------------------------------------------------------------ examples */
+  .examples { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+  .example { display: block; text-align: left; width: 100%;
+             background: var(--surface); color: var(--ink);
+             border: 1px solid var(--line); border-radius: var(--radius);
+             padding: var(--space-2) var(--space-3); cursor: pointer;
+             font: inherit; transition: border-color .15s, transform .15s; }
+  .example:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .example b { display: block; color: var(--accent); font-size: var(--fs-0);
+               text-transform: uppercase; letter-spacing: .06em; }
+  .exsentence { display: block; margin: var(--space-1) 0; color: var(--ink); }
+  .exnote { display: block; font-size: var(--fs-0); color: var(--muted); }
+
+  /* -------------------------------------------------------- drafting job */
+  .jobpanel { border-left: 3px solid var(--accent); }
+  .jobhead { display: flex; gap: var(--space-2); align-items: baseline;
+             flex-wrap: wrap; margin-bottom: var(--space-2); }
+  .jobhead .pulse { font-weight: 700; text-transform: uppercase;
+                    letter-spacing: .08em; font-size: var(--fs-0); }
+  .joblog { display: grid; gap: var(--space-1); }
+  .jobstep { display: grid; grid-template-columns: 1.2rem 4rem 1fr;
+             align-items: baseline; gap: var(--space-2);
+             font-size: var(--fs-0); }
+  .jobstep .jobdetail { grid-column: 3; color: var(--muted); }
+  .jobtick { color: var(--ok); }
+  .jobat { color: var(--muted); }
+  .jobname { color: var(--ink); }
+  .jobstep.pending .jobtick { color: var(--accent); }
+  .jobstep.pending .jobname { color: var(--muted); }
+  .spin { display: inline-block; animation: spin 1.4s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ------------------------------------------------------- the two kinds */
+  .twokinds { display: grid; grid-template-columns: 1fr 1fr;
+              gap: var(--space-2); margin: var(--space-3) 0; }
+  @media (max-width: 52rem) { .twokinds { grid-template-columns: 1fr; } }
+  .kind { background: var(--surface); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: var(--space-3);
+          border-top-width: 3px; }
+  .kind.ours { border-top-color: var(--accent); }
+  .kind.theirs { border-top-color: var(--muted); }
+  .kindhead { text-transform: uppercase; letter-spacing: .08em;
+              font-size: .68rem; color: var(--muted);
+              margin-bottom: var(--space-1); }
+  .cmd { background: var(--bg); border: 1px solid var(--line);
+         border-radius: var(--radius); padding: var(--space-2);
+         font-size: var(--fs-0); word-break: break-all; }
+  .elapsedline { font-size: var(--fs-0); color: var(--muted);
+                 margin-bottom: var(--space-2); }
 </style>
 </head>
 <body>
@@ -354,7 +404,7 @@
     <a href="/authoring">new scenario</a>
     <a href="/league">league</a>
     <a href="/runs">runs</a>
-    <a href="/live">live</a>
+    <a href="/live">watch a run</a>
     <a href="/branches/lebron-2026">branches</a>
     <a href="/report">report</a>
     <a href="/results">results</a>

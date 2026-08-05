@@ -50,6 +50,29 @@ LLM_PATH_LABEL = ("LLM path: one model per tick in the intent loop - "
                   "not thirty agents. The thirty-team reaction is "
                   "deterministic code.")
 
+#: Three sentences, each demonstrating a DIFFERENT behaviour of the flow -
+#: labelled by what they demonstrate, not by their content. The third is
+#: the distinctive one: a refusal, with the shortfall quoted from rules/.
+EXAMPLES = (
+    {"demonstrates": "Under-specified — the solver builds the return",
+     "sentence": "Victor Wembanyama traded to the Warriors",
+     "expect": "names an incoming player and no return, so rules/solver.py "
+               "enumerates every legal package GSW could send (8 of them) "
+               "and you pick one."},
+    {"demonstrates": "Fully specified — validates LEGAL",
+     "sentence": ("Stephen Curry traded from GSW to LAL for Austin Reaves "
+                  "and Quentin Grimes on 2026-07-06"),
+     "expect": "both sides named; the validator approves it and still "
+               "reports its findings (LAL ends hard-capped at the first "
+               "apron; GSW drops below the roster minimum)."},
+    {"demonstrates": "REFUSED — the rules say no, with the shortfall",
+     "sentence": ("Giannis Antetokounmpo traded from MIA to NYK for "
+                  "Karl-Anthony Towns"),
+     "expect": "a plausible-looking star swap that is illegal: New York "
+               "takes back more than 100% apron matching allows, and the "
+               "page quotes the exact dollar shortfall from rules/."},
+)
+
 #: Figure captions: filename -> (title, the null it is read against).
 FIGURE_CAPTIONS = (
     ("three-arm.svg", "Three-arm A/B",
@@ -190,10 +213,59 @@ def measured_latency() -> dict:
             "n": bench.get("n"), "warm": bench.get("warm_p50_s")}
 
 
+#: In-flight drafting jobs. A draft takes minutes on a local model, so the
+#: request that starts one returns IMMEDIATELY with a polling view and the
+#: work continues on a thread - the user watches it happen instead of
+#: staring at a spinner wondering whether it hung.
+JOBS: dict = {}
+
+
+def _draft_job(job_id: str, sentence: str) -> None:
+    import time
+    import traceback
+
+    from mironba.world.authoring import (_drafting_client, complete_moves,
+                                         draft_from_sentence,
+                                         needs_moves_call, validate_draft)
+
+    job = JOBS[job_id]
+    start = time.monotonic()
+
+    def mark(name: str, detail: str = "") -> None:
+        job["steps"].append({"name": name, "detail": detail,
+                             "at": round(time.monotonic() - start, 1)})
+
+    try:
+        mark("model ready", "local 27B, thinking on")
+        client = _drafting_client()
+        draft = draft_from_sentence(sentence, client)
+        mark("step 1/2: structure extracted",
+             f"kind={draft.kind} · players "
+             f"{', '.join(draft.player_names) or 'none'} · teams "
+             f"{', '.join(draft.team_codes) or 'none'}")
+        if needs_moves_call(draft):
+            mark("step 2/2: the one-shot returned no movements",
+                 "asking again with the tiny movements-only schema - the "
+                 "charter's documented failure mode for this model")
+            draft = complete_moves(draft, client)
+            mark("step 2/2: movements extracted",
+                 "; ".join(f"{m['player_name']} -> {m['to_team']}"
+                           for m in draft.moves) or "still none")
+        validate_draft(draft, on_step=mark)
+        job["draft"] = draft
+    except Exception as exc:  # noqa: BLE001 - a failed draft is a visible state
+        job["error"] = repr(exc)
+        job["trace"] = traceback.format_exc()[-400:]
+    finally:
+        job["done"] = True
+        job["elapsed"] = round(time.monotonic() - start, 1)
+
+
 @app.get("/authoring", response_class=HTMLResponse)
 def authoring_page(request: Request):
     return templates.TemplateResponse(request, "authoring.html", {
         "llm_label": LLM_PATH_LABEL, "latency": measured_latency(),
+        "examples": EXAMPLES,
     })
 
 
@@ -207,40 +279,40 @@ def _validated(draft):
 
 @app.post("/authoring/draft", response_class=HTMLResponse)
 def authoring_draft(request: Request, sentence: str = Form(...)):
-    """Step 1 of 2: structure. If the movements call is still needed, the
-    fragment auto-continues to /authoring/complete so the progress the user
-    sees matches the calls actually being made."""
-    from mironba.world.authoring import (_drafting_client,
-                                         draft_from_sentence,
-                                         needs_moves_call)
+    """Start a drafting job and return the watcher IMMEDIATELY.
 
-    try:
-        draft = draft_from_sentence(sentence, _drafting_client())
-    except Exception as exc:  # noqa: BLE001 - a down model is a visible state
+    The work happens on a thread; the fragment returned here polls
+    /authoring/job/{id} once a second and shows each step as it lands.
+    """
+    import threading
+    import uuid
+
+    job_id = uuid.uuid4().hex[:12]
+    JOBS[job_id] = {"sentence": sentence, "steps": [], "done": False,
+                    "draft": None, "error": None}
+    threading.Thread(target=_draft_job, args=(job_id, sentence),
+                     daemon=True).start()
+    return templates.TemplateResponse(request, "_job.html", {
+        "job_id": job_id, "job": JOBS[job_id],
+        "latency": measured_latency()})
+
+
+@app.get("/authoring/job/{job_id}", response_class=HTMLResponse)
+def authoring_job(request: Request, job_id: str):
+    """One polling step of a drafting job: the steps that have landed."""
+    job = JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(404, "no such drafting job")
+    if job["done"] and job["error"]:
         return templates.TemplateResponse(request, "_draft_error.html", {
-            "error": repr(exc)})
-    if needs_moves_call(draft):
-        return templates.TemplateResponse(request, "_draft_step2.html", {
-            "draft": draft, "draft_json": json.dumps(asdict(draft))})
-    draft = _validated(draft)
-    return templates.TemplateResponse(request, "_draft.html", {
-        "draft": draft, "draft_json": json.dumps(asdict(draft))})
-
-
-@app.post("/authoring/complete", response_class=HTMLResponse)
-async def authoring_complete(request: Request):
-    """Step 2 of 2: the tiny movements-only call, then validation."""
-    from mironba.world.authoring import Draft, _drafting_client, complete_moves
-
-    form = await request.form()
-    draft = Draft(**json.loads(form["draft_json"]))
-    try:
-        draft = _validated(complete_moves(draft, _drafting_client()))
-    except Exception as exc:  # noqa: BLE001
-        return templates.TemplateResponse(request, "_draft_error.html", {
-            "error": repr(exc)})
-    return templates.TemplateResponse(request, "_draft.html", {
-        "draft": draft, "draft_json": json.dumps(asdict(draft))})
+            "error": job["error"]})
+    if job["done"] and job["draft"] is not None:
+        draft = job["draft"]
+        return templates.TemplateResponse(request, "_draft.html", {
+            "draft": draft, "draft_json": json.dumps(asdict(draft)),
+            "elapsed": job.get("elapsed"), "steps": job["steps"]})
+    return templates.TemplateResponse(request, "_job.html", {
+        "job_id": job_id, "job": job, "latency": measured_latency()})
 
 
 @app.post("/authoring/package", response_class=HTMLResponse)

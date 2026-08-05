@@ -412,12 +412,19 @@ def complete_moves(draft: Draft, client) -> Draft:
     return draft
 
 
-def validate_draft(draft: Draft) -> Draft:
+def validate_draft(draft: Draft, on_step=None) -> Draft:
     """Deterministic validation. Mutates and returns the draft.
 
     Order matters: resolution first, because a stipulated package cannot even
     be built while a name is ambiguous.
+
+    ``on_step(name, detail)`` is called as each phase completes, so a caller
+    can stream progress. It changes nothing about the validation: a UI that
+    watches must not be able to steer.
     """
+    def step(name: str, detail: str = "") -> None:
+        if on_step is not None:
+            on_step(name, detail)
     players = player_table()
     index = team_index()
     lo, hi = ingested_window()
@@ -457,12 +464,22 @@ def validate_draft(draft: Draft) -> Draft:
         draft.ambiguities[key] = candidates
         return ""
 
+    step("players resolved",
+         ", ".join(f"{k} -> {v}" for k, v in draft.resolved.items()
+                   if not k.startswith("team:"))
+         or "no player names to resolve")
+
     draft.team_codes = [team_of(t) or t for t in draft.team_codes]
     draft.scored_teams = [team_of(t) or t for t in draft.scored_teams]
     for move in draft.moves:
         if move["from_team"]:
             move["from_team"] = team_of(move["from_team"]) or move["from_team"]
         move["to_team"] = team_of(move["to_team"]) or move["to_team"]
+
+    step("teams resolved",
+         ", ".join(f"{k.replace('team:', '')} -> {v}"
+                   for k, v in draft.resolved.items() if k.startswith("team:"))
+         or "no team names to resolve")
 
     if not draft.seed_date:
         newest = max(int(d.name.split("-")[1])
@@ -495,14 +512,19 @@ def validate_draft(draft: Draft) -> Draft:
               "the kind must be 'stipulated' (an asserted event) or "
               "'pending_decision' (an open question)")
 
+    step("seed date", draft.seed_date)
+
     if (draft.kind == "stipulated" and not draft.errors
             and not draft.ambiguities):
-        _validate_package(draft)
+        _validate_package(draft, on_step=on_step)
     return draft
 
 
-def _validate_package(draft: Draft) -> None:
+def _validate_package(draft: Draft, on_step=None) -> None:
     """The stipulated package through rules/, findings carried either way."""
+    def step(name: str, detail: str = "") -> None:
+        if on_step is not None:
+            on_step(name, detail)
     from mironba.rules.constants import environment_for
     from mironba.rules.trade_validator import (
         PlayerAsset, TeamTradeState, Trade, validate_trade,
@@ -579,9 +601,15 @@ def _validate_package(draft: Draft) -> None:
         destination = one_sided[0]
         source = next(t for t in involved if t != destination)
         incoming = [p for p in players if p.to_team == destination]
+        step("solver enumerating returns",
+             f"{destination} must send salary back for "
+             + ", ".join(p.name for p in incoming))
         options, refusal = _return_packages(
             destination, source, incoming, salaries, payroll, roster,
             season, seed)
+        step("solver finished",
+             f"{len(options)} legal package(s)" if options
+             else "no legal package exists")
         if refusal:
             _fail(draft, refusal["message"], refusal["next_step"])
             return
@@ -619,6 +647,8 @@ def _validate_package(draft: Draft) -> None:
         players=tuple(players), label=draft.sentence)
     verdict = validate_trade(trade, environment_for(season))
     draft.findings.extend(str(f) for f in (getattr(verdict, "findings", []) or []))
+    step("rules verdict",
+         "LEGAL" if verdict.verdict.name == "APPROVED" else verdict.verdict.name)
     if not verdict.legal:
         errors = [str(f) for f in verdict.errors()]   # a method, not a property
         _fail(draft, "the stipulated package is not a legal trade; findings "

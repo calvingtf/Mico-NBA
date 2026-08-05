@@ -1,4 +1,9 @@
 <div class="panel">
+  {% if elapsed %}
+  <div class="elapsedline">drafted in <b>{{ elapsed }}s</b>
+    ({{ (elapsed / 60)|round(1) }} min) across {{ steps|length }} steps —
+    measured on this run, not estimated</div>
+  {% endif %}
   <p><b>{{ draft.sentence }}</b><br>
      <span class="step">kind={{ draft.kind }} · seed {{ draft.seed_date }}</span></p>
 
