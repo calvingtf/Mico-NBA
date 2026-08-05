@@ -3,3 +3,4 @@
 {"ran_at": "2026-08-04T16:41:02.702168+00:00", "egress_ip": "136.52.76.203", "mode": "recall-run", "verdict": "throttled", "failed_at": "draft recall 20260508..20260515 b1", "error": "<HTTPError 429: 'Too Many Requests'>", "persisted": {}}
 {"ran_at": "2026-08-04T16:47:56.997592+00:00", "egress_ip": "136.52.76.203", "mode": "recall-run", "verdict": "throttled", "failed_at": "draft recall 20260508..20260515 b1", "error": "<HTTPError 429: 'Too Many Requests'>", "persisted": {}}
 {"ran_at": "2026-08-05T04:19:03.672492+00:00", "egress_ip": "136.52.76.203", "mode": "rate-probe", "results": {"30": {"streak": 0, "ended": "429"}, "60": {"streak": 0, "ended": "429"}, "120": {"streak": 0, "ended": "429"}}}
+{"ran_at": "2026-08-05T05:40:38.292445+00:00", "egress_ip": "172.184.209.169", "mode": "rate-probe", "results": {"30": {"streak": 0, "ended": "429"}, "60": {"streak": 0, "ended": "429"}, "120": {"streak": 0, "ended": "429"}}}

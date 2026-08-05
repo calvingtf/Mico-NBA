@@ -1,3 +1,6 @@
 {"ts": "2026-08-05T04:18:29.280692+00:00", "egress_ip": "136.52.76.203", "spacing_s": 30, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
 {"ts": "2026-08-05T04:18:41.951675+00:00", "egress_ip": "136.52.76.203", "spacing_s": 60, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
 {"ts": "2026-08-05T04:18:52.947618+00:00", "egress_ip": "136.52.76.203", "spacing_s": 120, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
+{"ts": "2026-08-05T05:39:59.902594+00:00", "egress_ip": "172.184.209.169", "spacing_s": 30, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
+{"ts": "2026-08-05T05:40:10.601114+00:00", "egress_ip": "172.184.209.169", "spacing_s": 60, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
+{"ts": "2026-08-05T05:40:23.987437+00:00", "egress_ip": "172.184.209.169", "spacing_s": 120, "label": "draft recall 20260508..20260515 b1", "outcome": "429", "streak_before": 0}
