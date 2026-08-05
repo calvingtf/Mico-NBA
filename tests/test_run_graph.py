@@ -73,9 +73,27 @@ class TestItDrawsForAnyCompletedRun:
         if not (RUNS / run_id / "manifest.json").is_file():
             pytest.skip("run absent")
         page = client.get(f"/runs/{run_id}").text
-        assert "The league after this run" in page
+        assert '<figure class="graphfig"' in page
         assert f"/runs/{run_id}/league" in page
         assert client.get(f"/runs/{run_id}/league").status_code == 200
+
+    @pytest.mark.parametrize("run_id", ["curry-lakers-2026",
+                                        "lebron-warriors-2026"])
+    def test_the_graph_comes_before_everything_but_the_heading(self, run_id):
+        """A user who has just started a run should not have to scroll to
+        find what it produced. The graph sits directly under the title -
+        ahead of the numbers, the detail report and the manifest."""
+        if not (RUNS / run_id / "manifest.json").is_file():
+            pytest.skip("run absent")
+        body = client.get(f"/runs/{run_id}").text
+        body = body[body.find("<h1"):]
+        graph = body.find('<figure class="graphfig"')
+        assert graph > 0
+        for later in ('<div class="bignums"', "Detail report",
+                      "<h2>Manifest"):
+            at = body.find(later)
+            if at >= 0:
+                assert graph < at, f"{later} precedes the graph"
 
     def test_a_manifest_only_run_is_refused_rather_than_drawn_empty(self):
         """No reaction is not an empty graph - it is a run that never got

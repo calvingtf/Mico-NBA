@@ -349,9 +349,12 @@ def authoring_job(request: Request, job_id: str):
             "error": job["error"]})
     if job["done"] and job["draft"] is not None:
         draft = job["draft"]
+        from mironba.api import runner
+
         return templates.TemplateResponse(request, "_draft.html", {
             "draft": draft, "draft_json": json.dumps(asdict(draft)),
-            "elapsed": job.get("elapsed"), "steps": job["steps"]})
+            "elapsed": job.get("elapsed"), "steps": job["steps"],
+            "typical_s": runner.TYPICAL_RUN_S})
     return templates.TemplateResponse(request, "_job.html", {
         "job_id": job_id, "job": job, "latency": measured_latency()})
 
@@ -374,8 +377,11 @@ async def authoring_package(request: Request):
         return templates.TemplateResponse(request, "_draft_error.html", {
             "error": str(exc)})
     draft = _validated(draft)
+    from mironba.api import runner
+
     return templates.TemplateResponse(request, "_draft.html", {
-        "draft": draft, "draft_json": json.dumps(asdict(draft))})
+        "draft": draft, "draft_json": json.dumps(asdict(draft)),
+        "typical_s": runner.TYPICAL_RUN_S})
 
 
 @app.post("/authoring/resolve", response_class=HTMLResponse)
@@ -388,8 +394,11 @@ async def authoring_resolve(request: Request):
         if key.startswith("choose:") and value:
             choose(draft, key.split(":", 1)[1], str(value))
     draft = _validated(draft)
+    from mironba.api import runner
+
     return templates.TemplateResponse(request, "_draft.html", {
-        "draft": draft, "draft_json": json.dumps(asdict(draft))})
+        "draft": draft, "draft_json": json.dumps(asdict(draft)),
+        "typical_s": runner.TYPICAL_RUN_S})
 
 
 @app.post("/authoring/write", response_class=HTMLResponse)
@@ -414,6 +423,21 @@ async def authoring_write(request: Request):
             "error": str(exc)})
     from mironba.api import runner
 
+    # WRITE AND RUN, as one action. The confirm checkbox is the gate on
+    # writing, and it has just been passed; making the user find a second
+    # button afterwards is how a run gets lost. A user who wants the file
+    # without the reaction says so with the other button.
+    if str(form.get("run", "yes")) == "yes":
+        try:
+            run_id = runner.start(scenario_id)
+        except ValueError as exc:
+            return templates.TemplateResponse(request, "_written.html", {
+                "path": path.name, "scenario_id": scenario_id,
+                "typical_s": runner.TYPICAL_RUN_S, "start_error": str(exc)})
+        response = templates.TemplateResponse(request, "_run_progress.html", {
+            "p": runner.progress(run_id)})
+        response.headers["HX-Redirect"] = f"/live/{run_id}"
+        return response
     return templates.TemplateResponse(request, "_written.html", {
         "path": path.name, "scenario_id": scenario_id,
         "typical_s": runner.TYPICAL_RUN_S})
@@ -524,6 +548,7 @@ def run_view(request: Request, run_id: str):
         from mironba.report.timeline import load_run
 
         feed = load_run(run_dir)
+    from mironba.api.detail import detail_report
     from mironba.api.graph import (cascade_payoff, obligations_view,
                                    pursuit_view, run_graph, signing_view)
 
@@ -531,6 +556,9 @@ def run_view(request: Request, run_id: str):
         "run_id": run_id, "manifest": manifest, "feed": feed,
         "g": run_graph(manifest, run_id),
         "payoff": cascade_payoff(manifest),
+        "detail": detail_report(manifest),
+        "narrative_ok": __import__(
+            "mironba.api.runner", fromlist=["x"]).report_available(run_id),
         "duties": obligations_view(manifest),
         "pursuit": pursuit_view(manifest),
         "signing": signing_view(manifest),
@@ -564,6 +592,39 @@ def run_league(request: Request, run_id: str):
     return templates.TemplateResponse(request, "league.html", {
         "g": graph, "llm_label": LLM_PATH_LABEL,
         "unfalsifiable": graph["unfalsifiable"]})
+
+
+
+@app.post("/runs/{run_id}/narrative", response_class=HTMLResponse)
+def run_narrative(request: Request, run_id: str):
+    """Start the narrative report. NEVER on the path of the run's output.
+
+    The deterministic detail report is already on screen by the time this
+    can be clicked; this adds prose and nothing else, so it is an explicit
+    extra with its cost stated rather than something the run waits on.
+    """
+    from mironba.api import runner
+
+    if ".." in run_id or not (RUNS / run_id).is_dir():
+        raise HTTPException(404)
+    try:
+        report_id = runner.start_report(run_id)
+    except ValueError as exc:
+        return templates.TemplateResponse(request, "_narrative.html", {
+            "unavailable": str(exc), "run_id": run_id})
+    return templates.TemplateResponse(request, "_narrative.html", {
+        "p": runner.report_progress(report_id), "run_id": run_id})
+
+
+@app.get("/runs/{run_id}/narrative/{report_id}", response_class=HTMLResponse)
+def run_narrative_progress(request: Request, run_id: str, report_id: str):
+    from mironba.api import runner
+
+    progress = runner.report_progress(report_id)
+    if not progress:
+        raise HTTPException(404, "no such report job")
+    return templates.TemplateResponse(request, "_narrative.html", {
+        "p": progress, "run_id": run_id})
 
 
 # -- (c) branch comparison ---------------------------------------------------

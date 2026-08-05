@@ -8,10 +8,18 @@ exists or ever will. It is a demonstration, not a measurement.</p>
 {% else %}
 <h1>{{ run_id }}</h1>
 {% endif %}
-<p class="whatis"><b>This screen is a finished run.</b> The trade below was
-approved by <code>rules/</code>, applied to the world, and thirty teams then
-planned their offseason around it. Everything here was produced by the
-simulation and read back off the manifest it wrote.</p>
+<p class="whatis"><b>A finished run.</b> The seed was approved by
+<code>rules/</code>, applied to the world, and thirty teams planned their
+offseason around it. Everything on this page was produced by the simulation
+and read back off the manifest it wrote — no model was called.
+<a href="/runs/{{ run_id }}/league">Full-width graph →</a></p>
+
+{% if g %}
+{% include "_graph.html" %}
+{% else %}
+<p class="muted">No league graph: this run recorded no reaction, so there is
+no league state to draw. That is different from an empty graph.</p>
+{% endif %}
 
 {% if payoff %}
 <section class="payoff">
@@ -229,16 +237,6 @@ simulation and read back off the manifest it wrote.</p>
 </div>
 {% endif %}
 
-{% if g %}
-<h2>The league after this run
-  <a class="cta ghost small" href="/runs/{{ run_id }}/league">open full
-    width →</a></h2>
-{% include "_graph.html" %}
-{% else %}
-<p class="muted">No league graph: this run recorded no reaction, so there is
-no league state to draw. That is different from an empty graph.</p>
-{% endif %}
-
 {% if trade %}
 <h2>The stipulated seed</h2>
 <div class="panel">
@@ -250,6 +248,108 @@ no league state to draw. That is different from an empty graph.</p>
     {{ p.to }} · ${{ "{:,}".format(p.salary) }}</div>
   {% endfor %}
   {% for f in trade.findings %}<div class="finding">{{ f }}</div>{% endfor %}
+</div>
+{% endif %}
+
+{% if detail %}
+<h2>Detail report
+  <span class="step">— deterministic, assembled from this run's own record;
+  no model call, nothing to wait for</span></h2>
+
+{% if detail.cascade %}
+<div class="panel">
+  <b>The cascade</b>
+  <p class="step">Depth {{ detail.cascade.depth_reached }} reached.
+  {{ detail.cascade.considered }} candidate pair(s) considered:
+  <b>{{ detail.cascade.generated }}</b> became trades,
+  {{ detail.cascade.killed_by_gate }} were killed by the counterparty gate,
+  {{ detail.cascade.killed_by_solver }} by the solver finding no legal
+  package{% if detail.cascade.survival is not none %} —
+  {{ "%.0f"|format(detail.cascade.survival * 100) }}% survived{% endif %}.
+  Most candidate pairs SHOULD die at the gates; that is the filter working,
+  not a failure count.</p>
+</div>
+{% endif %}
+
+{% if detail.contested.n %}
+<h3>Contested players
+  <span class="step">— {{ detail.contested.n }} player(s) drew offers from
+  more than one team; {{ detail.contested.uncontested }} drew one and are
+  not listed</span></h3>
+<p class="lede"><b>{{ detail.contested.n_reasoned }}</b> resolved on a stated
+reason and <b>{{ detail.contested.n_arbitrary }}</b> on an arbitrary
+tiebreak. The second number is not signal and is kept separate here rather
+than in a footnote — the resolver's own words are quoted, never paraphrased.</p>
+<div class="difflist">
+  {% for c in detail.contested.rows %}
+  <div class="diffrow {% if c.arbitrary %}arb{% endif %}">
+    <b>{{ c.player }}</b>
+    <span class="with">{{ c.n_offers }} offers → <b>{{ c.winner }}</b>
+      <span class="step">lost by {{ c.losers|join(", ") }}</span></span>
+    <span class="without">“{{ c.reason }}”</span>
+    {% if c.arbitrary %}<span class="badge warn">ARBITRARY — a coin-flip,
+      carries no signal</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h3>Per team
+  <span class="step">— {{ detail.movers|length }} team(s) moved,
+  {{ detail.quiet|length }} stood pat</span></h3>
+<div class="teamtable">
+  {% for t in detail.movers %}
+  <div class="teamrow">
+    <div class="teamrow-head"><b class="mono">{{ t.team }}</b>
+      <span class="step">${{ "{:,}".format(t.start) }} →
+        ${{ "{:,}".format(t.end) }}
+        ({{ "+" if t.delta >= 0 else "" }}${{ "{:,}".format(t.delta) }})</span>
+    </div>
+    {% if t.routes %}
+    <div class="teamrow-body">
+      {% for r in t.routes %}
+      <span class="chip">{{ r.player }} · <code>{{ r.route }}</code> ·
+        ${{ "{:,}".format(r.salary) }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if t.lost %}
+    <div class="teamrow-body step">lost contests: {{ t.lost|join(", ") }}</div>
+    {% endif %}
+    {% for o in t.obligations %}
+    <div class="teamrow-body"><span class="badge ok">REQUIRED</span>
+      {{ o.rule }} — signed via <code>{{ o.route }}</code> at
+      ${{ "{:,}".format(o.salary) }}</div>
+    {% endfor %}
+    {% for u in t.unmet %}
+    <div class="err">{{ u.rule }} UNMET, short by {{ u.short_by }}:
+      {{ u.reason }}</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% if detail.quiet %}
+<p class="step">Stood pat: {% for t in detail.quiet %}<code>{{ t.team }}</code>
+{% endfor %}— recorded as making no move, which is a result and not a gap.</p>
+{% endif %}
+
+<h3>The narrative report <span class="step">— optional, and slow</span></h3>
+<div class="panel" id="narrative">
+  <p class="whatis">Everything above is deterministic and was already on
+  screen when the run finished. A narrative summary is a <b>language model
+  call</b> — minutes, not seconds — and it can only restate what is above.
+  It is offered, never waited on.</p>
+  {% if narrative_ok and narrative_ok[0] %}
+  <form hx-post="/runs/{{ run_id }}/narrative" hx-target="#narrative"
+        hx-swap="innerHTML">
+    <p><button type="submit">Write the narrative summary →</button>
+       <span class="step">spawns the report agent as a separate process;
+       the run's own output does not depend on it</span></p>
+  </form>
+  {% else %}
+  <p class="step"><b>Not available for this run.</b>
+     {{ narrative_ok[1] if narrative_ok else "" }}</p>
+  {% endif %}
 </div>
 {% endif %}
 

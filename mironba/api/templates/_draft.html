@@ -80,7 +80,18 @@
       <label class="choice"><input type="checkbox" name="confirmed" value="yes">
         <span>I reviewed the draft and confirm the write — the same human
         gate as the CLI</span></label>
-      <p><button type="submit">Write scenario file</button></p>
+      <p class="runrow">
+        <button type="submit" name="run" value="yes" class="primary">
+          Write it and run the simulation →</button>
+        <button type="submit" name="run" value="no" class="secondary">
+          Write the file only</button>
+      </p>
+      <p class="step">Running produces the whole reaction: thirty teams
+      plan their offseason, the trade cascade fires, the league graph and
+      the detail report are written. About {{ typical_s }} seconds, measured
+      on this machine — deterministic, with no model call anywhere in it.
+      The confirm box above is the gate on WRITING, and running a file you
+      just confirmed needs no second gate.</p>
     </form>
   {% elif draft.errors %}
     <p class="muted">NOT WRITABLE yet — each error above says what would

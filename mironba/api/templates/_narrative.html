@@ -1,0 +1,25 @@
+{% if unavailable %}
+<p class="whatis"><b>The narrative report does not apply to this run.</b>
+{{ unavailable }}</p>
+{% else %}
+<div {% if not p.done %}hx-get="/runs/{{ run_id }}/narrative/{{ p.report_id }}"
+     hx-trigger="every 2s" hx-swap="outerHTML" hx-target="this"{% endif %}>
+  <div class="jobhead">
+    <span class="pulse">{% if p.done %}narrative finished{% else %}writing{% endif %}</span>
+    <span class="step">{{ p.elapsed }}s elapsed — a model call, minutes not
+      seconds. Everything above was already on screen without it.</span>
+  </div>
+  <div class="joblog runlog">
+    {% for line in p.lines %}<div class="runline mono">{{ line }}</div>{% endfor %}
+    {% if not p.done %}
+    <div class="jobstep pending"><span class="jobtick spin">◌</span>
+      <span class="jobname">the report agent is running as a separate
+        process</span></div>
+    {% endif %}
+  </div>
+  {% if p.done and p.returncode != 0 %}
+  <div class="err"><b>THE REPORT FAILED</b> — exit code {{ p.returncode }}.
+    The output above is the child process's own, unedited.</div>
+  {% endif %}
+</div>
+{% endif %}

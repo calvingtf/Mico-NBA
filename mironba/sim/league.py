@@ -572,6 +572,12 @@ class TeamResult:
     #: Obligations the reaction could not meet, with the binding reason.
     #: Reported rather than faked - an unmet obligation is a result.
     unmet: list = field(default_factory=list)
+    #: Every signing with the ROUTE that paid for it and the first-year
+    #: salary: [{player_id, route, salary}]. The route is the interesting
+    #: half - "signed Kleber" says nothing about whether that used cap
+    #: room, an exception, or the minimum, and only the route explains why
+    #: another team could not match.
+    routes: list = field(default_factory=list)
 
 
 def signing_ceiling(team: str, env, revealed=None) -> int:
@@ -656,6 +662,10 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
             roster_count=state.roster_count + 1,
         )
         results[team].signed.append(pid)
+        results[team].routes.append({
+            "player_id": pid, "route": route.route,
+            "salary": route.max_first_year,
+        })
 
     # The decision resolves first, and it changes what the winner can afford.
     winner = BRANCH_PREMISES.get(outcome_key, "")

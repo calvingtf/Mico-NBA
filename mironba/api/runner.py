@@ -112,6 +112,77 @@ def start(scenario_id: str) -> str:
     return run_id
 
 
+#: The narrative report entry point. A string, never imported - same
+#: reasoning as ENTRY_POINT above.
+REPORT_ENTRY_POINT = "mironba.agents.report"
+
+#: report_id -> the same shape as RUNNING.
+REPORTS: dict = {}
+
+
+def report_available(run_id: str) -> tuple:
+    """(can_run, why_not). The report agent reads an EVENT LOG.
+
+    A stipulated run writes a manifest and no events.jsonl, so the agent has
+    nothing to read. That is a real limitation of the narrative path and it
+    is reported as one - offering a button that can only fail is worse than
+    saying why it is absent.
+    """
+    run_dir = RUNS / run_id
+    if not run_dir.is_dir():
+        return (False, "no such run directory")
+    if not (run_dir / "events.jsonl").is_file():
+        return (False,
+                "this run recorded a manifest and no event log. The report "
+                "agent summarises an event stream, and a stipulated run does "
+                "not write one - every number it would describe is already "
+                "on this page, assembled deterministically. Nothing is "
+                "missing; the narrative path simply does not apply here.")
+    return (True, "")
+
+
+def start_report(run_id: str) -> str:
+    """Spawn the report agent for a run that has an event log."""
+    ok, why = report_available(run_id)
+    if not ok:
+        raise ValueError(why)
+    report_id = f"{run_id}::narrative::{uuid.uuid4().hex[:6]}"
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    proc = subprocess.Popen(
+        [sys.executable, "-m", REPORT_ENTRY_POINT, str(RUNS / run_id)],
+        cwd=str(ROOT), env=env, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+        errors="replace", bufsize=1,
+    )
+    REPORTS[report_id] = {"proc": proc, "lines": [], "scenario": run_id,
+                          "started": time.monotonic(), "returncode": None,
+                          "finished": None}
+    threading.Thread(target=_drain_report, args=(report_id, proc),
+                     daemon=True).start()
+    return report_id
+
+
+def _drain_report(report_id: str, proc: subprocess.Popen) -> None:
+    job = REPORTS[report_id]
+    for line in proc.stdout:  # type: ignore[union-attr]
+        job["lines"].append(line.rstrip("\n"))
+    proc.wait()
+    job["returncode"] = proc.returncode
+    job["finished"] = time.monotonic()
+
+
+def report_progress(report_id: str) -> dict:
+    job = REPORTS.get(report_id)
+    if job is None:
+        return {}
+    elapsed = (job["finished"] or time.monotonic()) - job["started"]
+    return {
+        "report_id": report_id, "lines": list(job["lines"]),
+        "elapsed": round(elapsed, 1), "returncode": job["returncode"],
+        "done": job["returncode"] is not None,
+    }
+
+
 def progress(run_id: str) -> dict:
     """What the child has printed so far, and whether it is done."""
     job = RUNNING.get(run_id)

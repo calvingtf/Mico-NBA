@@ -3200,3 +3200,69 @@ emitting them for the wrong sentences every time, and there are no labels in
 a run record to notice. Accuracy still needs a labelled set and a study with
 its own null. What changed is that one specific failure - the constant
 wearing a classifier's type signature - no longer requires one.
+
+## #79 — the run was unreachable, and the report was waiting on a model
+
+A user could not find the run. The cause was structural, not cosmetic:
+confirming a draft wrote the file and stopped there. The Run button lived in
+a fragment swapped into `#draft`, which is *below* a draft review long enough
+to include every solver route and every finding — so after a three-minute
+wait the reward was a small button the reader had scrolled past.
+
+**The confirm gate is on writing, and it has been passed by then.** So
+writing now starts the run: the primary control reads "Write it and run the
+simulation →" and the response carries `HX-Redirect: /live/{run_id}`. A user
+who wants the file without the reaction says so with the second button, and
+that path still makes Run the dominant control rather than a line of prose.
+The human gate is untouched — an unconfirmed write is still 400, pinned.
+
+**The full path, walked end to end on a scenario that did not previously
+exist** ("Kentavious Caldwell-Pope signs with the Orlando Magic"):
+
+| # | screen | what happens |
+|---|---|---|
+| 1 | `/authoring` | the box, three examples, the measured p50 stated |
+| 2 | `POST /authoring/draft` | returns immediately with a watcher |
+| 3 | `/authoring/job/{id}` | streams: model ready → structure → **event classified: signing** → movements → resolution → routes |
+| 4 | the draft panel | "drafted in 218.6s (3.6 min) across 10 steps"; 2 legal routes; the confirm form |
+| 5 | `POST /authoring/write` | writes AND starts, redirects to `/live/{id}` |
+| 6 | `/live/{id}` | the child's own stdout, streamed |
+| 7 | `/runs/{id}` | **~6s later**, the finished run |
+
+Two things in that trace are worth keeping. The classifier reclassified
+`trade → signing` on a sentence it had never seen, in production — #74's fix
+working outside its own measurement. And the whole path after the draft is
+six seconds; the three minutes are all model extraction.
+
+**The graph is now the first thing on the finished run.** Measured by
+character offset in the rendered body: `<h1>` at 0, the graph figure at
+**612**, the headline numbers at 46952, the detail report at 51286, the
+manifest at 78747. Pinned by a test that fails if anything overtakes it.
+
+**The detail report needed no model and was never assembled.** Everything in
+it was already in the manifest; it just had nowhere to go. Now on the page
+the moment the run exits:
+
+* obligations — which teams the rules forced to act, and what they did;
+* attributable vs displaced, both lists named;
+* **contested players** — who drew offers from more than one team, who won,
+  and the resolver's own reason quoted, with arbitrary tiebreaks counted
+  separately and labelled at the point of display. `curry-lakers-2026`: 189
+  contests, 8 genuinely contested, and the reason strings are verbatim;
+* per team — cap before and after, the delta, and **every signing with the
+  route that paid for it**. That last needed one line in `commit()`: the
+  route was computed and discarded. "Signed Kleber" says nothing about
+  whether that was cap room, an exception or the minimum, and only the route
+  explains why another team could not match;
+* the cascade — depth, and candidate pairs killed by the counterparty gate
+  and by the solver, stated as a survival share so the gates read as the
+  filter they are rather than as a failure count;
+* teams that stood pat, named rather than omitted.
+
+**The narrative report is separate, optional, and honest about not
+applying.** It is a model call and slow, so it sits below a deterministic
+report that is already on screen, spawned as a subprocess like the
+simulation. And for these runs it cannot run at all: the report agent
+summarises an *event log*, and a stipulated run writes a manifest only. The
+page says exactly that instead of offering a button that can only fail —
+"Nothing is missing; the narrative path simply does not apply here."

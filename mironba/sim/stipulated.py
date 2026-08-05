@@ -481,6 +481,20 @@ def main(argv=None) -> int:
             "reaction": {
                 t: asdict(results[t]) for t in league_mod.TEAMS
             },
+            # Every contested player, with WHO bid and WHY it resolved as
+            # it did. The reason is the resolver's own string, ARBITRARY
+            # included - a contested player decided by a coin flip and one
+            # decided by a higher offer are different claims, and a report
+            # that flattens them is asserting signal that is not there.
+            "contests": [
+                {"player_id": c.player_id, "winner": c.winner,
+                 "reason": c.reason, "contested": c.contested,
+                 "offers": [{"team": o.team, "route": o.route,
+                             "amount": o.max_first_year}
+                            for o in sorted(c.offers,
+                                            key=lambda o: -o.max_first_year)]}
+                for c in contests
+            ],
             "obligations": {
                 "hard_caps": duties.hard_caps,
                 "roster_shortfall": duties.roster_shortfall,
