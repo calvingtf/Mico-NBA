@@ -526,8 +526,18 @@ scenarios **forward only**: nothing can be archived retroactively, and
 historical scenarios remain hand-curated.
 
 Every day is accounted for, and gaps are expected rather than exceptional:
-the scheduled tasks run only while the machine is logged in, which is a
-known, named gap source. So every poll writes a marker even when it appends
+the local scheduled tasks run only while the machine is logged in, which is
+a known, named gap source - so a **GitHub Action polls twice daily from
+cloud infrastructure** (`.github/workflows/rss-archive.yml`, cron offset
+from the local runs) and commits the dated partitions back. What it commits
+is feed-provided syndication metadata - feed, url, title, the feed's own
+snippet, published_at, fetched_at - no scraped article bodies, matching the
+policy already in force (partitions tracked since the archiver's first
+commit; poll.log gitignored). Two writers into the same append-only
+partitions are safe via git PLUS reader-side dedup: each unions by URL
+against its own copy, merges can leave duplicate lines, and read_partition
+dedupes by URL so coverage, windows and drafts never double-count - a test
+simulates the merge artifact. The local tasks stay as the fallback. So every poll writes a marker even when it appends
 nothing - an absent partition and an empty poll must never look the same
 (the sentinel-for-absence failure class) - and `--coverage` enumerates every
 day from the first partition to today, listing each missing day and the

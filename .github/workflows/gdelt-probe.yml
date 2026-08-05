@@ -1,0 +1,65 @@
+# GDELT egress probe + rate ladder from a cloud runner.
+#
+# The home egress is saturated by another party (429 on the first request
+# after 45 silent minutes; entries #58-#61) and the tether budget is ~4
+# requests per window. This job answers two questions from a DIFFERENT
+# egress: does GDELT answer at all here, and what spacing runs
+# indefinitely. The rate ladder's queue leads with the USEFUL queries
+# (unpersisted recall slices, then the lebron/davis windows), so a
+# sustained rung completes the recall measurement as a side effect.
+#
+# Persistence: per query to the runner's disk (append-only jsonl), then
+# committed back to the repo - the same files the local runs append to;
+# readers dedupe by URL so two writers merging through git are safe. An
+# if:always() artifact covers job failures short of a runner kill.
+name: gdelt-probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/gdelt-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gdelt-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rate probe (egress-labelled, persists per query)
+        run: python -m mironba.data.ingest.gdelt_spike --rate-probe
+
+      - name: Offline recall from whatever persisted
+        if: always()
+        run: python -m mironba.data.ingest.gdelt_spike --offline
+
+      - name: Upload spike files as artifact (covers push failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdelt-spike-results
+          path: evidence/spikes/
+
+      - name: Commit results back (self-reporting run record)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add evidence/spikes
+          git diff --cached --quiet || git commit -m "data(gdelt): cloud-runner probe results (egress in run record)"
+          git pull --rebase origin main
+          git push origin main

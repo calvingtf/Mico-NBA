@@ -1,0 +1,59 @@
+# The standing RSS archive, off the logged-in machine.
+#
+# The archive is the only source of future PRE evidence, and the local
+# scheduled tasks stop whenever the Windows machine sleeps - a known,
+# named gap source in the README. This job polls twice daily from GitHub's
+# infrastructure and commits the dated partitions back.
+#
+# What gets committed, and why that is fine: rows are FEED-PROVIDED
+# syndication metadata - feed name, url, title, the feed's own snippet,
+# published_at, fetched_at - broadcast by publishers for exactly this kind
+# of reuse. No scraped article bodies. This matches the repo's existing
+# policy: archive/rss/*.csv partitions have been tracked since the
+# archiver's first commit (poll.log is gitignored as scheduler noise).
+#
+# Two writers (this job + the local tasks) into the same append-only
+# partitions are safe VIA GIT plus reader-side dedup: each writer unions
+# by URL against its own copy, git merges can therefore leave duplicate
+# lines, and read_partition dedupes by URL on the way in - so coverage,
+# windows and drafts never double-count. The schedule is offset from the
+# local tasks (9:00/21:00 local) so the two writers also cover each
+# other's gaps.
+name: rss-archive
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3,15 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rss-archive
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Poll feeds (marker written even on an empty poll)
+        run: python -m mironba.data.ingest.archive
+
+      - name: Commit partitions
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add archive/rss
+          git diff --cached --quiet || git commit -m "data(archive): scheduled cloud poll"
+          git pull --rebase origin main
+          git push origin main

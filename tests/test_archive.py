@@ -231,3 +231,26 @@ class TestHealthIsVisibleUnasked:
             _marker_row("__poll__", date(2026, 8, 1), "pm", "2026-08-01T21:00:00+00:00"),
         ], root=tmp_path)
         assert last_poll_stamp(tmp_path) == "2026-08-01T21:00:00+00:00"
+
+
+class TestTwoWritersThroughGit:
+    def test_a_merge_duplicated_line_is_neutralised_on_read(self, tmp_path):
+        """The local tasks and the GitHub Action each union by URL against
+        their own copy; a git merge of diverged appends can leave the same
+        URL twice in one partition. Readers dedupe, so nothing
+        double-counts."""
+        import csv as _csv
+
+        from mironba.data.ingest.archive import FIELDS
+
+        write_archive_rows([_row("http://a", "2026-08-05T08:00:00+00:00")],
+                           root=tmp_path)
+        # simulate the merge artifact: the same row appended again, as a
+        # second writer's copy would leave it after a rebase
+        with (tmp_path / "2026-08-05.csv").open("a", newline="",
+                                                encoding="utf-8") as handle:
+            _csv.DictWriter(handle, fieldnames=FIELDS).writerow(
+                _row("http://a", "2026-08-05T08:00:00+00:00"))
+        rows = read_partition(date(2026, 8, 5), tmp_path)
+        assert len(rows) == 1, "duplicate line reached a reader"
+        assert day_status(date(2026, 8, 5), tmp_path) == COVERED

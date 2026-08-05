@@ -77,6 +77,15 @@ ACQUIRERS = {
     "_query": ("persists-per-unit",
                "write_articles appends each query's batch the moment it "
                "returns, before the next request can fail the run"),
+    "_query_nosleep": ("persists-per-unit",
+                       "the rate probe's variant: every event lands in the "
+                       "rate log with its timestamp and useful batches in "
+                       "the article store, before the next request"),
+    "_probe_queue": ("persists-per-unit",
+                     "reads the article store only; no network of its own"),
+    "rate_probe": ("persists-per-unit",
+                   "per-event rate log + per-batch article store + a run "
+                   "record at the end; a 429 mid-ladder loses nothing"),
     "egress_ip": ("persists-per-unit",
                   "stamped into every run record and article batch"),
 }
@@ -87,7 +96,7 @@ ARTICLES = EVIDENCE / "spikes" / "gdelt-articles.jsonl"
 
 #: Writer declaration for the enumerated writer test: append-only event logs,
 #: a third declared kind - never opens 'w', never merges, only appends.
-APPEND_ONLY = frozenset({"write_run_record", "write_articles"})
+APPEND_ONLY = frozenset({"write_run_record", "write_articles", "write_rate_event"})
 PARTITIONED: frozenset = frozenset()
 WHOLE_TABLE: frozenset = frozenset()
 
@@ -406,6 +415,141 @@ def recall_run() -> int:
     return render_offline()
 
 
+#: Every rate-probe event, one JSON line: timestamp, egress, spacing, label,
+#: outcome (ok / 429 / recovery). Append-only.
+RATE_LOG = EVIDENCE / "spikes" / "gdelt-rate-probe.jsonl"
+
+
+def write_rate_event(event: dict, path: Path = RATE_LOG) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event) + chr(10))
+    return path
+
+
+def _query_nosleep(raw_query: str, window: tuple[str, str]) -> list[dict]:
+    """_query without the fixed pause - the rate probe owns its own clock."""
+    params = urllib.parse.urlencode({
+        "query": raw_query, "mode": "artlist", "format": "json",
+        "startdatetime": window[0], "enddatetime": window[1],
+        "maxrecords": "250", "sort": "datedesc",
+    })
+    request = urllib.request.Request(
+        f"{DOC_API}?{params}",
+        headers={"User-Agent": "mironba-gdelt-spike/1.0 (research)"})
+    with urllib.request.urlopen(request, timeout=90) as response:
+        payload = json.loads(response.read() or b"{}")
+    return payload.get("articles", [])
+
+
+def _probe_queue() -> list:
+    """Useful queries first - unpersisted recall slices, then the lebron and
+    davis windows - then harmless volume slices, so a success is never
+    wasted on nothing."""
+    done = set()
+    if ARTICLES.is_file():
+        done = {json.loads(line)["label"] for line in
+                ARTICLES.read_text(encoding="utf-8").splitlines() if line.strip()}
+    queue = [entry for entry in build_recall_plan() if entry[0] not in done]
+    if "lebron window" not in done:
+        queue.append(("lebron window", '"LeBron James"', LEBRON_WINDOW,
+                      ["LeBron James"]))
+    if "davis window" not in done:
+        queue.append(("davis window", '"Anthony Davis"', LEBRON_WINDOW,
+                      ["Anthony Davis"]))
+    for month in ("202603", "202602", "202601", "202512", "202511", "202510",
+                  "202509", "202508", "202507", "202506", "202505", "202504",
+                  "202503", "202502", "202501", "202412", "202411", "202410"):
+        queue.append((f"volume probe {month}", '"NBA"',
+                      (month + "01000000", month + "08000000"), None))
+    return queue
+
+
+def rate_probe(spacings=(30, 60, 120), streak_target: int = 20) -> int:
+    """Find the spacing that runs indefinitely, from this egress.
+
+    Ladder: at each spacing, send queries until 429 or ``streak_target``
+    consecutive successes. Every query persists on return - useful ones
+    into the article store, every event into the rate log with its
+    timestamp - so no run loses what it already fetched. After a 429 the
+    ladder moves to the next rung, and the gap between that 429 and the
+    next success is the OBSERVED recovery bound: reported as observed,
+    never assumed.
+    """
+    from datetime import datetime, timezone
+
+    egress = egress_ip()
+    print(f"GDELT RATE PROBE - egress IP {egress}")
+    print(f"  ladder {list(spacings)}s; each rung stops at 429 or "
+          f"{streak_target} consecutive successes")
+    queue = _probe_queue()
+    print(f"  query queue: {len(queue)} (useful slices first)")
+    last_429_at = None
+    results = {}
+    for spacing in spacings:
+        streak = 0
+        print(f"\n  spacing {spacing}s:")
+        while streak < streak_target and queue:
+            label, raw, window, names = queue[0]
+            stamp = datetime.now(timezone.utc)
+            try:
+                articles = _query_nosleep(raw, window)
+            except Exception as exc:  # noqa: BLE001
+                is_429 = "429" in repr(exc)
+                write_rate_event({
+                    "ts": stamp.isoformat(), "egress_ip": egress,
+                    "spacing_s": spacing, "label": label,
+                    "outcome": "429" if is_429 else f"error: {exc!r}",
+                    "streak_before": streak,
+                })
+                print(f"    {stamp.isoformat()[11:19]}Z  {label[:38]:<38} "
+                      f"{'429' if is_429 else repr(exc)[:38]}  "
+                      f"(streak was {streak})")
+                results[spacing] = {"streak": streak, "ended": "429"}
+                last_429_at = stamp
+                break
+            queue.pop(0)
+            streak += 1
+            if last_429_at is not None:
+                recovery = (stamp - last_429_at).total_seconds()
+                print(f"    RECOVERY OBSERVED: {recovery:.0f}s from the "
+                      "last 429 to this success")
+                write_rate_event({"ts": stamp.isoformat(),
+                                  "egress_ip": egress,
+                                  "recovery_s": recovery})
+                last_429_at = None
+            write_rate_event({
+                "ts": stamp.isoformat(), "egress_ip": egress,
+                "spacing_s": spacing, "label": label, "outcome": "ok",
+                "articles": len(articles), "streak": streak,
+            })
+            if names is not None:
+                write_articles(egress, label, window, names, articles)
+            print(f"    {stamp.isoformat()[11:19]}Z  {label[:38]:<38} "
+                  f"ok ({len(articles)} articles, streak {streak})")
+            time.sleep(spacing)
+        else:
+            if streak >= streak_target:
+                results[spacing] = {"streak": streak, "ended": "sustained"}
+                print(f"    SUSTAINED: {streak} consecutive at {spacing}s")
+                break
+            if not queue:
+                results[spacing] = {"streak": streak,
+                                    "ended": "queue exhausted"}
+    write_run_record({
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+        "egress_ip": egress, "mode": "rate-probe",
+        "results": {str(k): v for k, v in results.items()},
+    })
+    sustained = [s for s, r in results.items() if r["ended"] == "sustained"]
+    streaks = {k: v["streak"] for k, v in results.items()}
+    print("\n  VERDICT: " + (
+        f"{sustained[0]}s spacing sustained {streak_target} in a row from "
+        f"egress {egress}" if sustained else
+        f"no rung sustained from egress {egress}; per-rung streaks {streaks}"))
+    return 0
+
+
 def main(argv=None) -> int:
     import argparse
 
@@ -420,11 +564,17 @@ def main(argv=None) -> int:
                         help="run the sliced recall plan (12 queries over "
                              "the curated span); persists per query, "
                              "resumable after a 429")
+    parser.add_argument("--rate-probe", action="store_true",
+                        help="ladder 30/60/120s spacings to find what runs "
+                             "indefinitely; useful queries first, everything "
+                             "persisted and timestamped")
     args = parser.parse_args(argv)
     if args.offline:
         return render_offline()
     if args.recall_run:
         return recall_run()
+    if args.rate_probe:
+        return rate_probe()
 
     print("GDELT DOC 2.0 SPIKE - feasibility only; stop at the verdict.")
     egress = egress_ip()

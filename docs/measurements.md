@@ -2598,3 +2598,31 @@ salary_x_low_minutes as a derived column. The additive model's numbers
 stay recorded (bench interaction_test + entry #64) as the superseded step;
 --fit carries the settle record forward instead of overwriting it, which
 its first run did and the re-run repaired.
+
+
+## 68. The sustainable rate: unmeasurable from home, delegated to a cloud egress (2026-08-04)
+
+**Item 1, measured from home (136.52.76.203):** the ladder - 30s, 60s,
+120s, each rung until 429 or 20 consecutive successes - returned 429 on
+the FIRST request at every rung (per-rung streaks {30: 0, 60: 0, 120: 0},
+every event timestamped in gdelt-rate-probe.jsonl). No spacing is
+sustainable from this egress; the saturation is not ours to pace around,
+consistent with entry #61's diagnosis. Re-costing at the home rate is
+therefore division by zero - the honest cost line is "0 requests/day from
+home; every job needs another egress."
+
+**Item 2, alternatives measured not assumed:** no VPN exists on this
+machine (no Windows VPN profiles, no installed clients - scanned). The
+cloud runner is delegated to .github/workflows/gdelt-probe.yml: it labels
+its own egress (ipify before any GDELT request), runs the SAME ladder with
+the useful queries first (unpersisted recall slices, then lebron/davis),
+persists per query, uploads an artifact even on failure, and commits its
+run record and article batches back to the repo - self-reporting, since
+this machine has no gh CLI. A sustained rung there completes the recall
+measurement as a side effect and dissolves the tether requirement; a 429
+is a labelled datacenter-throttling result. Whatever it reports supersedes
+nothing until pulled and read.
+
+**The probe queue design note:** successes are never wasted - the ladder
+spends its streak on real work first, so "measure the rate" and "collect
+the data" are the same requests.

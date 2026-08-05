@@ -127,11 +127,27 @@ def rows_from(articles: list[Article]) -> list[dict]:
 
 
 def read_partition(day: date, root: Path = ARCHIVE_ROOT) -> list[dict]:
+    """One partition's rows, deduped by URL on the way in.
+
+    Two writers now append to these files - the local scheduled tasks and
+    the GitHub Action - each unioning by URL against its OWN copy. A git
+    merge of diverged appends can therefore leave duplicate lines, which
+    the write path alone cannot prevent; deduping at read makes every
+    consumer (coverage, windows, drafts) immune, so the two-writer setup
+    is safe by construction only WITH this line.
+    """
     path = root / f"{day.isoformat()}.csv"
     if not path.is_file():
         return []
+    seen: set[str] = set()
+    rows = []
     with path.open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle))
+        for row in csv.DictReader(handle):
+            if row["url"] in seen:
+                continue
+            seen.add(row["url"])
+            rows.append(row)
+    return rows
 
 
 def day_status(day: date, root: Path = ARCHIVE_ROOT) -> str:
