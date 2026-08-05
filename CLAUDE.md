@@ -21,9 +21,25 @@ compressed timeline, and produce a scored, reproducible report.
    number with no null is not a result and is labelled uninterpretable until it
    has one.
 
-4. **The eval harness is the product.** Agent chatter is easy and ungradeable.
+4. **No accuracy without its predicted distribution.** A degenerate
+   predictor and a mediocre one score identically against a balanced null
+   and require opposite responses: one needs a structural change, the other
+   a better model. Accuracy alone cannot tell them apart. Report what the
+   predictor actually emitted next to how often it was right —
+   `eval/classifier_score.py` returns both or neither, deliberately in one
+   function so a caller cannot print half of it.
+
+   This is the third instance of one failure shape — a mechanism whose
+   success and failure look alike at the call site. The others: a null with
+   degenerate variance, where a ratio was dividing by something with no
+   spread (entry #29), and a weighting that silently collapsed to uniform,
+   so the weighted and unweighted results were the same number. In each the
+   headline was computable, plausible and uninformative, and only a second
+   statistic nobody had asked for separated working from broken.
+
+5. **The eval harness is the product.** Agent chatter is easy and ungradeable.
    `eval/` is what makes this defensible — build it early, not last.
-5. **Model-agnostic by construction.** No provider-specific code outside
+6. **Model-agnostic by construction.** No provider-specific code outside
    `llm/providers/`. The rest of the codebase sees one interface.
 
 ## Architecture
@@ -91,9 +107,33 @@ Small local models drift from JSON schemas. Defenses, in order:
    pydantic schema through — do not rely on prompt instructions alone.
 2. **Validate in `llm/client.py`.** Pydantic parse, then one repair retry with
    the validation error fed back. Then fail loudly.
-3. **Keep schemas small.** Two-step any complex action: first pick an action
-   type from an enum, then fill that action's parameters in a second call.
-   Never ask for a nested trade proposal in one shot.
+3. **Keep schemas small — measured, not cautious.** Two-step any complex
+   action: first pick an action type from an enum, then fill that action's
+   parameters in a second call. Never ask for a nested trade proposal in one
+   shot.
+
+   This was a precaution against schema drift until entry #74 measured it.
+   The same trade-vs-signing question, same model, same machine, on a
+   balanced 12-sentence set whose majority-class null is 6/12:
+
+   | asked as | correct | said "signing" | median latency |
+   |---|---|---|---|
+   | one field among eight in `Proposal` | **6/12** | **0 of 12** | 176s |
+   | its own one-field call | **12/12** | 6 of 6 | **49s** |
+
+   The large-schema field did not score badly. It scored *exactly the null*
+   and never emitted the minority class once — a constant wearing a
+   classifier's type signature. Prompting does not move a constant; only
+   the split did. And the split was **3.6x faster**, because the cost is in
+   what the model must emit. Small schemas buy accuracy and latency from
+   one cause.
+
+   **Do not split every multi-field call on principle.** That is the same
+   error facing the other way — a change made on a rule of thumb rather
+   than evidence. `mironba/llm/schema_audit.py` enumerates every call site
+   with a derived field count and a declared disposition (measured,
+   candidate, by-design); measure a candidate against its own null before
+   moving it.
 
 ### Throughput
 

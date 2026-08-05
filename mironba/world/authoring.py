@@ -456,6 +456,66 @@ def classify_event(sentence: str, client) -> str:
     return answer.event
 
 
+
+#: The OTHER classifier in the proposal schema, with its own balanced set.
+#: Declared before it was measured, so the set could not be chosen to suit
+#: the answer. Six of each, so always-answer-"stipulated" scores 6/12.
+KIND_SET = (
+    ("Stephen Curry traded from GSW to LAL for Austin Reaves and Quentin "
+     "Grimes", "stipulated"),
+    ("LeBron James signs with the Golden State Warriors", "stipulated"),
+    ("Victor Wembanyama traded to the Warriors", "stipulated"),
+    ("Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+     "stipulated"),
+    ("Paul George joins the Nets in free agency", "stipulated"),
+    ("The Lakers deal Rui Hachimura to Chicago for Nikola Vucevic",
+     "stipulated"),
+    ("Where does LeBron James sign this offseason?", "pending_decision"),
+    ("Will Giannis Antetokounmpo be traded before the deadline?",
+     "pending_decision"),
+    ("Does Paul George opt in or test free agency?", "pending_decision"),
+    ("Who wins the race to sign DeMar DeRozan?", "pending_decision"),
+    ("Whether the Lakers extend Austin Reaves is still open.",
+     "pending_decision"),
+    ("It is undecided whether Terry Rozier stays in Charlotte.",
+     "pending_decision"),
+)
+
+
+def classify_kind(sentence: str, client) -> str:
+    """Stipulated or pending decision, as its OWN one-field call.
+
+    NOT wired into the drafting flow. It exists to be measured against
+    ``KIND_SET`` the way ``classify_event`` was measured against
+    ``CLASSIFIER_SET``, because the lesson of #74 is that a field inside a
+    large schema can be inert - not that every field is. Splitting this one
+    on the strength of the other field's result would be generalising from
+    n=1, which is the mistake the null discipline exists to prevent, and it
+    would cost a round trip (~49s measured) on every draft.
+    """
+    from typing import Literal
+
+    from pydantic import BaseModel, Field
+
+    class ScenarioKind(BaseModel):
+        kind: Literal["stipulated", "pending_decision"] = Field(
+            description="'stipulated' if the sentence ASSERTS that something "
+                        "happened - it states an event as fact. "
+                        "'pending_decision' if the sentence poses an OPEN "
+                        "QUESTION - it asks what will happen, or says "
+                        "something is undecided or still open.")
+
+    answer = client.complete(
+        [{"role": "user", "content":
+          "Does this sentence ASSERT an event as fact (stipulated), or pose "
+          "an OPEN QUESTION about something not yet decided "
+          f"(pending_decision)?\n\nSentence: {sentence}"}],
+        schema=ScenarioKind, profile="authoring",
+        purpose="kind_classification_measurement",
+    )
+    return answer.kind
+
+
 def _fail(draft: Draft, message: str, next_step: str) -> None:
     """Every error carries what would resolve it."""
     draft.errors.append(message)

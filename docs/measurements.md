@@ -2953,3 +2953,89 @@ Lakers have none, blocked by a 16-player roster rather than by money, and the
 refusal quotes that rather than returning an empty list. No schema field
 carries an amount, so the runner takes the best legal route and records that
 the figure was **derived, not declared**.
+
+## #75 — how many fields does each call ask for, and what did the classifier
+## actually emit
+
+Two rules fall out of #74, and both are now structural rather than
+remembered.
+
+### Every model call's field count, derived
+
+`mironba/llm/schema_audit.py` enumerates all ten call sites that pass a
+schema. Counts are **read out of the source**, never declared:
+
+| purpose | fields | nested | total | disposition |
+|---|---|---|---|---|
+| scenario_draft | 8 | 3 | 11 | candidate |
+| curation_draft | 6 | 0 | 6 | candidate |
+| trade_intent | 5 | 0 | 5 | candidate |
+| trade_intent_retry | 5 | 0 | 5 | candidate |
+| scenario_draft_moves | 1 | 3 | 4 | measured |
+| action_choice | 2 | 0 | 2 | by-design |
+| package_selection | 2 | 0 | 2 | by-design |
+| report | 2 | 0 | 2 | by-design |
+| event_classification | 1 | 0 | 1 | measured |
+| agent_chat | 1 | 0 | 1 | by-design |
+
+The first draft of this registry declared the counts by hand and got two of
+ten wrong — `TradeIntent` as four fields when it has five, `BranchSummary` as
+four when it has two. A registry whose numbers are typed in drifts from the
+code it describes, which is the failure it exists to prevent. They are AST-
+derived now, and the schemas are searched package-wide rather than at the
+call site, because a call and its schema usually live in different files —
+looking only where the call is returned **zero for four of ten entries**, and
+zero is a plausible-looking number.
+
+Which is the same trap in miniature: "schema not found" and "schema with no
+fields" are both `0` and call for opposite responses. `field_counts` now
+raises `SchemaNotFound` instead of returning a number. It was caught because
+the registry named the RSS curation schema `CurationDraft`; it is called
+`Draft`, colliding with the authoring dataclass.
+
+**The queue is visible, not implied.** Four multi-field calls are declared
+CANDIDATE — unmeasured, not endorsed. Splitting them all on the strength of
+#74 would be generalising from n=1, the same error facing the other way.
+Splitting one more field out of `scenario_draft` costs +1 round trip, ~49s
+measured, on a p50 of 3.2 minutes: about 25% more wall clock per draft.
+
+### Accuracy never travels alone
+
+`eval/classifier_score.py` returns the predicted class distribution with the
+accuracy, in one function, so a caller cannot print half of it. Applied to
+the recorded arms of #74:
+
+```
+arm A - field inside the full proposal schema: 6/12 = 50.0% (null 50.0%)
+  predicted: trade x12
+  truth:     signing x6, trade x6
+  DEGENERATE: never predicted signing - this is a constant, not a weak
+  classifier; the accuracy above is uninformative about those classes and
+  prompting will not move it
+
+arm B - dedicated one-field call: 12/12 = 100.0% (null 50.0%)
+  predicted: signing x6, trade x6
+  P(>= this many correct | null) = 0.00024
+```
+
+A degenerate predictor and a mediocre one score identically against a
+balanced null and need opposite responses — a structural change versus a
+better model — and accuracy alone cannot separate them. The test suite pins
+the distinction with two fixtures that score the same and are classified
+differently.
+
+**Third instance of one failure shape:** a mechanism whose success and
+failure look alike at the call site. The others were a null with degenerate
+variance, where a ratio divided by something with no spread (#29), and a
+weighting that silently collapsed to uniform so the weighted and unweighted
+answers were the same number. In each the headline was computable, plausible
+and uninformative, and only a statistic nobody had asked for separated
+working from broken.
+
+### The charter now carries the evidence
+
+"Keep schemas small" was a precaution against drift. It now states 6/12 inert
+versus 12/12, and 176s versus 49s, so a reader can tell a measured rule from
+a cautious one — with the explicit warning not to split every multi-field
+call on principle. "No accuracy without its predicted distribution" is a new
+non-negotiable, alongside "no metric without its null".
