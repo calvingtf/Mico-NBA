@@ -1286,7 +1286,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,045 tests**, run on every commit by the pre-commit gate
+**1,050 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an
