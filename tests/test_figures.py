@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-FIGURES = ("three-arm.svg", "metrics-vs-nulls.svg",
+FIGURES = ("three-arm.svg", "metrics-vs-nulls.svg", "correction-chain.svg",
            "deadline-per-season.svg", "persistence-power.svg")
 
 
@@ -64,3 +64,16 @@ class TestCommittedAndReferenced:
     def test_the_readme_names_the_generator(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         assert "mironba/report/figures.py" in readme
+
+
+class TestTheCorrectionChain:
+    def test_chain_values_come_from_the_records_and_carry_both_nulls(self):
+        from mironba.report.figures import chain_data
+
+        data = chain_data()
+        assert data["values"][:3] == [12.4, 24.0, 9.6], (
+            "the historical chain must match ledger entry #65 verbatim")
+        assert abs(data["values"][3] - 11.2) < 0.05, (
+            "the current headline must come from the bench, not the ledger")
+        assert 5 < data["base_rate"] < 8
+        assert 5 < data["wt_null"] < 9, "the chain figure must show its nulls"

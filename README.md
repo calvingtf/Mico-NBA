@@ -33,7 +33,23 @@ No install at all: open the committed demo artifacts —
 [`docs/example-timeline.txt`](docs/example-timeline.txt) (the refusal-first
 event feed).
 
-## Headline results
+## The boundary finding — the most portable claim here
+
+**Features the constraint solver has already consumed carry no ranking
+signal; features that precede it do.** Two rankers, two units, one result:
+
+| unit | features sit... | observed | null | verdict |
+| --- | --- | --- | --- | --- |
+| team pair | downstream of the solver | p@10 6.0% | 5.01% permutation | 1.20x — inside noise |
+| player | upstream of the solver | p@25 **11.2%** | 7.0%±1.5% within-team | clears at P=0.0026; the interaction gain itself clears its paired null at P=0.0044 |
+
+The general form: **in a system with a hard constraint layer, put the model
+upstream of the constraints, not downstream** — downstream, the
+discriminative variance has already been spent. Full detail, nulls and the
+two leak corrections behind the player number:
+[the boundary finding](#the-boundary-finding-rank-upstream-of-the-constraints).
+
+## Remaining headline results
 
 **What the model is shown decides what it can want.** Same local model, same
 scenarios, three information arms — the strongest positive result here, and a
@@ -87,8 +103,11 @@ discouraged. Salary-cap math, trade legality and roster construction are
 Python; a proposal the rules refuse is refused with findings, including the
 project's own stipulated premises.
 
-**Reading map**: [measured results](#what-was-measured) ·
+**If you read only three sections**:
 [the boundary finding](#the-boundary-finding-rank-upstream-of-the-constraints) ·
+[seven results that weren't](#seven-results-that-werent) ·
+[the standing boundary](#the-standing-boundary).
+Full map: [measured results](#what-was-measured) ·
 [results that weren't](#seven-results-that-werent) ·
 [the standing boundary](#the-standing-boundary) ·
 [the full measurement ledger](docs/measurements.md) (62 entries — every
@@ -583,6 +602,12 @@ Recall 0/26; per the brief, historical stays hand-curated and gaps stay
 declared rather than filled.
 
 ## Seven results that weren't
+
+How this project's numbers get made — one metric's full life, from first
+belief to promoted headline, each value believed when it was written:
+
+![The correction chain: 12.4% with a leak open, 24.0% when fixing one leak exposed a second, 9.6% clean, 11.2% after the interaction was promoted against its own null](docs/figures/correction-chain.svg)
+
 
 Every headline number below survived at least one revision, and seven were
 wrong at the time they were first written down. They are listed because the

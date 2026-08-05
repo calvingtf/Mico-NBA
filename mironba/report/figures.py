@@ -158,7 +158,7 @@ def metric_rows() -> list[dict]:
         encoding="utf-8")
     m = _require(r"p@10 of ([\d.]+)% against a ([\d.]+)% base rate",
                  measurements, "measurements ranker entry")
-    rows.append(dict(label="ranker p@10, 61 trades / 10 folds",
+    rows.append(dict(label="pair ranker p@10, 61 trades / 10 folds",
                      observed=float(m[1]), null=float(m[2]),
                      beats=False,  # recorded negative
                      note=f"{float(m[1]) / float(m[2]):.2f}x - NEGATIVE: solver "
@@ -278,6 +278,73 @@ def figure_metrics() -> list[str]:
     plt.close(fig)
     return ["metrics-vs-nulls.svg <- " + "; ".join(
         sorted({r['source'] for r in rows}))]
+
+
+# --------------------------------------------------------------------------
+# (c) the correction chain - how this project's numbers get made
+# --------------------------------------------------------------------------
+
+
+def chain_data() -> dict:
+    """The player-ranker p@25 chain: three recorded historical values from
+    ledger entry #65 (each believed when written), the current headline from
+    the bench, and both nulls so the chain is read against chance."""
+    measurements = (ROOT / "docs" / "measurements.md").read_text(
+        encoding="utf-8")
+    m = _require(r"chain went ([\d.]+)% -> ([\d.]+)% -> ([\d.]+)%",
+                 measurements, "entry 65 correction chain")
+    bench = json.loads((ROOT / "bench-player-ranker.json").read_text(
+        encoding="utf-8"))
+    current = 100 * sum(r["p_at_k"] for r in bench["per_season"]) / len(
+        bench["per_season"])
+    return {
+        "values": [float(m[1]), float(m[2]), float(m[3]), current],
+        "labels": [
+            "first fit\ncontracts-team leak open\n(roster team = acquirer)",
+            "leak 1 fixed\nTHE RISE WAS LEAK 2:\nJanuary trades inside\nthe label window",
+            "both leaks closed\nfeatures cut at Jan 1\n(additive, entry #64)",
+            "interaction promoted\nP(gain>=null)=0.0044\n(entry #67)",
+        ],
+        "base_rate": 100 * bench["prefit"]["base_rate"],
+        "wt_null": 100 * bench["interaction_settled"]["interaction"]["null_mean"],
+    }
+
+
+def figure_chain() -> list[str]:
+    data = chain_data()
+    x = range(len(data["values"]))
+    fig, ax = plt.subplots(figsize=(8.6, 4.0))
+    ax.plot(list(x), data["values"], color=GREY, lw=1.4, zorder=1)
+    colors = [BAD, BAD, ACCENT, ACCENT]
+    for i, (value, color) in enumerate(zip(data["values"], colors)):
+        ax.scatter([i], [value], s=90, color=color, zorder=3)
+        ax.text(i, value + 1.0, f"{value:.1f}%", ha="center", fontsize=10,
+                fontweight="bold")
+        ax.text(i, -2.6, data["labels"][i], ha="center", va="top",
+                fontsize=7.6)
+    ax.axhline(data["base_rate"], color=DARK, lw=1.1, ls=":")
+    ax.text(len(data["values"]) - 0.52, data["base_rate"] + 0.4,
+            f"class-balance null {data['base_rate']:.1f}%", fontsize=8,
+            ha="right")
+    ax.axhline(data["wt_null"], color=DARK, lw=1.1, ls="--")
+    ax.text(len(data["values"]) - 0.52, data["wt_null"] + 0.4,
+            f"within-team null {data['wt_null']:.1f}%", fontsize=8,
+            ha="right")
+    ax.set_xlim(-0.5, len(data["values"]) - 0.5)
+    ax.set_ylim(0, max(data["values"]) * 1.18)
+    ax.set_xticks([])
+    ax.set_ylabel("player-ranker p@25")
+    ax.set_title("The correction chain: each number believed when written\n"
+                 "(red = a leak was open; a leak fix that RAISES a number is "
+                 "evidence of another leak - entry #65)", fontsize=10)
+    ax.spines[["top", "right", "bottom"]].set_visible(False)
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.24)
+    fig.savefig(OUT / "correction-chain.svg")
+    plt.close(fig)
+    return ["correction-chain.svg <- docs/measurements.md entry 65 (the three "
+            "historical values) + bench-player-ranker.json (current headline "
+            "and both nulls)"]
 
 
 # --------------------------------------------------------------------------
@@ -410,8 +477,8 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     OUT.mkdir(parents=True, exist_ok=True)
     provenance = []
-    for build in (figure_arms, figure_metrics, figure_seasons,
-                  figure_persistence):
+    for build in (figure_arms, figure_metrics, figure_chain,
+                  figure_seasons, figure_persistence):
         provenance += build()
         print(f"built {provenance[-1].split(' <- ')[0]}")
     print("\nPROVENANCE (figure <- recorded source):")
