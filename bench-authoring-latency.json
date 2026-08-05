@@ -1,0 +1,29 @@
+{
+ "measured_on": "local machine, qwen3.6:27b resident, two-call draft flow",
+ "arm_used_in_the_ui": "thinking ON (profile local_deep)",
+ "samples_s": [
+  155.7,
+  165.4,
+  180.2,
+  192.0,
+  339.6,
+  344.9,
+  480.1
+ ],
+ "p50_s": 192.0,
+ "worst_s": 480.1,
+ "warm_p50_s": 165.4,
+ "cold_p50_s": 344.9,
+ "n": 7,
+ "thinking_off_arm": {
+  "verdict": "MEASURED AND REJECTED",
+  "step1_s": 4,
+  "step2_s": 3,
+  "extraction": "EMPTY at both steps - teams=[] and moves=[]",
+  "note": "fast and useless: the model emits minimal valid JSON instead of extracting. Latency cannot be bought this way."
+ },
+ "invalid_first_ab": {
+  "what_happened": "bench-authoring-latency.json labelled two arms thinking_off/thinking_on, but client.complete() takes the profile PER CALL and draft_from_sentence passed its own - so BOTH arms ran the same configuration. The 345s-vs-165s gap it showed is arm ORDER (cold model load), not thinking.",
+  "kept": "as the recorded mistake; entry #71"
+ }
+}

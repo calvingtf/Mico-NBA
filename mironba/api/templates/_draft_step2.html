@@ -1,0 +1,11 @@
+<div class="panel">
+  <p class="step">step 1/2 done — structure proposed:
+     kind={{ draft.kind }} · players {{ draft.player_names|join(", ") }}
+     · teams {{ draft.team_codes|join(", ") }}</p>
+  <form hx-post="/authoring/complete" hx-target="#draft"
+        hx-trigger="load" hx-indicator="#step2busy">
+    <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
+  </form>
+  <p><span id="step2busy" class="htmx-indicator step">step 2/2 — extracting
+     movements (the tiny second call)…</span></p>
+</div>

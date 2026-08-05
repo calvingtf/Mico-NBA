@@ -85,10 +85,22 @@ def index(request: Request):
 # -- (a) scenario input -----------------------------------------------------
 
 
+def measured_latency() -> dict:
+    """The MEASURED draft latency from the recorded bench - never an
+    estimate typed into a template (the UI once promised ~30s and took far
+    longer; item 3 of the fix brief)."""
+    path = ROOT / "bench-authoring-latency.json"
+    if not path.is_file():
+        return {}
+    bench = _read_json(path)
+    return {"p50": bench.get("p50_s"), "worst": bench.get("worst_s"),
+            "n": bench.get("n"), "warm": bench.get("warm_p50_s")}
+
+
 @app.get("/authoring", response_class=HTMLResponse)
 def authoring_page(request: Request):
     return templates.TemplateResponse(request, "authoring.html", {
-        "llm_label": LLM_PATH_LABEL,
+        "llm_label": LLM_PATH_LABEL, "latency": measured_latency(),
     })
 
 
@@ -102,13 +114,60 @@ def _validated(draft):
 
 @app.post("/authoring/draft", response_class=HTMLResponse)
 def authoring_draft(request: Request, sentence: str = Form(...)):
-    from mironba.world.authoring import _drafting_client, draft_from_sentence
+    """Step 1 of 2: structure. If the movements call is still needed, the
+    fragment auto-continues to /authoring/complete so the progress the user
+    sees matches the calls actually being made."""
+    from mironba.world.authoring import (_drafting_client,
+                                         draft_from_sentence,
+                                         needs_moves_call)
 
     try:
-        draft = _validated(draft_from_sentence(sentence, _drafting_client()))
+        draft = draft_from_sentence(sentence, _drafting_client())
     except Exception as exc:  # noqa: BLE001 - a down model is a visible state
         return templates.TemplateResponse(request, "_draft_error.html", {
             "error": repr(exc)})
+    if needs_moves_call(draft):
+        return templates.TemplateResponse(request, "_draft_step2.html", {
+            "draft": draft, "draft_json": json.dumps(asdict(draft))})
+    draft = _validated(draft)
+    return templates.TemplateResponse(request, "_draft.html", {
+        "draft": draft, "draft_json": json.dumps(asdict(draft))})
+
+
+@app.post("/authoring/complete", response_class=HTMLResponse)
+async def authoring_complete(request: Request):
+    """Step 2 of 2: the tiny movements-only call, then validation."""
+    from mironba.world.authoring import Draft, _drafting_client, complete_moves
+
+    form = await request.form()
+    draft = Draft(**json.loads(form["draft_json"]))
+    try:
+        draft = _validated(complete_moves(draft, _drafting_client()))
+    except Exception as exc:  # noqa: BLE001
+        return templates.TemplateResponse(request, "_draft_error.html", {
+            "error": repr(exc)})
+    return templates.TemplateResponse(request, "_draft.html", {
+        "draft": draft, "draft_json": json.dumps(asdict(draft))})
+
+
+@app.post("/authoring/package", response_class=HTMLResponse)
+async def authoring_package(request: Request):
+    """A human picks one of the solver's legal return packages by index.
+
+    The model never saw a salary: it named a player, rules/solver.py priced
+    every legal return, and the choice is yours - the same boundary as the
+    trade-intent loop.
+    """
+    from mironba.world.authoring import AuthoringError, Draft, choose_package
+
+    form = await request.form()
+    draft = Draft(**json.loads(form["draft_json"]))
+    try:
+        choose_package(draft, int(form["package"]))
+    except (AuthoringError, ValueError, KeyError) as exc:
+        return templates.TemplateResponse(request, "_draft_error.html", {
+            "error": str(exc)})
+    draft = _validated(draft)
     return templates.TemplateResponse(request, "_draft.html", {
         "draft": draft, "draft_json": json.dumps(asdict(draft))})
 
@@ -157,9 +216,11 @@ async def authoring_write(request: Request):
 @app.get("/runs", response_class=HTMLResponse)
 def run_gallery(request: Request):
     rows = []
-    for run_dir in sorted(RUNS.iterdir(), reverse=True):
-        if not run_dir.is_dir():
-            continue
+    # newest first BY TIME, not by name - reverse-alphabetical put one run
+    # family's ~60 dirs on the whole first page and hid every badge
+    run_dirs = sorted((d for d in RUNS.iterdir() if d.is_dir()),
+                      key=lambda d: d.stat().st_mtime, reverse=True)
+    for run_dir in run_dirs:
         m = _manifest(run_dir)
         rows.append({
             "id": run_dir.name,

@@ -12,25 +12,31 @@ exists or ever will. It is a demonstration, not a measurement.</p>
   <b>Manifest</b>
   <table>
   {% for k, v in manifest.items() if k not in ("extra", "notes", "reaction", "trade", "cascade") %}
-    <tr><td><code>{{ k }}</code></td><td>{{ v }}</td></tr>
+    <tr><td class="mono">{{ k }}</td><td>{{ v }}</td></tr>
   {% endfor %}
   </table>
 </div>
 {% if feed %}
 <h2>Timeline — refusals lead, because refusal is what this system measurably does</h2>
+<div class="stream">
 {% for e in feed.refusals %}
-  <div class="entry refusal"><code>{{ e.clock }}</code> #{{ e.seq }}
-    <b>[{{ e.actor }}]</b> {{ e.headline }}
+  <div class="event refusal">
+    <div class="meta">{{ e.clock }} · #{{ e.seq }} · {{ e.actor }}</div>
+    {{ e.headline }}
     {% if e.reasoning %}<div class="quote">“{{ e.reasoning }}”</div>{% endif %}
   </div>
 {% endfor %}
+</div>
 <h2>All events</h2>
+<div class="stream">
 {% for e in feed.entries %}
-  <div class="entry {% if e.notable %}refusal{% endif %}">
-    <code>{{ e.clock }}</code> #{{ e.seq }} <b>[{{ e.actor }}]</b> {{ e.headline }}
+  <div class="event {% if e.notable %}refusal{% endif %}">
+    <div class="meta">{{ e.clock }} · #{{ e.seq }} · {{ e.actor }}</div>
+    {{ e.headline }}
     {% if e.reasoning %}<div class="quote">“{{ e.reasoning }}”</div>{% endif %}
   </div>
 {% endfor %}
+</div>
 <p class="marker">Every line traces to one event in events.jsonl by sequence
 number; the validator's stated reasons are quoted verbatim, never
 paraphrased. Timestamps are the generating process's wall clock — there is

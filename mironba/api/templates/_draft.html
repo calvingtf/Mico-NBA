@@ -1,34 +1,69 @@
 <div class="panel">
   <p><b>{{ draft.sentence }}</b><br>
-     proposed: kind={{ draft.kind }} · seed {{ draft.seed_date }}</p>
-  {% for name, pid in draft.resolved.items() %}
-    <div>resolved: {{ name }} → <code>{{ pid }}</code></div>
+     <span class="step">kind={{ draft.kind }} · seed {{ draft.seed_date }}</span></p>
+
+  {% for name, pid in draft.resolved.items() if not name.startswith("team:") %}
+    <div class="resolved">resolved <b>{{ name }}</b> → <code>{{ pid }}</code></div>
   {% endfor %}
+
   {% if draft.ambiguities %}
     <form hx-post="/authoring/resolve" hx-target="#draft">
       <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
       {% for name, candidates in draft.ambiguities.items() %}
-        <p><b>AMBIGUOUS: “{{ name }}” — a human must choose:</b></p>
+        <p class="choice-head">AMBIGUOUS: “{{ name|replace("team:", "") }}”
+           — a human must choose:</p>
         {% for pid, full in candidates %}
-          <label><input type="radio" name="choose:{{ name }}" value="{{ pid }}" required>
-                 {{ full }} (<code>{{ pid }}</code>)</label><br>
+          <label class="choice"><input type="radio" name="choose:{{ name }}"
+                 value="{{ pid }}" required>
+                 <span>{{ full or pid }} <code>{{ pid }}</code></span></label>
         {% endfor %}
       {% endfor %}
       <p><button type="submit">Resolve</button></p>
     </form>
   {% endif %}
-  {% for f in draft.findings %}<div>{{ f }}</div>{% endfor %}
-  {% for e in draft.errors %}<div class="err">ERROR {{ e }}</div>{% endfor %}
-  {% if not draft.errors and not draft.ambiguities %}
+
+  {% if draft.awaiting_package %}
+    <p class="choice-head">THE SENTENCE NAMES NO RETURN — the solver
+       enumerated every legal package. The model never priced these; pick
+       one:</p>
+    <form hx-post="/authoring/package" hx-target="#draft">
+      <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
+      {% for o in draft.package_options %}
+        <label class="choice"><input type="radio" name="package"
+               value="{{ o.index }}" required>
+          <span><b>{{ o.destination }} sends {{ o.send|join(", ") }}</b>
+          <span class="step">${{ "{:,}".format(o.salary_out) }} out ·
+          ${{ "{:,}".format(o.salary_in) }} in · headroom
+          ${{ "{:,}".format(o.headroom) }} · {{ o.verdict }}</span></span>
+        </label>
+      {% endfor %}
+      <p><button type="submit">Use this package</button></p>
+    </form>
+  {% endif %}
+
+  {% for f in draft.findings %}<div class="finding">{{ f }}</div>{% endfor %}
+
+  {% for e in draft.errors %}
+    <div class="err">
+      <b>ERROR</b> {{ e }}
+      {% if draft.next_steps and loop.index0 < draft.next_steps|length %}
+        <div class="nextstep">→ {{ draft.next_steps[loop.index0] }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  {% if draft.ok %}
     <p class="ok">valid — the rules verdict above is shown BEFORE anything is written</p>
     <form hx-post="/authoring/write" hx-target="#draft">
       <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
       <p><input type="text" name="scenario_id" placeholder="scenario-id" required></p>
-      <label><input type="checkbox" name="confirmed" value="yes">
-        I reviewed the draft and confirm the write — the same human gate as the CLI</label>
+      <label class="choice"><input type="checkbox" name="confirmed" value="yes">
+        <span>I reviewed the draft and confirm the write — the same human
+        gate as the CLI</span></label>
       <p><button type="submit">Write scenario file</button></p>
     </form>
-  {% else %}
-    <p>NOT WRITABLE until the above is resolved.</p>
+  {% elif draft.errors %}
+    <p class="muted">NOT WRITABLE yet — each error above says what would
+       resolve it.</p>
   {% endif %}
 </div>

@@ -133,6 +133,15 @@ profiles:
     max_tokens: 2048
     request_timeout_s: 300
 
+  authoring_nothink:
+    model: qwen3.6:27b           # the local_deep model with ONLY thinking off,
+    thinking: false              # for the authoring latency A/B (entry #71)
+    temperature: 0.3
+    top_p: 0.9
+    seed: 20260730
+    context_length: 16384
+    request_timeout_s: 600
+
 roles:
   # Moved off local_fast at M1.6. Not for reasoning quality — for residency.
   # 35b-a3b ran at gpu_fraction 0.0 on this box, so its latency figures
@@ -142,4 +151,9 @@ roles:
   media_agent: local_fast
   market_agent: local_fast
   report_agent: local_deep
+  # authoring: thinking ON. The thinking-off A/B was RUN AND REJECTED
+  # (entry #71): with thinking off this model returns empty extractions
+  # in ~4s - fast and useless - so the latency cannot be bought that way.
+  # authoring_nothink stays declared as the arm that was measured.
+  authoring: local_deep
   default: local_fast

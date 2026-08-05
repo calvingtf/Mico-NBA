@@ -2704,3 +2704,42 @@ uncommitted partition files, unpushed commits, unpulled record commits.
 During the forced fork it read "1 partition file(s) with uncommitted
 rows; 1 record commit(s) not pulled" - the wrong-surface failure family,
 made visible instead of possible.
+
+
+## 71. The A/B that measured nothing, and the speed-up that broke extraction (2026-08-05)
+
+**The invalid A/B, recorded as a mistake.** ``bench-authoring-latency.json``
+first carried two arms labelled thinking_off and thinking_on. They were the
+same configuration: ``client.complete()`` takes the profile PER CALL, and
+``draft_from_sentence`` passed its own - so the client's profile was
+ignored in both arms. The 345s-vs-165s gap the "A/B" showed is arm ORDER
+(the first arm pays the cold model load), not thinking. A test would not
+have caught this; reading the call site did. Pattern: a control that varies
+a setting the code path overrides measures only its own ordering.
+
+**The real comparison, run afterwards on one sentence, same code path,
+profile the only difference** ("Victor Wembanyama traded to the Warriors"):
+
+| | thinking OFF | thinking ON |
+|---|---|---|
+| step 1 | 4s - teams=[], moves=[] | 133s - teams=[GSW], moves=[] |
+| step 2 | 3s - moves=[] | 60s - one move extracted |
+| outcome | dead end | 8 solver packages offered |
+
+**Thinking off is fast and useless on this model**: it emits minimal valid
+JSON instead of extracting. The authoring role is therefore thinking ON,
+and the honest UI copy says the wait is the price of a usable draft -
+p50 ~4.3 min, warm ~2.8 min, worst 8 min over 7 recorded drafts.
+``authoring_nothink`` stays declared as the arm that was measured and
+rejected.
+
+**The two-step is NECESSARY, not vestigial.** With thinking ON, step 1
+still returned ``moves=[]`` - the charter's documented nested-one-shot
+failure, live. Step 2's tiny movements-only schema is what produced the
+move. Extracting it for per-step UI progress did not collapse it (tested);
+the regression the operator saw was the thinking-off profile, not the
+schema change.
+
+**Incidental confirmation:** the model returned ``to_team="Warriors"`` - a
+nickname - and the new team resolver mapped it to GSW. The resolver earned
+its keep on its first live sentence.

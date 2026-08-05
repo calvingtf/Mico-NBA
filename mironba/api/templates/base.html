@@ -6,54 +6,149 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 <style>
-  :root { --ink:#202124; --grey:#9aa0a6; --accent:#1a73e8; --bad:#b3261e;
-          --paper:#fff; --panel:#f6f8fa; }
-  * { box-sizing:border-box; }
-  body { font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;
-         color:var(--ink); margin:0; background:var(--paper); }
-  header { border-bottom:1px solid #e0e0e0; padding:.7rem 1.2rem;
-           display:flex; gap:1.2rem; align-items:baseline; flex-wrap:wrap; }
-  header b { font-size:1.05rem; }
-  header a { color:var(--ink); text-decoration:none; opacity:.75; }
-  header a:hover { opacity:1; }
-  main { max-width:64rem; margin:1.4rem auto; padding:0 1.2rem; }
-  h1 { font-size:1.35rem; } h2 { font-size:1.1rem; margin-top:1.6rem; }
-  table { border-collapse:collapse; width:100%; font-size:.88rem; }
-  th, td { text-align:left; padding:.3rem .55rem; border-bottom:1px solid #eee; }
-  .panel { background:var(--panel); border:1px solid #e0e0e0;
-           border-radius:8px; padding: .9rem 1.1rem; margin: .8rem 0; }
-  .badge { display:inline-block; padding:.05rem .5rem; border-radius:9px;
-           font-size:.75rem; font-weight:600; }
-  .badge.unf { background:var(--bad); color:#fff; }
-  .badge.rep { background:#188038; color:#fff; }
-  .badge.norep { background:var(--grey); color:#fff; }
-  .refusal { border-left:4px solid var(--bad); padding-left:.6rem;
-             background:#fdf3f2; }
-  .entry { margin:.35rem 0; padding:.25rem .4rem; }
-  .quote { color:#444; font-style:italic; }
-  .marker { border:1px dashed var(--grey); padding:.6rem .8rem;
-            font-size:.85rem; margin:.7rem 0; background:#fffdf3; }
-  .ok { color:#188038; font-weight:600; padding:.6rem 0; }
-  .err { color:var(--bad); }
-  figure { margin:1.4rem 0; }
-  figure img { max-width:100%; border:1px solid #eee; }
-  figcaption { font-size:.85rem; color:#444; margin-top:.3rem; }
-  footer { border-top:1px solid #e0e0e0; margin-top:2.5rem;
-           padding:1rem 1.2rem; font-size:.8rem; color:#555; }
-  input[type=text] { width:100%; padding:.5rem; font-size:1rem; }
-  button { padding:.45rem .9rem; font-size:.95rem; cursor:pointer; }
-  pre { white-space:pre-wrap; }
+  /* Design tokens — defined once, used everywhere. Dark by default,
+     restrained palette, ONE accent used sparingly. */
+  :root {
+    --bg: #101418;
+    --surface: #181e24;
+    --surface-2: #1f262e;
+    --line: #2a323b;
+    --ink: #e6e9ec;
+    --muted: #9aa4ae;
+    --accent: #6aa9ff;        /* the one accent */
+    --bad: #ff7a70;
+    --bad-bg: #2a1a18;
+    --ok: #6fce8f;
+    --warn-bg: #241f10;
+    --warn-line: #4d4020;
+    --space-1: .35rem; --space-2: .7rem; --space-3: 1.1rem; --space-4: 1.8rem;
+    --radius: 10px;
+    --fs-0: .8rem; --fs-1: .92rem; --fs-2: 1.05rem; --fs-3: 1.3rem;
+    --prose: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: var(--fs-1)/1.6 var(--prose); }
+  code, pre, .mono, table td.mono { font-family: var(--mono); font-size: .93em; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; background: var(--bg);
+           border-bottom: 1px solid var(--line); padding: var(--space-2) var(--space-3);
+           display: flex; gap: var(--space-3); align-items: baseline;
+           flex-wrap: wrap; z-index: 5; }
+  header .brand { font-weight: 700; letter-spacing: .02em; color: var(--ink); }
+  header nav { display: flex; gap: var(--space-3); }
+  header nav a { color: var(--muted); font-size: var(--fs-0);
+                 text-transform: uppercase; letter-spacing: .07em; }
+  header nav a:hover { color: var(--ink); text-decoration: none; }
+
+  main { max-width: 62rem; margin: var(--space-4) auto; padding: 0 var(--space-3); }
+  h1 { font-size: var(--fs-3); line-height: 1.3; margin: 0 0 var(--space-3); }
+  h2 { font-size: var(--fs-2); margin: var(--space-4) 0 var(--space-2);
+       color: var(--ink); }
+  p { color: var(--ink); } small, .muted { color: var(--muted); }
+
+  table { border-collapse: collapse; width: 100%; font-size: var(--fs-0); }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase;
+       letter-spacing: .06em; font-size: .72rem; }
+  th, td { text-align: left; padding: var(--space-1) var(--space-2);
+           border-bottom: 1px solid var(--line); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line);
+           border-radius: var(--radius); padding: var(--space-3); margin: var(--space-2) 0; }
+  .badge { display: inline-block; padding: .06rem .55rem; border-radius: 999px;
+           font-size: .7rem; font-weight: 700; letter-spacing: .05em;
+           vertical-align: middle; }
+  .badge.unf { background: var(--bad); color: #1a0c0a; }
+  .badge.rep { background: var(--ok); color: #0c1f13; }
+  .badge.norep { background: var(--muted); color: #14181c; }
+
+  /* run gallery cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+           gap: var(--space-2); }
+  .card { background: var(--surface); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: var(--space-2) var(--space-3);
+          display: flex; flex-direction: column; gap: var(--space-1); }
+  .card .scenario { font-weight: 600; }
+  .card .runid { font-family: var(--mono); font-size: .72rem; color: var(--muted);
+                 word-break: break-all; }
+  .card .facts { font-size: var(--fs-0); color: var(--muted); }
+  .card .facts b { color: var(--ink); font-weight: 600; }
+
+  /* timeline event stream */
+  .stream { border-left: 2px solid var(--line); margin-left: .4rem;
+            padding-left: var(--space-3); }
+  .event { position: relative; margin: var(--space-2) 0;
+           background: var(--surface); border: 1px solid var(--line);
+           border-radius: var(--radius); padding: var(--space-2) var(--space-3); }
+  .event::before { content: ""; position: absolute; left: calc(-1 * var(--space-3) - 7px);
+                   top: 1.05rem; width: 10px; height: 10px; border-radius: 50%;
+                   background: var(--line); }
+  .event.refusal { border-color: var(--bad); background: var(--bad-bg); }
+  .event.refusal::before { background: var(--bad); }
+  .event .meta { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+  .event .quote { color: var(--muted); font-style: italic; margin-top: var(--space-1); }
+
+  .marker { border: 1px dashed var(--warn-line); background: var(--warn-bg);
+            border-radius: var(--radius); padding: var(--space-2) var(--space-3);
+            font-size: var(--fs-0); margin: var(--space-2) 0; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .err { color: var(--bad); }
+
+  figure { margin: var(--space-4) 0; }
+  figure img { width: 100%; max-width: 56rem; background: #fff;
+               padding: var(--space-2); border-radius: var(--radius);
+               border: 1px solid var(--line); }
+  figcaption { font-size: var(--fs-0); color: var(--muted); margin-top: var(--space-1);
+               max-width: 56rem; }
+  figcaption b { color: var(--ink); }
+
+  footer { border-top: 1px solid var(--line); margin-top: var(--space-4);
+           padding: var(--space-3); font-size: var(--fs-0); color: var(--muted); }
+
+  input[type=text] { width: 100%; padding: var(--space-2); font-size: var(--fs-1);
+                     background: var(--surface-2); color: var(--ink);
+                     border: 1px solid var(--line); border-radius: var(--radius); }
+  button { padding: var(--space-1) var(--space-3); font-size: var(--fs-1);
+           cursor: pointer; background: var(--accent); color: #0b1826;
+           border: 0; border-radius: var(--radius); font-weight: 600; }
+  label { color: var(--ink); }
+  pre { white-space: pre-wrap; font-size: var(--fs-0); color: var(--ink); }
+  .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--muted); }
+  .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+  .step { font-family: var(--mono); font-size: var(--fs-0); color: var(--muted); }
+  .resolved { font-size: var(--fs-0); color: var(--muted); }
+  .resolved b { color: var(--ink); }
+  .choice-head { font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
+  .choice { display: flex; gap: var(--space-2); align-items: baseline;
+            background: var(--surface-2); border: 1px solid var(--line);
+            border-radius: var(--radius); padding: var(--space-2);
+            margin: var(--space-1) 0; cursor: pointer; }
+  .choice:hover { border-color: var(--accent); }
+  .choice .step { display: block; }
+  .finding { font-size: var(--fs-0); color: var(--muted);
+             border-left: 2px solid var(--line); padding-left: var(--space-2);
+             margin: var(--space-1) 0; }
+  .err { background: var(--bad-bg); border: 1px solid var(--bad);
+         border-radius: var(--radius); padding: var(--space-2);
+         margin: var(--space-2) 0; }
+  .nextstep { color: var(--ink); font-size: var(--fs-0);
+              margin-top: var(--space-1); }
 </style>
 </head>
 <body>
 <header>
-  <b>MiroNBA</b>
-  <a href="/">home</a>
-  <a href="/authoring">new scenario</a>
-  <a href="/runs">runs</a>
-  <a href="/branches/lebron-2026">branches</a>
-  <a href="/report">report</a>
-  <a href="/results">results</a>
+  <span class="brand">MiroNBA</span>
+  <nav>
+    <a href="/">home</a>
+    <a href="/authoring">new scenario</a>
+    <a href="/runs">runs</a>
+    <a href="/branches/lebron-2026">branches</a>
+    <a href="/report">report</a>
+    <a href="/results">results</a>
+  </nav>
 </header>
 <main>
 {% block body %}{% endblock %}

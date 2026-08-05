@@ -84,9 +84,13 @@ class TestUnfalsifiableIsProminent:
         assert "<h2>" in header, "the flag must be a header, not a footnote"
 
     def test_stipulated_runs_are_badged_in_the_gallery(self):
+        """Unconditional: the stipulated runs exist on disk, so the gallery
+        MUST show them badged - the conditional form of this test let a
+        name-sorted gallery hide every badge on page one."""
         page = client.get("/runs").text
-        if "curry-lakers-2026" in page or "giannis-knicks-2026" in page:
-            assert "UNFALSIFIABLE" in page
+        assert "curry-lakers-2026" in page or "giannis-knicks-2026" in page, (
+            "stipulated runs missing from the newest-60 gallery")
+        assert "UNFALSIFIABLE" in page
 
 
 class TestTheConfirmGate:

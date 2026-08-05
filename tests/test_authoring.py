@@ -202,3 +202,207 @@ class TestTheWorldKnowledgeSurfaceIsEnumerated:
             write_scenario(draft, "t-pending", confirmed=True,
                            config_dir=tmp_path)
         assert not list(tmp_path.iterdir())
+
+
+class TestTheTeamResolver:
+    def test_nicknames_cities_and_codes_all_resolve(self):
+        from mironba.world.authoring import resolve_team
+
+        for alias in ("warriors", "golden state", "gsw", "GSW",
+                      "Golden State Warriors"):
+            assert [c for c, _ in resolve_team(alias)] == ["GSW"], alias
+
+    def test_genuine_ambiguity_surfaces_never_guesses(self):
+        from mironba.world.authoring import resolve_team
+
+        for alias in ("LA", "Los Angeles"):
+            assert [c for c, _ in resolve_team(alias)] == ["LAC", "LAL"], alias
+
+    def test_an_ambiguous_team_string_blocks_the_draft_like_a_player(self):
+        payload = dict(CURRY_TRADE, team_codes=["Los Angeles"],
+                       player_names=["Stephen Curry"], moves=[
+            {"player_name": "Stephen Curry", "from_team": "GSW",
+             "to_team": "warriors"}])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert "team:Los Angeles" in draft.ambiguities
+        assert not draft.ok
+
+    def test_a_nickname_in_a_move_is_rewritten_to_the_code(self):
+        payload = dict(CURRY_TRADE, player_names=["Stephen Curry"], moves=[
+            {"player_name": "Stephen Curry", "from_team": "warriors",
+             "to_team": "lakers"},
+            {"player_name": "Austin Reaves", "from_team": "lakers",
+             "to_team": "warriors"},
+            {"player_name": "Quentin Grimes", "from_team": "lakers",
+             "to_team": "warriors"}])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert draft.moves[0]["from_team"] == "GSW"
+        assert draft.moves[0]["to_team"] == "LAL"
+
+
+class TestDerivedNotAsked:
+    def test_blank_from_team_is_derived_from_the_snapshot(self):
+        payload = dict(CURRY_TRADE, player_names=["Stephen Curry"], moves=[
+            {"player_name": "Stephen Curry", "from_team": "", "to_team": "LAL"},
+            {"player_name": "Austin Reaves", "from_team": "", "to_team": "GSW"},
+            {"player_name": "Quentin Grimes", "from_team": "", "to_team": "GSW"}])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert draft.ok, (draft.errors, draft.ambiguities)
+        assert draft.moves[0]["from_team"] == "GSW"
+        assert draft.moves[1]["from_team"] == "LAL"
+        assert any("derived from the snapshot" in f for f in draft.findings)
+
+    def test_a_supplied_from_team_is_only_a_confirmation(self):
+        payload = dict(CURRY_TRADE, player_names=["Stephen Curry"], moves=[
+            {"player_name": "Stephen Curry", "from_team": "MIL",
+             "to_team": "LAL"}])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert any("confirmation failed" in e and "the snapshot decides" in e
+                   for e in draft.errors)
+
+    def test_blank_seed_date_uses_the_declared_rule_and_says_so(self):
+        payload = dict(CURRY_TRADE, seed_date="",
+                       player_names=["Stephen Curry"])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert draft.seed_date == "2026-07-06"
+        assert any("DECLARED RULE" in f for f in draft.findings)
+
+
+class TestTheTwoStepSurvives:
+    """Item 1 of the fix brief: the charter documents this model's failure
+    mode as an empty nested moves list, previously fixed by a separate tiny
+    schema. Extracting that step for per-step UI progress must not have
+    collapsed it back to one shot."""
+
+    def test_an_empty_nested_moves_list_still_routes_to_step_two(self):
+        from mironba.world.authoring import complete_moves, needs_moves_call
+
+        payload = dict(CURRY_TRADE, moves=[], player_names=["Stephen Curry"])
+        draft = draft_from_sentence("Curry to the Lakers", StubClient(payload))
+        assert draft.moves == []
+        assert needs_moves_call(draft), "step 2 must still be reachable"
+
+        class MovesStub:
+            def complete(self, m, schema=None, profile="default", **kw):
+                return schema(moves=[{"player_name": "Stephen Curry",
+                                      "from_team": "", "to_team": "LAL"}])
+
+        draft = complete_moves(draft, MovesStub())
+        assert len(draft.moves) >= 1, "a single-player sentence must yield a move"
+
+    def test_a_single_player_sentence_yields_at_least_one_move(self):
+        payload = {"kind": "stipulated", "seed_date": "", "decision": "d",
+                   "player_names": ["Victor Wembanyama"], "team_codes": ["GSW"],
+                   "moves": [{"player_name": "Victor Wembanyama",
+                              "from_team": "", "to_team": "GSW"}],
+                   "scored_teams": []}
+        draft = validate_draft(draft_from_sentence(
+            "Victor Wembanyama traded to the Warriors", StubClient(payload)))
+        assert len(draft.moves) >= 1
+        assert draft.moves[0]["from_team"] == "SAS", "derived, not asked"
+
+
+class TestUnderSpecifiedRoutesToTheSolver:
+    def _one_sided(self):
+        payload = {"kind": "stipulated", "seed_date": "", "decision": "d",
+                   "player_names": ["Victor Wembanyama"], "team_codes": ["GSW"],
+                   "moves": [{"player_name": "Victor Wembanyama",
+                              "from_team": "", "to_team": "GSW"}],
+                   "scored_teams": []}
+        return validate_draft(draft_from_sentence(
+            "Victor Wembanyama traded to the Warriors", StubClient(payload)))
+
+    def test_no_return_is_a_choice_not_an_error(self):
+        draft = self._one_sided()
+        assert not draft.errors, "a one-sided sentence is normal, not an error"
+        assert draft.awaiting_package
+        assert len(draft.package_options) >= 1
+
+    def test_the_options_carry_solver_priced_salaries_the_model_never_saw(self):
+        draft = self._one_sided()
+        for option in draft.package_options:
+            assert option["salary_out"] > 0 and option["salary_in"] > 0
+            assert option["send"], "a package must name who goes back"
+
+    def test_choosing_a_package_completes_a_legal_trade(self):
+        from mironba.world.authoring import choose_package
+
+        draft = choose_package(self._one_sided(), 0)
+        draft.errors.clear()
+        draft.next_steps.clear()
+        draft.findings.clear()
+        draft = validate_draft(draft)
+        assert draft.ok, (draft.errors, draft.ambiguities)
+        directions = {(m["from_team"], m["to_team"]) for m in draft.moves}
+        assert ("SAS", "GSW") in directions and ("GSW", "SAS") in directions
+
+    def test_an_out_of_range_choice_is_refused(self):
+        from mironba.world.authoring import choose_package
+
+        with pytest.raises(AuthoringError, match="not one of"):
+            choose_package(self._one_sided(), 99)
+
+    def test_validation_is_idempotent_after_a_choice(self):
+        from mironba.world.authoring import choose_package
+
+        draft = choose_package(self._one_sided(), 0)
+        draft.errors.clear()
+        draft.findings.clear()
+        draft.next_steps.clear()
+        draft = validate_draft(draft)
+        moves_once = len(draft.moves)
+        draft.errors.clear()
+        draft.findings.clear()
+        draft.next_steps.clear()
+        draft = validate_draft(draft)
+        assert len(draft.moves) == moves_once, "a second validation double-injected"
+
+
+class TestErrorsAreActionable:
+    def test_every_error_carries_a_next_step(self):
+        payload = dict(CURRY_TRADE, seed_date="2010-01-01",
+                       player_names=["Zzyzx Nobody"], moves=[],
+                       kind="pending_decision", team_codes=["XXX"])
+        draft = validate_draft(draft_from_sentence("x", StubClient(payload)))
+        assert draft.errors
+        assert len(draft.next_steps) == len(draft.errors)
+        assert all(step.strip() for step in draft.next_steps)
+
+
+class TestTheUnderSpecifiedPathEndToEnd:
+    def test_sentence_to_written_scenario_through_every_choice(self, tmp_path):
+        """The path a user actually takes: an under-specified sentence, the
+        solver packages, a human choice, then the confirmed write."""
+        from mironba.world.authoring import (choose_package, complete_moves,
+                                             needs_moves_call)
+
+        payload = {"kind": "stipulated", "seed_date": "", "decision": "d",
+                   "player_names": ["Victor Wembanyama"], "team_codes": ["GSW"],
+                   "moves": [], "scored_teams": []}
+        draft = draft_from_sentence(
+            "Victor Wembanyama traded to the Warriors", StubClient(payload))
+
+        class MovesStub:
+            def complete(self, m, schema=None, profile="default", **kw):
+                return schema(moves=[{"player_name": "Victor Wembanyama",
+                                      "from_team": "", "to_team": "GSW"}])
+
+        assert needs_moves_call(draft)
+        draft = validate_draft(complete_moves(draft, MovesStub()))
+        assert draft.awaiting_package, "the flow must offer return packages"
+
+        draft = choose_package(draft, 0)
+        draft.errors.clear()
+        draft.findings.clear()
+        draft.next_steps.clear()
+        draft = validate_draft(draft)
+        assert draft.ok, (draft.errors, draft.ambiguities)
+
+        with pytest.raises(AuthoringError, match="explicit human confirmation"):
+            write_scenario(draft, "wemby-e2e", config_dir=tmp_path)
+        path = write_scenario(draft, "wemby-e2e", confirmed=True,
+                              config_dir=tmp_path)
+        text = path.read_text(encoding="utf-8")
+        assert "wembavi01" in text
+        assert "salary" not in text.lower(), "no dollar figure reaches the file"
+        assert "from: SAS" in text and "to: GSW" in text
