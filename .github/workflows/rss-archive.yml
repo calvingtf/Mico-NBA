@@ -46,6 +46,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the one non-stdlib import (mironba.data's __init__
+              chain pulls yaml at any submodule import)
+        run: pip install pyyaml
+
       - name: Poll feeds (marker written even on an empty poll)
         run: python -m mironba.data.ingest.archive
 

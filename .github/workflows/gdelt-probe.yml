@@ -40,6 +40,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the one non-stdlib import (mironba.data's __init__
+              chain pulls yaml at any submodule import)
+        run: pip install pyyaml
+
       - name: Rate probe (egress-labelled, persists per query)
         run: python -m mironba.data.ingest.gdelt_spike --rate-probe
 
