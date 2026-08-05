@@ -11,41 +11,60 @@ UNTOUCHED. This module asks a different question at a different unit - the
 player - where ten deadlines supply hundreds of positives instead of dozens.
 Both are reported; they answer different questions.
 
-**Features, and where each may be used.**
+**Two corrections of the same leak class (entry #64).** (1) The first fit
+assigned each player the team on his season contracts row - and bbref lists
+a traded player under his ACQUIRING team, so "zero appearances in his
+team's window" partially encoded the label (roster team differed from the
+last pre-deadline team for 84-91% of positives vs 8-12% of negatives).
+(2) Fixing that by cutting features at the DEADLINE exposed the second:
+the label window runs Jan 1..deadline, so a player traded in January
+appears for his new team before the deadline and writes his own label into
+switched_pre and the team assignment. Features are therefore computed
+strictly BEFORE JAN 1 - the label window's own start - from the player's
+October-December appearances: team-entering-January, appearance shares in
+that team's last 10 pre-January games. The contracts row remains only a
+fallback for players with no pre-January appearance, flagged by a column.
+The question the model answers is: entering January, will this player be
+traded by the deadline?
 
-* ``availability`` - appearances in the player's team's last 10 games before
-  the deadline, from the player game logs. This is UNFENCED FOR THE RANKER
-  ONLY: the fence test was narrowed, not removed - availability stays out of
-  the planner and the value model because nothing about its effect on GM
-  behaviour or player value has been validated, while here it is exactly the
-  kind of pre-deadline signal a ranker is for, and the ranker's outputs feed
-  no simulation.
-* ``age`` - from nba_api bio stats (one request per season).
+**Features.**
+
+* ``window_share``  - appearances in team-entering-January's last 10
+  pre-January games, as a share of that window (2020-21 started Dec 22, so
+  its window is short and the share normalises by its real size). From the
+  player game logs - UNFENCED FOR THE RANKER ONLY: the fence test was
+  narrowed, not removed; the planner and value model still may not read
+  availability.
+* ``injured_shaped`` - played for that team earlier in Oct-Dec, then zero
+  window appearances.
+* ``switched_pre``  - appeared for 2+ teams before Jan 1 (an early-season
+  move; January moves are the LABEL and stay out of the features).
+* ``never_active``  - no pre-January appearance at all (deep bench /
+  two-way / name-join miss share this bucket, and it says so).
+* ``age`` - nba_api bio stats; birthdate-derived and season-scoped, so the
+  VALUE is freeze-safe. Its MISSINGNESS indicator can flip on post-deadline
+  debuts (presence in season bio requires appearing at some point in the
+  season); that residual channel is quantified in the pre-fit report.
 * ``expiring`` - NOT COMPUTABLE FOR ANY SEASON, dropped with the reason:
   the only contract-structure snapshot is forward-looking (retrieved July
-  2026), so contracts that ended in 2025-26 had already left the page - no
-  player shows final_season 2025-26 - and absence from a forward snapshot
-  inversely encodes expiring status through post-deadline outcomes, the
-  season+1 leak this module refuses. The test that was meant to pin the
-  feature to one season is what exposed this.
+  2026), so contracts that ended in 2025-26 had already left the page - and
+  absence from a forward snapshot inversely encodes the label through
+  post-deadline outcomes, the season+1 leak this module refuses.
 * ``log_salary`` - the season's contract row.
-* ``team_prior_rate`` - the player's team's deadline-trade rate over PRIOR
-  seasons only. This one ENCODES historical trade frequency, so the null
-  must absorb it - see below.
+* ``team_prior_rate`` - team-at-deadline's deadline-trade rate over PRIOR
+  seasons only. Encodes historical trade frequency, so the null must absorb
+  it - see below.
 
 **Nulls, stated per number.**
 
-* precision@k: the held-out season's base rate (a random ranking's expected
-  precision).
-* AUC: 0.5 by construction, and a label-permutation p.
+* precision@k: the held-out season's base rate (a random ranking).
+* AUC: 0.5 by construction, plus permutation p.
 * BOTH also against the WITHIN-TEAM permutation null: labels shuffled only
-  among players on the same team-season, which preserves each team's trade
-  frequency exactly. A model whose lift survives this null is using more
-  than "which teams trade"; ``team_prior_rate`` is fully absorbed by it.
+  among players sharing a team-at-deadline, preserving each team-season's
+  trade count exactly; ``team_prior_rate`` is fully absorbed by it.
 
 **Missingness is reported by class before any fit** - the artifact channel
-that nearly invalidated the pair fit. A feature whose missingness differs
-sharply between classes is a leak detector wearing a feature's name.
+that produced entry #64's correction in the first place.
 """
 
 from __future__ import annotations
@@ -59,7 +78,9 @@ from pathlib import Path
 SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 
 SEASONS = tuple(f"{y}-{str(y + 1)[-2:]}" for y in range(2016, 2026))
-FEATURES = ("availability", "age", "log_salary", "team_prior_rate")
+FEATURES = ("window_share", "injured_shaped", "switched_pre", "never_active",
+            "age", "log_salary", "team_prior_rate")
+MISS_COLS = ("age_missing", "team_from_contracts")
 K = 25
 
 
@@ -67,6 +88,17 @@ def _deadline(season: str):
     from mironba.world.calendar import CALENDARS
 
     return CALENDARS[season].deadline
+
+
+def _feature_cutoff(season: str):
+    """Jan 1 of the deadline year: the label window's own start.
+
+    Every feature is computed from appearances strictly before this date,
+    so nothing inside the window it predicts can reach a feature - the
+    January-trade leak the deadline cutoff allowed (entry #64)."""
+    from datetime import date
+
+    return date(int(season[:4]) + 1, 1, 1)
 
 
 # --------------------------------------------------------------------------
@@ -91,7 +123,13 @@ def traded_players(season: str) -> set[str]:
 
 
 def roster(season: str) -> dict[str, dict]:
-    """player_id -> {team, salary} for everyone under contract that season."""
+    """player_id -> {team, salary} for everyone under contract that season.
+
+    The team on this row is bbref's season listing - for traded players
+    that is the ACQUIRING team, i.e. post-deadline information. It is used
+    only as a fallback where no pre-deadline appearance exists, and that
+    fallback is flagged (entry #64).
+    """
     path = SNAPSHOTS / f"bbref-{season}" / "contracts.csv"
     out: dict[str, dict] = {}
     with path.open(encoding="utf-8", newline="") as handle:
@@ -102,7 +140,7 @@ def roster(season: str) -> dict[str, dict]:
 
 
 # --------------------------------------------------------------------------
-# Features
+# Pre-deadline appearance structures (the freeze-computable side)
 # --------------------------------------------------------------------------
 
 
@@ -121,27 +159,55 @@ def _norm(name: str) -> str:
     return "".join(c for c in text.lower() if c.isalpha())
 
 
-def availability_by_player(season: str) -> dict[str, float]:
-    """Normalised name -> appearances in his team's last 10 pre-deadline games.
+@dataclass(frozen=True)
+class PreDeadline:
+    """Everything the logs say about a player STRICTLY before Jan 1."""
 
-    Uses the availability module's machinery - the RANKER-ONLY unfenced
-    consumer; the narrowed fence test names this module as the one permitted
-    reader outside the display surface.
-    """
+    last_team: str
+    teams: frozenset
+    window_games: int          # appearances in last_team's last-10 window
+    window_size: int           # actual window size (short in 2020-21)
+    played_for_last_team_earlier: bool
+
+
+def pre_deadline_profiles(season: str) -> dict[str, PreDeadline]:
+    """Normalised name -> pre-deadline appearance profile.
+
+    The RANKER-ONLY unfenced consumer of the availability machinery; every
+    date compared here is < deadline, and the window itself comes from
+    team_last_games, which is strictly-before by construction (tested per
+    season)."""
     from mironba.world.availability import load_player_logs, team_last_games
 
     logs = load_player_logs(season)
     if not logs:
         return {}
-    deadline = _deadline(season)
-    windows = {}
-    for team in {a.team for a in logs}:
-        windows[team] = set(team_last_games(team, deadline, logs, 10))
-    counts: dict[str, set] = defaultdict(set)
-    for a in logs:
-        if a.game_date in windows.get(a.team, ()):
-            counts[_norm(a.player_name)].add((a.team, a.game_date))
-    return {k: len(v) / 10 for k, v in counts.items()}
+    cutoff = _feature_cutoff(season)
+    pre = [a for a in logs if a.game_date < cutoff]
+    windows = {team: set(team_last_games(team, cutoff, logs, 10))
+               for team in {a.team for a in pre}}
+
+    by_player: dict[str, list] = defaultdict(list)
+    for a in pre:
+        by_player[_norm(a.player_name)].append(a)
+
+    out = {}
+    for key, apps in by_player.items():
+        apps.sort(key=lambda a: a.game_date)
+        last_team = apps[-1].team
+        window = windows.get(last_team, set())
+        window_games = len({a.game_date for a in apps
+                            if a.team == last_team and a.game_date in window})
+        earlier = any(a.team == last_team and a.game_date not in window
+                      for a in apps)
+        out[key] = PreDeadline(
+            last_team=last_team,
+            teams=frozenset(a.team for a in apps),
+            window_games=window_games,
+            window_size=len(window),
+            played_for_last_team_earlier=earlier,
+        )
+    return out
 
 
 def age_by_player(season: str) -> dict[str, float]:
@@ -190,31 +256,53 @@ def team_prior_rates(upto_season: str) -> dict[str, float]:
 class Row:
     season: str
     player_id: str
-    team: str
+    team: str                  # team entering January (log-derived)
     label: int
     features: dict
 
 
 def build_rows() -> list[Row]:
+    import math
+
     rows: list[Row] = []
     for season in SEASONS:
         traded = traded_players(season)
         names = _bbref_names(season)
-        avail = availability_by_player(season)
+        profiles = pre_deadline_profiles(season)
         ages = age_by_player(season)
         rates = team_prior_rates(season)
-        import math
 
         for pid, info in roster(season).items():
             key = _norm(names.get(pid, ""))
+            profile = profiles.get(key)
+            if profile is not None:
+                team = profile.last_team
+                window_share = (profile.window_games
+                                / max(profile.window_size, 1))
+                injured = float(profile.window_games == 0
+                                and profile.played_for_last_team_earlier)
+                switched = float(len(profile.teams) >= 2)
+                never = 0.0
+                from_contracts = 0.0
+            else:
+                team = info["team"]
+                window_share = 0.0
+                injured = 0.0
+                switched = 0.0
+                never = 1.0
+                from_contracts = 1.0
             rows.append(Row(
-                season=season, player_id=pid, team=info["team"],
+                season=season, player_id=pid, team=team,
                 label=int(pid in traded),
                 features={
-                    "availability": avail.get(key),
+                    "window_share": window_share,
+                    "injured_shaped": injured,
+                    "switched_pre": switched,
+                    "never_active": never,
                     "age": ages.get(key),
                     "log_salary": math.log10(max(info["salary"], 1)),
-                    "team_prior_rate": rates.get(info["team"]),
+                    "team_prior_rate": rates.get(team),
+                    "_from_contracts": from_contracts,
                 },
             ))
     return rows
@@ -241,6 +329,12 @@ def prefit_report(rows: list[Row]) -> dict:
             missing = sum(1 for r in group if r.features[feature] is None)
             by_class[label] = missing / len(group)
         report["missingness"][feature] = by_class
+    # the age residual channel: bio presence requires appearing at SOME
+    # point in the season, which a deadline observer cannot fully know
+    residual = sum(1 for r in rows
+                   if r.features["age"] is not None
+                   and r.features["never_active"] == 1.0)
+    report["age_presence_residual"] = residual
     return report
 
 
@@ -255,6 +349,12 @@ def render_prefit(rows: list[Row]) -> dict:
           "(random ranking)")
     print("  null AUC = 0.5; permutation p reported with the fit; the "
           "within-team null preserves team trade frequency")
+    print("  features cut at JAN 1 (the label window's start) and the "
+          "team entering January is LOG-DERIVED (entry #64); the "
+          "contracts fallback is flagged as a column")
+    print(f"  age residual channel: {report['age_presence_residual']} row(s) "
+          "carry an age despite zero pre-deadline appearances - bio "
+          "presence encodes appeared-at-some-point; bounded and reported")
     print("\n  MISSINGNESS BY CLASS (the artifact channel - a leak wears a "
           "feature's name):")
     print(f"  {'feature':<18} {'missing|neg':>12} {'missing|pos':>12}")
@@ -281,15 +381,12 @@ def _matrix(rows: list[Row], medians: dict | None = None):
             medians[feature] = float(np.median(vals)) if vals else 0.0
     X = np.array([
         [r.features[f] if r.features[f] is not None else medians[f]
-         for f in FEATURES] + [
-            1.0 if r.features[f] is None else 0.0 for f in ("availability",
-                                                            "age")]
+         for f in FEATURES]
+        + [1.0 if r.features["age"] is None else 0.0,
+           r.features["_from_contracts"]]
         for r in rows])
     y = np.array([r.label for r in rows])
     return X, y, medians
-
-
-MISS_COLS = ("availability_missing", "age_missing")
 
 
 def fit_and_score(rows: list[Row], *, permutations: int = 200,
@@ -301,7 +398,7 @@ def fit_and_score(rows: list[Row], *, permutations: int = 200,
 
     rng = random.Random(seed)
     per_season = []
-    importances = np.zeros(len(FEATURES) + len(MISS_COLS))
+    coef_sum = np.zeros(len(FEATURES) + len(MISS_COLS))
     train_aucs = []
 
     for held in SEASONS:
@@ -322,8 +419,6 @@ def fit_and_score(rows: list[Row], *, permutations: int = 200,
         hits = int(sum(yte[order[:K]]))
         base = float(np.mean(yte))
 
-        # within-team permutation: shuffle labels among each team's players,
-        # preserving every team-season's trade count exactly
         def within_team_draw():
             shuffled = yte.copy()
             by_team: dict[str, list[int]] = defaultdict(list)
@@ -348,13 +443,14 @@ def fit_and_score(rows: list[Row], *, permutations: int = 200,
             "wt_null_p_at_k": float(np.mean(wt_hits)) / K,
             "wt_p_auc": (wt_auc_ge + 1) / (permutations + 1),
         })
-        importances += np.abs(model.coef_[0])
+        coef_sum += model.coef_[0]
 
-    importances /= len(per_season)
+    coef_mean = coef_sum / len(per_season)
     labels = list(FEATURES) + list(MISS_COLS)
     return {
         "per_season": per_season,
-        "importance": sorted(zip(labels, importances), key=lambda t: -t[1]),
+        "coefficients": sorted(zip(labels, coef_mean),
+                               key=lambda t: -abs(t[1])),
         "train_auc": float(np.mean(train_aucs)),
     }
 
@@ -376,29 +472,31 @@ def render_fit(result: dict) -> None:
     wt_null = float(np.mean([r["wt_null_p_at_k"] for r in rows]))
     print(f"\n  mean test AUC {auc:.3f} vs 0.5 random null "
           f"(train {result['train_auc']:.3f} - the gap is the overfit read)")
+    print(f"  PLAIN READING: a randomly chosen traded player outscores a "
+          f"randomly chosen\n  untraded one {auc:.0%} of the time (50% would "
+          "be a coin flip).")
     print(f"  mean p@{K} {p_at_k:.1%}")
     print(f"    vs class-balance null {null_p:.1%}: "
           f"{p_at_k / null_p:.2f}x, headroom "
           f"{(p_at_k - null_p) / (1 - null_p):+.1%} of chance-to-perfect")
     print(f"    vs WITHIN-TEAM null {wt_null:.1%} (preserves team trade "
           f"frequency; absorbs team_prior_rate): {p_at_k / wt_null:.2f}x")
-    print("\n  FEATURE IMPORTANCE (|standardised coefficient|, mean over folds):")
-    for name, weight in result["importance"]:
-        print(f"    {name:<22} {weight:.3f}")
+    print(f"  PLAIN READING: of {K} players flagged per deadline, "
+          f"~{p_at_k * K:.1f} are traded,\n  vs ~{null_p * K:.1f} at chance "
+          f"and ~{wt_null * K:.1f} under the within-team null.")
+    print("\n  MEAN SIGNED COEFFICIENTS (standardised; sign = direction):")
+    for name, weight in result["coefficients"]:
+        print(f"    {name:<22} {weight:+.3f}")
 
 
 def ablation(rows: list[Row]) -> dict:
-    """Salary+team_rate alone versus the full set - the claim's own control.
-
-    'The orthogonal features moved it' is only sayable against the model
-    without them; a reduced model at the base rate means they carry the lift.
-    """
+    """Salary+team_rate alone versus the full set - the claim's own control."""
     import numpy as np
     from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import roc_auc_score
     from sklearn.preprocessing import StandardScaler
 
-    def run(feature_set, miss_of):
+    def run(feature_set, extra_cols):
         per = []
         for held in SEASONS:
             train = [r for r in rows if r.season != held]
@@ -411,8 +509,9 @@ def ablation(rows: list[Row]) -> dict:
                 X = np.array(
                     [[r.features[f] if r.features[f] is not None else med[f]
                       for f in feature_set]
-                     + [1.0 if r.features[f] is None else 0.0
-                        for f in miss_of] for r in rs])
+                     + [r.features[c] if c != "age_missing"
+                        else (1.0 if r.features["age"] is None else 0.0)
+                        for c in extra_cols] for r in rs])
                 return X, np.array([r.label for r in rs])
 
             Xtr, ytr = mat(train)
@@ -429,7 +528,7 @@ def ablation(rows: list[Row]) -> dict:
                 float(np.mean([p for _, p in per])))
 
     base_auc, base_p = run(("log_salary", "team_prior_rate"), ())
-    full_auc, full_p = run(FEATURES, ("availability", "age"))
+    full_auc, full_p = run(FEATURES, ("age_missing", "_from_contracts"))
     return {"reduced": {"auc": base_auc, "p_at_k": base_p},
             "full": {"auc": full_auc, "p_at_k": full_p}}
 
@@ -459,15 +558,17 @@ def main(argv=None) -> int:
         print(f"    salary + team_rate only : AUC "
               f"{control['reduced']['auc']:.3f}   "
               f"p@{K} {control['reduced']['p_at_k']:.1%}")
-        print(f"    + availability/age      : AUC "
+        print(f"    + appearance components : AUC "
               f"{control['full']['auc']:.3f}   "
               f"p@{K} {control['full']['p_at_k']:.1%}   "
               f"(delta {delta_p:+.1%})")
         BENCH.write_text(json.dumps({
             "prefit": prefit, "per_season": result["per_season"],
-            "importance": [[n, float(w)] for n, w in result["importance"]],
+            "coefficients": [[n, float(w)] for n, w in result["coefficients"]],
             "train_auc": result["train_auc"], "ablation": control,
             "k": K, "permutations": args.permutations,
+            "team_assignment": "log-derived, features cut at Jan 1 "
+                               "(entry #64: two leaks, one class)",
         }, indent=1), encoding="utf-8")
         print(f"\n  wrote {BENCH.name}")
     return 0

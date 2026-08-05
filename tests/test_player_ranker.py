@@ -50,8 +50,10 @@ class TestStructuralMissingness:
     def test_prefit_reports_missingness_for_every_feature_by_class(self):
         rows = [
             Row("S", f"p{i}", "AAA", int(i < 3),
-                {"availability": None if i % 2 else 0.5, "age": 25.0,
-                 "log_salary": 6.0, "team_prior_rate": 0.05})
+                {"window_share": 0.5, "injured_shaped": 0.0,
+                 "switched_pre": 0.0, "never_active": 0.0,
+                 "age": None if i % 2 else 25.0, "log_salary": 6.0,
+                 "team_prior_rate": 0.05, "_from_contracts": 0.0})
             for i in range(10)
         ]
         report = prefit_report(rows)
@@ -77,3 +79,43 @@ class TestTheRecordedBench:
         assert "6.0% against 5.01%" in readme or \
             "p@10 of 6.0% against 5.01%" in readme or \
             "6.0% against a 5.01%" in readme.replace("**", "")
+
+
+class TestTheLeakClass:
+    def test_features_cut_strictly_before_the_label_window(self):
+        """Item-4 check, per season: every appearance a feature can see
+        predates Jan 1 - the label window's own start - which also predates
+        every deadline. A January trade must not write itself into
+        switched_pre or the team assignment."""
+        from mironba.eval.player_ranker import SEASONS, _deadline, _feature_cutoff
+
+        for season in SEASONS:
+            cutoff = _feature_cutoff(season)
+            assert cutoff <= _deadline(season)
+            assert cutoff.month == 1 and cutoff.day == 1
+
+    def test_profiles_ignore_appearances_after_the_cutoff(self, monkeypatch):
+        from datetime import date
+
+        from mironba.eval import player_ranker
+        from mironba.world.availability import Appearance
+
+        logs = [Appearance("Test Guy", "AAA", date(2024, 12, 1)),
+                Appearance("Test Guy", "AAA", date(2024, 12, 20)),
+                # post-cutoff: a January move that must be invisible
+                Appearance("Test Guy", "BBB", date(2025, 1, 20))]
+        monkeypatch.setattr(
+            "mironba.world.availability.load_player_logs", lambda s: logs)
+        profiles = player_ranker.pre_deadline_profiles("2024-25")
+        profile = profiles[player_ranker._norm("Test Guy")]
+        assert profile.last_team == "AAA", "January team leaked into features"
+        assert profile.teams == frozenset({"AAA"})
+
+    def test_the_bench_records_the_corrected_assignment(self):
+        import json
+        from pathlib import Path
+
+        bench = json.loads(
+            (Path(__file__).resolve().parents[1] / "bench-player-ranker.json")
+            .read_text(encoding="utf-8"))
+        assert "Jan 1" in bench["team_assignment"]

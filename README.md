@@ -88,6 +88,7 @@ Python; a proposal the rules refuse is refused with findings, including the
 project's own stipulated premises.
 
 **Reading map**: [measured results](#what-was-measured) ·
+[the boundary finding](#the-boundary-finding-rank-upstream-of-the-constraints) ·
 [results that weren't](#seven-results-that-werent) ·
 [the standing boundary](#the-standing-boundary) ·
 [the full measurement ledger](docs/measurements.md) (62 entries — every
@@ -299,36 +300,50 @@ many of its pairs surface.
 **p@10 of 6.0% against 5.01% is 1.20x on 61 trades across ten folds — inside
 noise.** The ranker does not beat a random ranker.
 
-**The player-level reframe (entry #63) — a different unit, and this one
-works.** The pair result above stands untouched; the new question is *will
-this player be traded at this deadline?* — n=5,631 (player, deadline) rows
-across ten deadlines, 353 positives (6.3% base rate), stated with per-class
-feature missingness before fitting. Leave-one-season-out logistic regression:
+**The player-level reframe (entries #63-#64) — a different unit, corrected
+twice, and it works modestly.** The pair result above stands untouched; the
+new question is *entering January, will this player be traded by the
+deadline?* — n=5,631 (player, deadline) rows across ten deadlines, 353
+positives (6.3% base rate), per-class feature missingness stated before
+fitting. **The first two fits were contaminated by one leak class and are
+recorded, not erased**: bbref's contracts row lists a traded player under
+his acquiring team (roster team ≠ last pre-deadline team for 84–91% of
+positives vs 8–12% of negatives), and fixing that by cutting features at
+the deadline exposed the second — January trades sit inside the label
+window and wrote themselves into the features (the leak *inflated* p@25 to
+24.0%). Features now cut strictly at Jan 1, the label window's own start,
+with the team entering January log-derived. The clean numbers:
 
 | | observed | null | ratio / headroom |
 | --- | --- | --- | --- |
-| mean p@25 | **12.4%** | 6.3% class-balance | 1.97x, +6.5% of chance-to-perfect |
-| mean p@25 | **12.4%** | **7.2% within-team** (preserves each team's trade frequency; absorbs the team_prior_rate feature) | **1.72x** |
-| mean test AUC | **0.650** | 0.5 random | train 0.662 — no meaningful overfit gap |
+| mean p@25 | **9.6%** | 6.3% class-balance | 1.53x, +3.5% of chance-to-perfect |
+| mean p@25 | **9.6%** | **7.2% within-team** (preserves each team's trade frequency; absorbs team_prior_rate) | **1.34x** |
+| mean test AUC | **0.645** | 0.5 random | train 0.651 — no overfit gap |
 
-The within-team permutation p is ≤0.002 in nine of ten folds (the tenth,
-2023-24, has 10 positives and p=0.341 — underpowered, said so). **The
-ablation is the claim's own control**: salary + prior team rate alone score
-p@25 6.4% — the base rate, i.e. nothing — and adding availability and age
-carries the entire lift (+6.0 points). Availability comes from the player
-game logs under a **narrowed fence**: the ranker is the one permitted
-consumer outside the display surface; the planner and value model still may
-not read it, because nothing about its effect on GM behaviour or player
-value has been validated. Expiring-contract status is **not computable for
-any season** and was dropped with the reason recorded: the only structure
-snapshot is forward-looking, so contracts that ended before retrieval had
-already left the page — and absence from a forward snapshot inversely
-encodes the label through post-deadline outcomes, a leak the test built to
-pin the feature is what exposed. The two ranker results are consistent, not
-contradictory: features the solver has already consumed carry no ranking
-signal (pair level); pre-solver signals — who is paid what, who is playing —
-do (player level). Recorded in `bench-player-ranker.json`; regenerate with
-`python -m mironba.eval.player_ranker --fit`.
+**Plainly**: of 25 players flagged per deadline, ~2.4 are traded, versus
+~1.6 at chance and ~1.8 under the within-team null. A randomly chosen
+traded player outscores a randomly chosen untraded one 65% of the time
+(a coin flip would be 50%). The within-team permutation p on AUC is ≤0.018
+in nine of ten folds; the tenth (2023-24, 10 positives) is p=0.226 —
+underpowered, said so.
+
+**The decomposition says what the signal is.** Availability split into
+components: `window_share` −0.43 (fewer recent appearances → traded),
+`never_active` −0.28 (never-appeared players are *less* traded — two-ways
+and stashes are not trade chips), `injured_shaped` −0.15, and
+`switched_pre` collapsed from +0.29 to +0.01 once January moves left the
+features — its earlier weight *was* the leak. With `log_salary` at +1.08,
+the finding reads: **paid-but-not-playing players get traded — a
+marginal-rotation effect, not an injury effect.** The ablation is the
+claim's control: salary + prior team rate alone score p@25 5.2% — under
+the base rate — so the appearance components carry the entire +4.4-point
+lift. Expiring-contract status is not computable for any season (the
+forward-looking snapshot had already dropped ended contracts, and
+forward-absence inversely encodes the label — the test built to pin the
+feature is what exposed it). Availability reaches this model under a
+narrowed fence: the ranker is the one permitted consumer; the planner and
+value model still may not read it. Recorded in `bench-player-ranker.json`;
+regenerate with `python -m mironba.eval.player_ranker --fit`.
 
 Two things it would be easy to over-read, and neither says what it looks like:
 
@@ -1056,6 +1071,26 @@ spend_level's lean stays person-or-mandate and is labelled so.
    demonstration until the persistence result has the n=23 pairs it is
    costed at.
 
+### The boundary finding: rank upstream of the constraints
+
+The pair-level negative and the player-level positive are one result, and
+it is the strongest generalizable claim this project has produced:
+
+| unit | features sit... | observed | null | verdict |
+| --- | --- | --- | --- | --- |
+| team pair | **downstream** of the solver (salary matching, apron tiers, roster slots — inputs the solver already consumed) | p@10 6.0% | 5.01% permutation | 1.20x — inside noise; recorded negative |
+| player | **upstream** of the solver (who is paid what, who is actually playing — before any constraint runs) | p@25 9.6% / AUC 0.645 | 7.2% within-team / 0.5 | 1.34x; AUC wt-p ≤0.018 in 9/10 folds |
+
+Features the constraint solver has already consumed carry no ranking
+signal; features that precede it do. The general implication: **in a system
+with a hard constraint layer, put the model upstream of the constraints,
+not downstream.** Downstream of a solver, the discriminative variance has
+been spent — everything surviving is legal-and-similar by construction, and
+a ranker there relearns the solver's residue. Upstream, the model sees the
+world before the constraints flatten it. Both rows carry their own nulls;
+the pair row is 61 trades over ten folds, the player row 353 positives over
+ten deadlines with two leak corrections recorded on the way (entry #64).
+
 ### The convergence
 
 Three independent measurements arrive at one claim: **in this domain the
@@ -1178,7 +1213,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,039 tests**, run on every commit by the pre-commit gate
+**1,042 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an

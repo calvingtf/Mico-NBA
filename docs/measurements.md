@@ -2463,3 +2463,56 @@ that ended pre-retrieval had left the page, and forward-absence inversely
 encodes the label through post-deadline outcomes - the season+1 leak. The
 test written to pin the feature to 2025-26 is what exposed it; the feature
 was dropped with the reason kept greppable in place.
+
+
+## 64. One leak class, two members - and the clean result that survived (2026-08-04)
+
+**Entry #63's numbers were contaminated and are superseded (kept, not
+erased).** The leak class item 4 of the brief asked about - "could this
+feature be computed only with post-deadline information?" - had two members
+in the new features:
+
+1. **Team assignment.** bbref's contracts row lists a traded player under
+   his ACQUIRING team: roster team != last pre-deadline team for 84-91% of
+   positives vs 8-12% of negatives (measured on 2024-25 and 2021-22). "Zero
+   appearances in his team's window" therefore partially encoded the label.
+2. **The label window's own events.** Fixing (1) by cutting features at the
+   deadline let January trades - inside the Jan 1..deadline label window -
+   write themselves into switched_pre and the team assignment: a player
+   traded in January appears for his new team before the deadline. This
+   leak INFLATED the result (p@25 24.0%), and switched_pre's coefficient
+   collapsed from +0.29 to +0.01 when it closed - the coefficient was the
+   leak.
+
+**The fix:** features cut strictly at Jan 1 (the label window's start);
+team-entering-January derived from the player's own pre-January
+appearances; contracts team only as a flagged fallback. Question restated:
+entering January, will this player be traded by the deadline?
+
+**Clean numbers (10 deadlines, leave-one-season-out):** AUC 0.645 (train
+0.651), p@25 9.6% vs 6.3% class null (1.53x, +3.5% headroom) and vs 7.2%
+within-team null (1.34x); within-team AUC permutation p<=0.018 in 9/10
+folds (2023-24: 10 positives, p=0.226, underpowered and said so).
+Plainly: ~2.4 of 25 flagged are traded vs ~1.6 at chance and ~1.8 under
+the within-team null; a random traded player outscores a random untraded
+one 65% of the time.
+
+**Decomposition finding:** window_share -0.43, never_active -0.28,
+injured_shaped -0.15, log_salary +1.08 - PAID-BUT-NOT-PLAYING players get
+traded: a marginal-rotation effect, not an injury effect (never-appeared
+players are LESS traded than low-minute actives). Ablation: salary+team
+rate alone score 5.2% - below base rate - so the appearance components
+carry the whole +4.4-point lift.
+
+**Age's residual channel, quantified:** 473 of 5,631 rows carry an age
+despite zero pre-January appearances - bio presence encodes
+appeared-at-some-point-in-season. Bounded, reported, and the age VALUE
+itself is birthdate-derived and safe.
+
+**Windows verified per season:** the feature cutoff is Jan 1 <= deadline
+for all ten seasons (test), and a synthetic post-cutoff appearance cannot
+reach a profile (test).
+
+**The pattern's name:** the correction chain 12.4% -> 24.0% -> 9.6% is why
+figures and benches regenerate from recorded sources - each contaminated
+number was believed at the time it was written.
