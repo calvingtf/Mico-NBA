@@ -141,6 +141,17 @@ Small local models drift from JSON schemas. Defenses, in order:
    Measure a candidate against its own null before moving it — and note
    that "measured" does not mean "split".
 
+   Because schema size predicts nothing, a study per field would cost hours
+   each. `mironba/llm/degeneracy.py` takes the half that is free:
+   degeneracy needs no ground truth, so it reads what every `Literal` field
+   has actually emitted across recorded runs and flags the constants. Two
+   signals, in order of strength — a field **asked for and never returned**
+   (answered entirely by its pydantic default, and independent of whether
+   the inputs varied), and a field that emits only one of its values. Both
+   are flagged only above a stated n, and neither is a defect: at n=6 `kind`
+   looked degenerate and finished 12/12. **It cannot find a wrong value,
+   only an unused one** — accuracy still needs labels and a study.
+
 ### Throughput
 
 Agent ticks are embarrassingly parallel. Ollama serializes badly under

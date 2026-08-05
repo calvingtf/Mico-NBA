@@ -1,0 +1,106 @@
+{
+  "min_n": 12,
+  "what_this_finds": "fields that have only ever emitted one of their allowed values, from run records alone",
+  "what_this_cannot_find": "whether any emitted value is CORRECT. There are no labels in a run record. A clean distribution is not a correctness result.",
+  "fields": [
+    {
+      "schema": "Proposal",
+      "field": "kind",
+      "allowed": [
+        "stipulated",
+        "pending_decision"
+      ],
+      "counts": {
+        "pending_decision": 6,
+        "stipulated": 63
+      },
+      "n": 69,
+      "runs": 36,
+      "calls": 70,
+      "asked": 1,
+      "omitted": 0,
+      "invalid": {
+        "trade": 1
+      },
+      "values_seen": [
+        "pending_decision",
+        "stipulated"
+      ],
+      "never_emitted": [],
+      "single_valued": false,
+      "flag": "uses more than one value; nothing to flag here"
+    },
+    {
+      "schema": "EventKind",
+      "field": "event",
+      "allowed": [
+        "trade",
+        "signing"
+      ],
+      "counts": {
+        "signing": 7,
+        "trade": 7
+      },
+      "n": 14,
+      "runs": 2,
+      "calls": 14,
+      "asked": 0,
+      "omitted": 0,
+      "invalid": {},
+      "values_seen": [
+        "signing",
+        "trade"
+      ],
+      "never_emitted": [],
+      "single_valued": false,
+      "flag": "uses more than one value; nothing to flag here"
+    },
+    {
+      "schema": "ScenarioKind",
+      "field": "kind",
+      "allowed": [
+        "stipulated",
+        "pending_decision"
+      ],
+      "counts": {
+        "pending_decision": 6,
+        "stipulated": 6
+      },
+      "n": 12,
+      "runs": 1,
+      "calls": 12,
+      "asked": 0,
+      "omitted": 0,
+      "invalid": {},
+      "values_seen": [
+        "pending_decision",
+        "stipulated"
+      ],
+      "never_emitted": [],
+      "single_valued": false,
+      "flag": "uses more than one value; nothing to flag here"
+    },
+    {
+      "schema": "Proposal",
+      "field": "event",
+      "allowed": [
+        "trade",
+        "signing"
+      ],
+      "counts": {},
+      "n": 0,
+      "runs": 0,
+      "calls": 70,
+      "asked": 1,
+      "omitted": 1,
+      "invalid": {},
+      "values_seen": [],
+      "never_emitted": [
+        "signing",
+        "trade"
+      ],
+      "single_valued": false,
+      "flag": "OMITTED in all 1 call(s) that asked for it, but that is below the n=12 floor"
+    }
+  ]
+}

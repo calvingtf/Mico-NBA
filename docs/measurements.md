@@ -3137,3 +3137,66 @@ and it certifies a genuine one. Recorded raw in `bench-kind-arms.json`.
 
 Registry updated: `MEASURED` now explicitly does not mean "split" — one field
 in `scenario_draft` was split on measurement and another was kept on it.
+
+## #78 — watching the fields instead of studying them, and what that found
+
+#77 removed the shortcut: schema size predicts nothing, so soundly deciding
+each label field would mean a 12-sentence labelled study per field. But
+**degeneracy needs no ground truth**. Every `runs/*/llm_calls.jsonl` already
+records what the model emitted; `llm/degeneracy.py` reads them and counts.
+The watch list is AST-derived from the `Literal` annotations, never declared,
+because a hand-maintained list rots invisibly - a field dropped from it
+simply stops being watched.
+
+**Current record, across every recorded run:**
+
+| field | allowed | emitted | n | runs |
+|---|---|---|---|---|
+| `Proposal.kind` | stipulated, pending_decision | stipulated x62, pending_decision x6 | 68 | 35 |
+| `EventKind.event` | trade, signing | trade x7, signing x7 | 14 | 2 |
+| `ScenarioKind.kind` | stipulated, pending_decision | stipulated x6, pending_decision x6 | 12 | 1 |
+| `Proposal.event` | trade, signing | — | 0 | 0 |
+
+Nothing is flagged. Two things turned up anyway.
+
+**One raw response fell outside its Literal.** `Proposal.kind` was emitted as
+`"trade"` once - not one of its two allowed values, and plainly the model
+confusing it with the `event` field beside it. That is the pre-validation raw
+text, so pydantic and the repair retry stood between it and anything
+downstream; what it shows is that guided decoding did **not** constrain the
+field on that call (`schema_sent_to_server: true`,
+`schema_enforcement_observed: null`). Counted separately from the class
+distribution, because a value outside the enum is evidence about enforcement,
+not a class the field legitimately uses.
+
+**Omission is the sharper signal, and it is the #74 signature.** A field that
+is *asked for and never returned* is answered entirely by its pydantic
+default whatever the input said - and unlike single-valuedness, that
+conclusion does not depend on the inputs having varied. `Proposal.event` is
+exactly this. The scan could not say so at first: the log recorded the schema
+NAME but not its fields, so 69 historical `Proposal` calls that predate the
+`event` field were indistinguishable from 69 omissions. Reporting "69
+omitted" would have been a fabricated finding about calls that never asked.
+`client.py` now logs `schema_fields` per call, and the scan counts omissions
+only among calls that requested the field.
+
+Validated live: one fresh draft, `asked=1, omitted=1`, and the resulting
+`Draft.event` is `"trade"` - the default, for a sentence reading "LeBron
+James signs with the Golden State Warriors". **The monitor reproduces #74's
+finding from one call with no labels at all**, and correctly refuses to
+conclude anything at n=1.
+
+**The floor is n=12, and it is not a round number chosen for comfort.**
+During #77, `kind` had emitted nothing but "stipulated" through the first six
+sentences - the set runs stipulated-first - and looked exactly like a
+degenerate field. It finished 12/12. Six observations of one value proved
+nothing because the first six inputs were all of one kind, and any field
+whose inputs have not varied is in the same position.
+
+**What this does not replace, stated in the module, in the committed JSON,
+and in the charter.** It finds inert fields. It cannot tell a correct field
+from a wrong one: a field emitting both values in healthy proportion may be
+emitting them for the wrong sentences every time, and there are no labels in
+a run record to notice. Accuracy still needs a labelled set and a study with
+its own null. What changed is that one specific failure - the constant
+wearing a classifier's type signature - no longer requires one.

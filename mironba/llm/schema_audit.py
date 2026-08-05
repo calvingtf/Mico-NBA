@@ -40,6 +40,16 @@ The rule the charter takes from #74 is *measure one candidate before
 generalising*. Splitting every multi-field call on principle would be the
 same mistake in the other direction - a change made on a rule of thumb
 rather than on evidence, which is what the null discipline exists to stop.
+
+**The queue below is not worked through by A/B alone.** #77 showed schema
+size predicts nothing - `event` was inert and `kind`, beside it in the same
+schema, was flawless - so deciding each field soundly would mean a
+12-sentence labelled study per field. ``llm/degeneracy.py`` watches the
+cheap half instead: it reads what every Literal field has actually emitted
+across recorded runs and flags the ones that are constants, with no labels
+and no study. It cannot say a field is WRONG, only that it never varies or
+never answers. A candidate here is promoted to a study when that monitor
+flags it, or when someone has a reason - not on a rota.
 """
 
 from __future__ import annotations

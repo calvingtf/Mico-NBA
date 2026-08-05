@@ -386,6 +386,7 @@ class LLMClient:
         provider = provider_for(cfg.server)
         json_schema = schema.model_json_schema() if schema is not None else None
         schema_name = schema.__name__ if schema is not None else "text"
+        schema_fields = tuple(getattr(schema, "model_fields", ()) or ())
         self._seq += 1
         seq = self._seq
         self.stats.calls += 1
@@ -421,6 +422,7 @@ class LLMClient:
                     seq, attempt, cfg, provider, schema_name, purpose,
                     conversation, completion, ok=True, error=None,
                     schema_in_prompt=schema_in_prompt,
+                    schema_fields=schema_fields,
                 )
                 return completion.text
 
@@ -434,6 +436,7 @@ class LLMClient:
                     seq, attempt, cfg, provider, schema_name, purpose,
                     conversation, completion, ok=False, error=error,
                     schema_in_prompt=schema_in_prompt,
+                    schema_fields=schema_fields,
                 )
                 if attempt == 0:
                     self.stats.first_attempt_failures += 1
@@ -449,6 +452,7 @@ class LLMClient:
                 seq, attempt, cfg, provider, schema_name, purpose,
                 conversation, completion, ok=True, error=None,
                     schema_in_prompt=schema_in_prompt,
+                    schema_fields=schema_fields,
             )
             if attempt == 1:
                 self.stats.repairs_succeeded += 1
@@ -514,6 +518,7 @@ class LLMClient:
         ok: bool,
         error: str | None,
         schema_in_prompt: bool = False,
+        schema_fields: tuple = (),
     ) -> None:
         """Every completion to disk, successes and failures alike."""
         self.run.append_jsonl(
@@ -523,6 +528,12 @@ class LLMClient:
                 "attempt": attempt,
                 "purpose": purpose,
                 "schema": schema_name,
+                # WHICH fields this call asked for. Without it a field
+                # missing from a response cannot be told apart from a field
+                # that did not exist yet when the call was made - and
+                # "asked for and never returned" is the sharpest signal
+                # there is that a field is inert (llm/degeneracy.py).
+                "schema_fields": list(schema_fields),
                 "profile": cfg.name,
                 "model": completion.model,
                 "server": cfg.server,
