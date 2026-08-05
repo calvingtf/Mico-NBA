@@ -8,8 +8,193 @@ exists or ever will. It is a demonstration, not a measurement.</p>
 {% else %}
 <h1>{{ run_id }}</h1>
 {% endif %}
+<p class="whatis"><b>This screen is a finished run.</b> The trade below was
+approved by <code>rules/</code>, applied to the world, and thirty teams then
+planned their offseason around it. Everything here was produced by the
+simulation and read back off the manifest it wrote.</p>
+
+{% if payoff %}
+<section class="payoff">
+  <h2>What the seed caused</h2>
+  <p class="lede">The same world, the same seed, run a second time with the
+  stipulated trade <b>removed</b>. Only what differs between the two runs is
+  attributable to the seed — a cascade that would have happened anyway is not
+  a cascade.</p>
+
+  <div class="bignums">
+    {% if duties %}
+    <div class="bignum">
+      <b>{{ duties.teams_forced|length }}</b>
+      <span>teams the rules <i>forced</i> to act</span>
+      <span class="null">Null: none — a seed that triggers no finding
+        obliges nobody{% if duties.n_unmet %}; {{ duties.n_unmet }}
+        obligation(s) could not be met{% endif %}</span>
+    </div>
+    {% endif %}
+    <div class="bignum">
+      <b>{{ payoff.n_attributable }}<span class="of">of {{ payoff.n_seeded }}</span></b>
+      <span>trades happen <i>only</i> with the seed</span>
+      <span class="null">Null: the unseeded run generated
+        {{ payoff.n_unseeded }} trades of its own</span>
+    </div>
+    <div class="bignum">
+      <b>{{ payoff.n_displaced }}</b>
+      <span>trades the seed <i>prevented</i></span>
+      <span class="null">Null: these happen in the unseeded run and not in
+        this one</span>
+    </div>
+    <div class="bignum">
+      <b>{{ payoff.signings|length }}</b>
+      <span>teams signed someone different</span>
+      <span class="null">Null: the same teams' signings in the unseeded
+        run</span>
+    </div>
+    <div class="bignum">
+      <b>{{ payoff.n_contests_informative }}<span class="of">of
+        {{ payoff.contests|length }}</span></b>
+      <span>contested players went elsewhere, coin-flips excluded</span>
+      <span class="null">{{ payoff.n_contests_arbitrary }} of the
+        {{ payoff.contests|length }} flipped on an arbitrary tiebreak and
+        carry no signal</span>
+    </div>
+  </div>
+
+  {% if duties %}
+  <h3>Forced to act <span class="step">— what the rules required, before
+    anything anyone chose</span></h3>
+  <p class="lede">These are not decisions. <code>rules/trade_validator.py</code>
+  emitted a finding about the seed trade, and the reaction had to answer it.
+  {{ duties.teams_forced|length }} team(s) were obliged.</p>
+  <div class="difflist">
+    {% for c in duties.hard_caps %}
+    <div class="diffrow">
+      <b class="mono">{{ c.team }}</b>
+      <span class="with">HARD_CAP — may not exceed
+        ${{ "{:,}".format(c.line) }} for the rest of the run</span>
+      <span class="without">
+        {% if c.respected %}<span class="badge ok">RESPECTED</span> the
+        reaction ended within it{% elif c.respected is none %}not
+        recorded{% else %}<span class="badge warn">EXCEEDED</span>{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+    {% for team, short in duties.roster_shortfall %}
+    <div class="diffrow">
+      <b class="mono">{{ team }}</b>
+      <span class="with">ROSTER_MINIMUM — must add {{ short }} player(s)</span>
+      <span class="without">the seed left this roster below the
+        14-player minimum</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% for row in duties.discharged %}
+    {% for sgn in row.signed %}
+    <div class="resolved"><b class="mono">{{ row.team }}</b> signed
+      <b>{{ sgn.player }}</b> via <code>{{ sgn.route }}</code> at
+      ${{ "{:,}".format(sgn.salary) }}
+      <span class="step">— required by {{ sgn.rule }}, not chosen</span></div>
+    {% endfor %}
+    {% for u in row.unmet %}
+    <div class="err"><b>{{ row.team }} — {{ u.rule }} UNMET</b>, short by
+      {{ u.short_by }}: {{ u.reason }}. Reported rather than forced through.</div>
+    {% endfor %}
+  {% endfor %}
+  {% endif %}
+
+  <h3>Attributable to the seed</h3>
+  {% if payoff.attributable %}
+  <div class="tradelist">
+    {% for t in payoff.attributable %}
+    <div class="trade caused">
+      <div class="tradehead"><b>{{ t.acquirer }}</b> acquires
+        <b>{{ t.received }}</b> from {{ t.counterparty }}</div>
+      <div class="tradebody">sends {{ t.sent or "—" }}
+        · ${{ "{:,}".format(t.incoming) }} in /
+        ${{ "{:,}".format(t.outgoing) }} out
+        · round {{ t.round }}</div>
+      <div class="trigger">triggered by: {{ t.trigger }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">None. The seed changed no trade in this run — that is a
+  result, not a gap, and it is what a do-nothing seed should produce.</p>
+  {% endif %}
+
+  {% if payoff.displaced %}
+  <h3>Displaced by the seed <span class="step">— these happen only
+    <i>without</i> it</span></h3>
+  <div class="tradelist">
+    {% for t in payoff.displaced %}
+    <div class="trade displaced">
+      <div class="tradehead"><b>{{ t.acquirer }}</b> would have acquired
+        <b>{{ t.received }}</b> from {{ t.counterparty }}</div>
+      <div class="tradebody">sending {{ t.sent or "—" }}
+        · ${{ "{:,}".format(t.incoming) }} in /
+        ${{ "{:,}".format(t.outgoing) }} out</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if payoff.has_reaction_diff %}
+    {% if payoff.signings %}
+    <h3>Signings that changed</h3>
+    <div class="difflist">
+      {% for row in payoff.signings %}
+      <div class="diffrow">
+        <b class="mono">{{ row.team }}</b>
+        <span class="with">with the seed: {{ row.gained or "—" }}</span>
+        <span class="without">without: {{ row.lost or "—" }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if payoff.contests %}
+    <h3>Contested players who went elsewhere</h3>
+    <div class="difflist">
+      {% for c in payoff.contests %}
+      <div class="diffrow {% if c.arbitrary %}arb{% endif %}">
+        <b>{{ c.player }}</b>
+        <span class="with">{{ c.without_seed }} → {{ c.with_seed }}</span>
+        <span class="without">{{ c.reason }}</span>
+        {% if c.arbitrary %}<span class="badge warn">ARBITRARY — a coin-flip,
+          not an effect of the seed</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% else %}
+  <p class="muted">This run predates the reaction diff, so the signing and
+  contest comparisons are unavailable. They are not reconstructed here —
+  re-run the scenario to produce them.</p>
+  {% endif %}
+
+  <p class="marker">Cascade search: depth {{ payoff.depth_reached }} reached;
+  {{ payoff.killed_by_gate }} intents killed by the counterparty gate,
+  {{ payoff.killed_by_solver }} by the solver finding no legal package. Every
+  trade above passed <code>rules/trade_validator.py</code> — the cascade
+  proposes, the rules dispose.</p>
+</section>
+{% endif %}
+
+{% if trade %}
+<h2>The stipulated seed</h2>
 <div class="panel">
-  <b>Manifest</b>
+  <p><b>{{ trade.label }}</b>
+    <span class="badge {% if trade.legal %}ok{% else %}warn{% endif %}">{% if
+      trade.legal %}LEGAL{% else %}REFUSED{% endif %}</span></p>
+  {% for p in trade.players %}
+  <div class="resolved"><code>{{ p.player_id }}</code> {{ p["from"] }} →
+    {{ p.to }} · ${{ "{:,}".format(p.salary) }}</div>
+  {% endfor %}
+  {% for f in trade.findings %}<div class="finding">{{ f }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<h2>Manifest</h2>
+<div class="panel">
   <table>
   {% for k, v in manifest.items() if k not in ("extra", "notes", "reaction", "trade", "cascade") %}
     <tr><td class="mono">{{ k }}</td><td>{{ v }}</td></tr>
@@ -41,7 +226,7 @@ exists or ever will. It is a demonstration, not a measurement.</p>
 number; the validator's stated reasons are quoted verbatim, never
 paraphrased. Timestamps are the generating process's wall clock — there is
 no in-world clock.</p>
-{% else %}
-<p>This run recorded no event log (manifest-only run).</p>
+{% elif not payoff %}
+<p>This run recorded no event log and no cascade (manifest-only run).</p>
 {% endif %}
 {% endblock %}

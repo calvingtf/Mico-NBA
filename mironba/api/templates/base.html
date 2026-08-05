@@ -394,6 +394,73 @@
          font-size: var(--fs-0); word-break: break-all; }
   .elapsedline { font-size: var(--fs-0); color: var(--muted);
                  margin-bottom: var(--space-2); }
+
+  /* ------------------------------------------ what this screen actually is */
+  .whatis { background: var(--surface); border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius); padding: var(--space-2) var(--space-3);
+            color: var(--muted); margin: var(--space-2) 0 var(--space-3); }
+  .whatis b { color: var(--ink); }
+  .reading { color: var(--muted); border-top: 1px solid var(--line);
+             padding-top: var(--space-3); margin-top: var(--space-4); }
+  .badge.ok { background: var(--ok); color: #0c1f13; }
+  .badge.warn { background: var(--bad); color: #1a0c0a; }
+
+  /* --------------------------------------------------- the payoff numbers */
+  .payoff { margin: var(--space-4) 0; }
+  .bignums { display: grid; grid-template-columns: repeat(4, 1fr);
+             gap: var(--space-2); margin: var(--space-3) 0; }
+  @media (max-width: 62rem) { .bignums { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 34rem) { .bignums { grid-template-columns: 1fr; } }
+  .bignum { background: var(--surface); border: 1px solid var(--line);
+            border-top: 3px solid var(--accent); border-radius: var(--radius);
+            padding: var(--space-3); display: flex; flex-direction: column;
+            gap: .25rem; }
+  .bignum b { font-size: 2.4rem; line-height: 1; color: var(--accent);
+              font-variant-numeric: tabular-nums; }
+  .bignum .of { font-size: 1rem; color: var(--muted); margin-left: .35rem; }
+  .bignum > span { font-size: var(--fs-0); }
+  .bignum .null { color: var(--muted); border-top: 1px solid var(--line);
+                  padding-top: .4rem; margin-top: .3rem; }
+
+  /* ------------------------------------------------------------- trades */
+  .tradelist { display: grid; gap: var(--space-2); margin: var(--space-2) 0; }
+  .trade { background: var(--surface); border: 1px solid var(--line);
+           border-left: 3px solid var(--line); border-radius: var(--radius);
+           padding: var(--space-2) var(--space-3); }
+  .trade.caused { border-left-color: var(--ok); }
+  .trade.displaced { border-left-color: var(--muted); opacity: .82; }
+  .tradehead { color: var(--ink); }
+  .tradebody, .trigger { font-size: var(--fs-0); color: var(--muted); }
+  .trigger { margin-top: .2rem; font-style: italic; }
+
+  .difflist { display: grid; gap: var(--space-1); margin: var(--space-2) 0; }
+  .diffrow { display: grid; grid-template-columns: 3.5rem 1fr 1fr;
+             gap: var(--space-2); align-items: baseline;
+             background: var(--surface); border: 1px solid var(--line);
+             border-radius: var(--radius); padding: var(--space-2);
+             font-size: var(--fs-0); }
+  @media (max-width: 44rem) { .diffrow { grid-template-columns: 1fr; } }
+  .diffrow .with { color: var(--ink); }
+  .diffrow .without { color: var(--muted); }
+  .diffrow.arb { border-style: dashed; }
+  .diffrow .badge { grid-column: 1 / -1; justify-self: start; }
+
+  .runlog { max-height: 22rem; overflow-y: auto; }
+  .runline { font-size: .74rem; color: var(--muted); white-space: pre-wrap;
+             line-height: 1.45; }
+
+  .example-row { display: grid; grid-template-columns: 1fr auto;
+                 gap: var(--space-2); align-items: stretch; }
+  @media (max-width: 44rem) { .example-row { grid-template-columns: 1fr; } }
+  .prerun { display: flex; flex-direction: column; justify-content: center;
+            gap: .15rem; text-align: center; min-width: 9rem;
+            background: var(--surface-2); border: 1px solid var(--line);
+            border-radius: var(--radius); padding: var(--space-2);
+            color: var(--accent); text-decoration: none;
+            font-size: var(--fs-0); }
+  .prerun span { color: var(--muted); font-size: .68rem; }
+  .prerun:hover { border-color: var(--accent); }
+  .prerun-card .exsentence { color: var(--muted); font-size: var(--fs-0); }
 </style>
 </head>
 <body>

@@ -1,0 +1,51 @@
+{
+  "name": "validator-refusal",
+  "shows": "the validator refuses this",
+  "headline": "A plausible-looking star swap that the rules will not allow",
+  "reading": "Nothing about this trade looks wrong to a reader, and nothing about it looks wrong to a language model either. It is refused on arithmetic the 2023 CBA specifies exactly, and the shortfall below is quoted from rules/trade_validator.py, not paraphrased.",
+  "sentence": "Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+  "draft": {
+    "sentence": "Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+    "kind": "stipulated",
+    "seed_date": "2026-07-06",
+    "decision": "",
+    "player_names": [],
+    "team_codes": [],
+    "moves": [
+      {
+        "player_name": "Giannis Antetokounmpo",
+        "from_team": "MIA",
+        "to_team": "NYK"
+      },
+      {
+        "player_name": "Karl-Anthony Towns",
+        "from_team": "NYK",
+        "to_team": "MIA"
+      }
+    ],
+    "scored_teams": [],
+    "resolved": {
+      "Giannis Antetokounmpo": "antetgi01",
+      "Karl-Anthony Towns": "townska01",
+      "team:MIA": "MIA",
+      "team:NYK": "NYK"
+    },
+    "ambiguities": {},
+    "errors": [
+      "the stipulated package is not a legal trade; findings above - declare a different package or accept that the counterfactual is not constructible"
+    ],
+    "findings": [
+      "WARNING ROSTER_MINIMUM: [MIA] roster would be 12; the team must return to 14 within two weeks",
+      "ERROR SALARY_MATCH: [NYK] takes back $58,456,566 against $57,078,728 outgoing; limit is $57,078,728 (above the first apron after the trade, 100% apron matching in 2026-27)",
+      "WARNING ROSTER_MINIMUM: [NYK] roster would be 13; the team must return to 14 within two weeks"
+    ],
+    "next_steps": [
+      "the rules refuse this package: ERROR SALARY_MATCH: [NYK] takes back $58,456,566 against $57,078,728 outgoing; limit is $57,078,728 (above the first apron after the trade, 100% apron matching in 2026-27). Name a return in the sentence, or seed a different trade."
+    ],
+    "package_options": [],
+    "chosen_package": null
+  },
+  "model": null,
+  "model_reason": "the structured proposal is stated, not extracted; everything below it is deterministic",
+  "seed_date": "2026-07-06"
+}

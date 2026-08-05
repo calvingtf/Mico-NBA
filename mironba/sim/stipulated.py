@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from dataclasses import asdict
 from pathlib import Path
 
@@ -88,7 +89,8 @@ def apply_trade(league, trade: Trade) -> None:
             row["team_id"] = dest[row["player_id"]]
 
 
-def react(scenario, league_mod, seed: int, seed_trade=None, revealed=None):
+def react(scenario, league_mod, seed: int, seed_trade=None, revealed=None,
+          obligations=None):
     """One full reaction - market signings, then the trade cascade.
 
     ``seed_trade=None`` is the NULL: the same world, same date, same seed,
@@ -104,7 +106,7 @@ def react(scenario, league_mod, seed: int, seed_trade=None, revealed=None):
         movers = frozenset(p.player_id for p in seed_trade.players)
     results, contests, scheduler = league_mod.run_branch(
         "stipulated", league, [], seed=seed, stipulated=movers,
-        revealed=revealed,
+        revealed=revealed, obligations=obligations,
     )
     for team in league_mod.TEAMS:
         leaked = movers & set(results[team].signed)
@@ -201,10 +203,39 @@ def main(argv=None) -> int:
                   "which can flatten a single-star swap to nothing.\n    "
                   "Reported as produced, not patched.")
 
+    from mironba.sim.obligations import obligations_from
+
+    duties = obligations_from(findings, env)
+    if duties:
+        print("\n  OBLIGATIONS THE SEED CREATED (from rules/, not chosen)")
+        for team, line in sorted(duties.hard_caps.items()):
+            print(f"    {team}  HARD_CAP: may not exceed ${line:,} for the "
+                  "rest of the run")
+        for team, short in sorted(duties.roster_shortfall.items()):
+            print(f"    {team}  ROSTER_MINIMUM: must add {short} player(s) to "
+                  "reach the minimum")
     seeded_league, results, contests, scheduler, cascade = react(
-        scenario, league_mod, args.seed, seed_trade=trade
+        scenario, league_mod, args.seed, seed_trade=trade, obligations=duties
     )
     league = seeded_league
+    forced = [t for t in league_mod.TEAMS
+              if results[t].obligations or results[t].unmet]
+    if duties:
+        print(f"\n  OBLIGATIONS DISCHARGED - {len(forced)} team(s) acted "
+              "because the rules required it")
+        for team in forced:
+            for row in results[team].obligations:
+                print(f"    {team}  {row['rule']}: signed "
+                      f"{league.name(row['player_id'])} via {row['route']} "
+                      f"at ${row['salary']:,}")
+            for row in results[team].unmet:
+                print(f"    {team}  {row['rule']} UNMET, short by "
+                      f"{row['short_by']}: {row['reason']}")
+        for team, line in sorted(duties.hard_caps.items()):
+            end = results[team].committed_end
+            print(f"    {team}  ends at ${end:,} against its ${line:,} hard "
+                  f"cap - {'WITHIN' if end <= line else 'OVER'}")
+
     print("\n  REACTION - every team plans its offseason in the stipulated world")
     for team in league_mod.TEAMS:
         r = results[team]
@@ -238,8 +269,8 @@ def main(argv=None) -> int:
           "repeat wakes)")
 
     print("\n  THE NULL - the same world, same seed, WITHOUT the stipulated trade")
-    _, _, _, _, null_cascade = react(scenario, league_mod, args.seed,
-                                     seed_trade=None)
+    _, null_results, null_contests, _, null_cascade = react(
+        scenario, league_mod, args.seed, seed_trade=None)
     seeded_keys = {t.key(): t for t in cascade.trades}
     null_keys = {t.key(): t for t in null_cascade.trades}
     attributable = [t for k, t in seeded_keys.items() if k not in null_keys]
@@ -256,6 +287,38 @@ def main(argv=None) -> int:
               "only WITHOUT it):")
         for t in vanished:
             print("  " + t.line(name=league.name))
+
+    # The cascade is not the only thing the seed moves. The same null run
+    # already computed every team's signings and every contested player's
+    # winner WITHOUT the seed; diffing them costs nothing and turns "here is
+    # what happened" into "here is what the seed CAUSED to happen".
+    signing_changes = []
+    for team in league_mod.TEAMS:
+        with_seed = set(results[team].signed)
+        without = set(null_results[team].signed)
+        if with_seed != without:
+            signing_changes.append({
+                "team": team,
+                "only_with_seed": sorted(with_seed - without),
+                "only_without_seed": sorted(without - with_seed),
+            })
+    null_winner = {c.player_id: c.winner for c in null_contests}
+    contest_changes = [
+        {"player_id": c.player_id, "with_seed": c.winner,
+         "without_seed": null_winner[c.player_id], "reason": c.reason}
+        for c in contests
+        if c.player_id in null_winner and null_winner[c.player_id] != c.winner
+    ]
+    print(f"\n  REACTION DIFF vs the same run without the seed")
+    print(f"    {len(signing_changes)} team(s) signed differently; "
+          f"{len(contest_changes)} contested player(s) went elsewhere")
+    for row in signing_changes:
+        gained = ", ".join(league.name(p) for p in row["only_with_seed"]) or "-"
+        lost = ", ".join(league.name(p) for p in row["only_without_seed"]) or "-"
+        print(f"    {row['team']:<4} with seed: {gained}   without: {lost}")
+    for row in contest_changes:
+        print(f"    {league.name(row['player_id']):<22} "
+              f"{row['without_seed']} -> {row['with_seed']} [{row['reason']}]")
 
     print(f"\n  NOT SCORED. {UNFALSIFIABLE}")
 
@@ -287,18 +350,37 @@ def main(argv=None) -> int:
             "reaction": {
                 t: asdict(results[t]) for t in league_mod.TEAMS
             },
+            "obligations": {
+                "hard_caps": duties.hard_caps,
+                "roster_shortfall": duties.roster_shortfall,
+                "findings_seen": duties.seen,
+                "teams_forced": duties.teams_forced,
+                "discharged": [
+                    {"team": t, "signed": results[t].obligations,
+                     "unmet": results[t].unmet}
+                    for t in league_mod.TEAMS
+                    if results[t].obligations or results[t].unmet
+                ],
+                "hard_cap_respected": {
+                    t: results[t].committed_end <= line
+                    for t, line in duties.hard_caps.items()
+                },
+            },
             "cascade": {
                 "label": UNFALSIFIABLE,
                 "seeded_trades": [asdict(t) for t in cascade.trades],
                 "unseeded_trades": [asdict(t) for t in null_cascade.trades],
                 "attributable_to_seed": [asdict(t) for t in attributable],
                 "displaced_by_seed": [asdict(t) for t in vanished],
+                "signings_changed": signing_changes,
+                "contests_changed": contest_changes,
                 "killed_by_counterparty_gate": cascade.killed_by_gate,
                 "killed_by_solver": cascade.killed_by_solver,
                 "depth_reached": cascade.depth_reached,
                 "cap_bound": cascade.cap_bound,
             },
         }
+        manifest["finished_at"] = datetime.now(timezone.utc).isoformat()
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(manifest, indent=2, default=str),
                             encoding="utf-8")

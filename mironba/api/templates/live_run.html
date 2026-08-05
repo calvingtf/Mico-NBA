@@ -2,9 +2,16 @@
 {% block title %}live — {{ run_id }}{% endblock %}
 {% block body %}
 <h1>Watching <span class="mono">{{ run_id }}</span></h1>
-<p class="muted">Polling every 2 seconds. Each row is one event exactly as
-it was written to <code>events.jsonl</code>; nothing is summarised or
-inferred.</p>
+{% if progress %}
+<p class="whatis"><b>This screen is a run in progress.</b> The simulation is
+executing in a separate process; the lines below are its own stdout, read as
+it writes them. When it exits cleanly this page moves itself to the run's
+chain-reaction view.</p>
+{% else %}
+<p class="whatis"><b>This screen is a run being tailed.</b> Polling every 2
+seconds. Each row is one event exactly as it was written to
+<code>events.jsonl</code>; nothing is summarised or inferred.</p>
+{% endif %}
 {% if manifest %}
 <div class="panel">
   <div class="step">manifest: model
@@ -15,10 +22,19 @@ inferred.</p>
     <span class="badge unf">UNFALSIFIABLE</span>{% endif %}</div>
 </div>
 {% endif %}
+{% if progress %}
+<div id="runprogress"
+     hx-get="/runs/progress/{{ run_id }}"
+     hx-trigger="load, every 1s"
+     hx-swap="innerHTML">
+  <div class="step">starting…</div>
+</div>
+{% else %}
 <div id="livefeed" class="stream"
      hx-get="/live/{{ run_id }}/events?after=0"
      hx-trigger="load, every 2s"
      hx-swap="innerHTML">
   <div class="step">connecting…</div>
 </div>
+{% endif %}
 {% endblock %}

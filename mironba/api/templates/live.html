@@ -13,13 +13,19 @@
     <a class="cta" href="/authoring">Draft a scenario →</a>
   </div>
   <div class="kind theirs">
-    <div class="kindhead">Started outside — the UI can only watch</div>
+    <div class="kindhead">A separate process — the UI starts it and watches</div>
     <p><b>A simulation run.</b> The import fence keeps <code>sim/</code> out
-    of this package, so the UI cannot start one — that is deliberate, and it
-    is why this page observes rather than launches. Start a run in a
-    terminal and it appears below as its event log is written.</p>
+    of this package, so the UI cannot <i>compute</i> a run — it spawns the
+    CLI below as its own process and reads what that process writes. About
+    {{ typical_s }}s, deterministic, no model call.</p>
+    <form hx-post="/runs/start" hx-swap="none">
+      <select name="scenario_id">
+        {% for s in scenarios %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+      <button type="submit">Run it →</button>
+    </form>
     <div class="mono cmd">python -m mironba.sim.stipulated --scenario
-      curry-lakers-2026 --out runs/&lt;id&gt;/manifest.json</div>
+      &lt;id&gt; --out runs/&lt;id&gt;/manifest.json</div>
   </div>
 </div>
 

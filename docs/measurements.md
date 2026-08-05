@@ -2769,3 +2769,79 @@ open for its full duration with no output. The work takes the same time; what
 changed is that its progress is now observable while it runs. The measured
 distribution (p50 3.2 min, worst 8 min) is printed in the watcher header so the
 elapsed counter has a scale to be read against.
+
+## #73 — a rules finding nothing consumed, and the $12,671,000 it cost
+
+`validate_trade` emits findings. The reaction read none of them. That is not
+a missing feature — it is the system stating a constraint in one module and
+forgetting it in the next, and it produced a wrong number that nothing
+failed on.
+
+**The bug, measured.** In `curry-lakers-2026` the validator returns
+`HARD_CAP [LAL] hard_cap=$209,015,000` — the seed trade hard-caps the Lakers
+at the first apron. The reaction then signed LAL to a committed payroll of
+**$221,686,000**, over that cap by **$12,671,000**. The figure is not
+approximately the second apron; it *is* the second apron, to the dollar,
+because `signing_ceiling()` returned a constant and no finding could reach
+it. The manifest carried both numbers on the same page and neither the run
+nor any test objected.
+
+**The enumeration.** `Rule` has 18 members. Classifying them by the severity
+they are actually constructed with (AST scan, not memory) separates them
+cleanly: 13 are ERROR or UNDETERMINED, which means the trade is refused and
+`sim/stipulated.py` exits before a reaction exists — those are consumed by
+refusing to run at all. Four can accompany a *legal* trade and therefore
+reach a reaction: HARD_CAP and ROSTER_MINIMUM (both WARNING, both now
+consumed), MIN_TEAM_SALARY (WARNING, ignored — the floor is settled by a
+season-end shortfall payment, not an offseason signing), and
+MINIMUM_SALARY_EXCEPTION (INFO, ignored — the reaction's own routes
+enumerate it independently). The eighteenth, TPE_PRIOR_YEAR, is declared on
+`Rule` and constructed nowhere: traded player exceptions are not modelled,
+so there is no finding to consume. It is listed rather than deleted, because
+a constant that means nothing is worth saying so about.
+
+`sim/obligations.py` holds the table and `undeclared_rules()` returns the
+members with no declared disposition; the test asserting it is empty is the
+same fence as the writer registry and DERIVED_FACTS.
+
+**Teams forced, per scenario.** curry-lakers-2026: 2 (LAL hard-capped, GSW
+one player short of the roster minimum). giannis-knicks-2026: 2 (MIA short
+one, NYK short two). The two pending-decision scenarios have no stipulated
+seed trade, so no seed findings exist and nothing is forced — zero by
+construction, not by measurement.
+
+**After the fix.** LAL ends at $209,015,000 against a $209,015,000 cap —
+within, to the dollar. Every roster shortfall is discharged: GSW +1, MIA +1,
+NYK +2, all via the minimum route.
+
+**Two things the first wiring got wrong, both caught by looking at output.**
+
+*Gating an obligation on a budget.* The first version filtered obligation
+signings through `ceilings[team]` and GSW reported ROSTER_MINIMUM UNMET.
+That was false. `signing_ceiling()`'s own docstring calls its return "the
+budget a team plans signings against" — it is *behavioural*, derived from
+measured spending. An obligation is not a plan. A team does not decline a
+roster rule because it already spent to its habitual ceiling. What binds an
+obligation is a hard cap, which is law rather than habit; that one is
+enforced and the behavioural ceiling is not.
+
+*Paying for a roster spot with an exception.* The second version took the
+cheapest route by first-year salary and filled a NYK spot with the taxpayer
+mid-level at $440,750 — genuinely cheaper than the $2,449,421 minimum, and
+legal. It also hard-caps the team at the second apron for the rest of the
+league year, a season-long constraint the reaction does not track. Spending
+one to satisfy a roster rule is a real cost incurred invisibly, so routes
+that trigger a hard cap now sort last.
+
+**The fence, restated.** The UI now starts runs — as a subprocess, never an
+import. The claim that this preserves rather than evades the import fence is
+checked in the only way that settles it: a clean interpreter imports the UI,
+posts to `/runs/start`, and reports which `mironba.sim` modules loaded. The
+answer is none. The first attempt asserted this in-process and failed
+immediately, correctly: the test suite imports `mironba.sim` itself, so an
+in-process check could only ever have passed for the wrong reason.
+
+**Measured, for the watcher's scale.** A stipulated run start-to-manifest is
+about 6 seconds — fully deterministic, no model call anywhere. The whole arc
+(confirm write → start → stream → land on the chain-reaction view) was timed
+end to end at ~6s.

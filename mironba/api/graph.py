@@ -385,3 +385,114 @@ def spark_path(points: list, width: int = 220, height: int = 34) -> str:
     return " ".join(
         f"{i * step:.1f},{height - (v / top) * (height - 4):.1f}"
         for i, v in enumerate(points))
+
+
+def obligations_view(manifest: dict) -> dict:
+    """Teams the seed FORCED to act, read off the manifest.
+
+    An obligation is not a choice the reaction made - it is a rules finding
+    the reaction had to answer. Leading with these separates "what the seed
+    required" from "what the league then decided", which are different
+    kinds of claim and were previously shown as one list.
+    """
+    duties = manifest.get("obligations") or {}
+    if not duties:
+        return {}
+    from mironba.report.timeline import name_of
+
+    rows = []
+    for entry in duties.get("discharged", []) or []:
+        rows.append({
+            "team": entry["team"],
+            "signed": [
+                {"player": name_of(r["player_id"]), "rule": r["rule"],
+                 "route": r["route"], "salary": r["salary"]}
+                for r in entry.get("signed", []) or []
+            ],
+            "unmet": entry.get("unmet", []) or [],
+        })
+    caps = duties.get("hard_caps", {}) or {}
+    respected = duties.get("hard_cap_respected", {}) or {}
+    return {
+        "hard_caps": [{"team": t, "line": line,
+                       "respected": respected.get(t)}
+                      for t, line in sorted(caps.items())],
+        "roster_shortfall": sorted(
+            (duties.get("roster_shortfall", {}) or {}).items()),
+        "discharged": rows,
+        "teams_forced": duties.get("teams_forced", []) or [],
+        "findings_seen": sorted(
+            (duties.get("findings_seen", {}) or {}).items()),
+        "n_unmet": sum(len(r["unmet"]) for r in rows),
+    }
+
+
+def cascade_payoff(manifest: dict) -> dict:
+    """What the seed CAUSED, read straight off a run's manifest.
+
+    Every count here is a diff against the same run with the same seed and
+    the stipulated trade removed - the null the runner already computes. A
+    raw "9 trades generated" is not a result; "4 of those 9 happen only with
+    the seed" is. Nothing is recomputed: if the manifest predates the diff,
+    the caller gets ``{}`` and the page says the run is too old rather than
+    inventing the comparison.
+    """
+    cascade = manifest.get("cascade") or {}
+    if "seeded_trades" not in cascade:
+        return {}
+    from mironba.report.timeline import name_of
+
+    def names(ids) -> str:
+        return ", ".join(name_of(pid) for pid in ids)
+
+    def trade_row(t: dict) -> dict:
+        return {
+            "acquirer": t.get("acquirer", ""),
+            "counterparty": t.get("counterparty", ""),
+            "received": names(t.get("received", [])),
+            "sent": names(t.get("sent", [])),
+            "incoming": t.get("incoming_salary", 0),
+            "outgoing": t.get("outgoing_salary", 0),
+            "trigger": t.get("trigger", ""),
+            "round": t.get("round", 0),
+        }
+
+    seeded = cascade.get("seeded_trades", [])
+    unseeded = cascade.get("unseeded_trades", [])
+    attributable = cascade.get("attributable_to_seed", [])
+    displaced = cascade.get("displaced_by_seed", [])
+
+    signings = [
+        {"team": row["team"],
+         "gained": names(row.get("only_with_seed", [])),
+         "lost": names(row.get("only_without_seed", []))}
+        for row in cascade.get("signings_changed", []) or []
+    ]
+    contests = [
+        {"player": name_of(row["player_id"]),
+         "with_seed": row["with_seed"], "without_seed": row["without_seed"],
+         "reason": row.get("reason", ""),
+         "arbitrary": "arbitrary" in str(row.get("reason", ""))}
+        for row in cascade.get("contests_changed", []) or []
+    ]
+    # A contested player who moved because a coin-flip landed differently is
+    # not evidence of anything the seed did. Counted separately, on the page,
+    # every time - not in a footnote.
+    arbitrary = sum(1 for c in contests if c["arbitrary"])
+
+    return {
+        "n_seeded": len(seeded),
+        "n_unseeded": len(unseeded),
+        "n_attributable": len(attributable),
+        "n_displaced": len(displaced),
+        "attributable": [trade_row(t) for t in attributable],
+        "displaced": [trade_row(t) for t in displaced],
+        "signings": signings,
+        "contests": contests,
+        "n_contests_arbitrary": arbitrary,
+        "n_contests_informative": len(contests) - arbitrary,
+        "has_reaction_diff": "signings_changed" in cascade,
+        "depth_reached": cascade.get("depth_reached"),
+        "killed_by_gate": cascade.get("killed_by_counterparty_gate"),
+        "killed_by_solver": cascade.get("killed_by_solver"),
+    }

@@ -1,0 +1,174 @@
+{
+  "name": "solver-enumeration",
+  "shows": "8 legal return packages",
+  "headline": "The sentence names no return, so the solver builds every legal one",
+  "reading": "The model named a player and a destination. It never saw a salary. rules/solver.py searched every package Golden State could legally send and priced each one; a human picks by index. That boundary - model proposes, rules dispose - is the one thing this project will not blur.",
+  "sentence": "Victor Wembanyama traded to the Warriors",
+  "draft": {
+    "sentence": "Victor Wembanyama traded to the Warriors",
+    "kind": "stipulated",
+    "seed_date": "2026-07-06",
+    "decision": "",
+    "player_names": [],
+    "team_codes": [],
+    "moves": [
+      {
+        "player_name": "Victor Wembanyama",
+        "from_team": "SAS",
+        "to_team": "GSW"
+      }
+    ],
+    "scored_teams": [],
+    "resolved": {
+      "Victor Wembanyama": "wembavi01",
+      "team:Warriors": "GSW"
+    },
+    "ambiguities": {},
+    "errors": [],
+    "findings": [
+      "from_team derived from the snapshot: Victor Wembanyama is on SAS (the sentence did not say)",
+      "the sentence names no return, so the SOLVER enumerated 8 legal package(s) GSW could send for Victor Wembanyama - the model never priced these; pick one."
+    ],
+    "next_steps": [],
+    "package_options": [
+      {
+        "index": 0,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Kristaps Porzingis"
+        ],
+        "send_ids": [
+          "porzikr01"
+        ],
+        "salary_out": 19512195,
+        "salary_in": 16868246,
+        "headroom": 11739949,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 1,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Gui Santos",
+          "Moses Moody"
+        ],
+        "send_ids": [
+          "santogu01",
+          "moodymo01"
+        ],
+        "salary_out": 17129630,
+        "salary_in": 16868246,
+        "headroom": 261384,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 2,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Brandin Podziemski",
+          "Moses Moody"
+        ],
+        "send_ids": [
+          "podzibr01",
+          "moodymo01"
+        ],
+        "salary_out": 18179459,
+        "salary_in": 16868246,
+        "headroom": 1311213,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 3,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "lendeya01",
+          "Moses Moody"
+        ],
+        "send_ids": [
+          "lendeya01",
+          "moodymo01"
+        ],
+        "salary_out": 18596240,
+        "salary_in": 16868246,
+        "headroom": 10823994,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 4,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Al Horford",
+          "Moses Moody"
+        ],
+        "send_ids": [
+          "horfoal01",
+          "moodymo01"
+        ],
+        "salary_out": 19322000,
+        "salary_in": 16868246,
+        "headroom": 11549754,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 5,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Will Richard",
+          "Kristaps Porzingis"
+        ],
+        "send_ids": [
+          "richawi02",
+          "porzikr01"
+        ],
+        "salary_out": 21663112,
+        "salary_in": 16868246,
+        "headroom": 13890866,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 6,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "Charles Bassey",
+          "Kristaps Porzingis"
+        ],
+        "send_ids": [
+          "bassech01",
+          "porzikr01"
+        ],
+        "salary_out": 21961616,
+        "salary_in": 16868246,
+        "headroom": 14189370,
+        "verdict": "UNDETERMINED"
+      },
+      {
+        "index": 7,
+        "destination": "GSW",
+        "source": "SAS",
+        "send": [
+          "De'Anthony Melton",
+          "Kristaps Porzingis"
+        ],
+        "send_ids": [
+          "meltode01",
+          "porzikr01"
+        ],
+        "salary_out": 22963974,
+        "salary_in": 16868246,
+        "headroom": 15191728,
+        "verdict": "UNDETERMINED"
+      }
+    ],
+    "chosen_package": null
+  },
+  "model": null,
+  "model_reason": "the structured proposal is stated, not extracted; everything below it is deterministic",
+  "seed_date": "2026-07-06"
+}

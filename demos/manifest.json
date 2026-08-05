@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-08-05T10:28:07.283416+00:00",
+  "demos": [
+    "solver-enumeration",
+    "validator-refusal"
+  ],
+  "model": null,
+  "model_reason": "no model call is made; see the module docstring for what that means the demo does and does not show",
+  "temperature": null,
+  "seed": null,
+  "seed_reason": "no sampling occurs; the solver enumerates in a fixed order",
+  "data_snapshot": "2026-07-06",
+  "regenerate": "python -m mironba.report.demos"
+}

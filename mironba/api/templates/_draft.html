@@ -59,6 +59,12 @@
 
   {% if draft.ok %}
     <p class="ok">valid — the rules verdict above is shown BEFORE anything is written</p>
+    <p class="whatis"><b>Validation is not simulation.</b> The verdict above
+    says this trade is <i>legal</i>: the salaries match, the aprons hold, the
+    rosters survive. It says nothing about what would follow. No team has
+    reacted, no follow-on trade exists, nothing has cascaded. Write the
+    scenario and run it — the reaction is the next step, and it is the part
+    worth looking at.</p>
     <form hx-post="/authoring/write" hx-target="#draft">
       <input type="hidden" name="draft_json" value="{{ draft_json|e }}">
       <p><input type="text" name="scenario_id" placeholder="scenario-id" required></p>

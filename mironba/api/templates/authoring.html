@@ -2,20 +2,30 @@
 {% block title %}new scenario{% endblock %}
 {% block body %}
 <h1>Write a scenario</h1>
+<p class="whatis"><b>This screen turns a sentence into a scenario file.</b>
+A local model proposes the structure, determinism resolves it, and
+<code>rules/</code> rules on the package. It stops at a verdict — running the
+scenario is a separate step offered once the file is written.</p>
 <p class="lede">A scenario sentence names a counterfactual move in plain
 English — who goes where, and optionally when. <b>The return side is
 optional:</b> if you name only the incoming player, the solver enumerates
 every legal package the destination could send and you pick one.</p>
 
 <div class="examples">
-  <div class="step">Three examples, each demonstrating a different behaviour
-    — one click loads it:</div>
+  <div class="step">Three examples, each demonstrating a different behaviour.
+    Click to load one into the box{% if latency.p50 %} — drafting takes a
+    measured {{ (latency.p50 / 60)|round(1) }} min at the median and up to
+    {{ (latency.worst / 60)|round(1) }} min{% endif %}, or open the pre-run
+    result instead and see it now:</div>
   {% for ex in examples %}
-  <button type="button" class="example" data-sentence="{{ ex.sentence }}">
-    <b>{{ ex.demonstrates }}</b>
-    <span class="mono exsentence">“{{ ex.sentence }}”</span>
-    <span class="exnote">{{ ex.expect }}</span>
-  </button>
+  <div class="example-row">
+    <button type="button" class="example" data-sentence="{{ ex.sentence }}">
+      <b>{{ ex.demonstrates }}</b>
+      <span class="mono exsentence">“{{ ex.sentence }}”</span>
+      <span class="exnote">{{ ex.expect }}</span>
+    </button>
+    <a class="prerun" href="{{ ex.demo }}">see it now<span>{{ ex.shows }}</span></a>
+  </div>
   {% endfor %}
 </div>
 

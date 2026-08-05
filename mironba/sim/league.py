@@ -558,6 +558,13 @@ class TeamResult:
     lost_contests: list = field(default_factory=list)
     cascade: list = field(default_factory=list)
     notes: list = field(default_factory=list)
+    #: Signings the seed's own validator findings REQUIRED, not chose:
+    #: [{rule, player_id, route, salary}]. A rules warning that nothing
+    #: consumes is a claim the system makes and then forgets.
+    obligations: list = field(default_factory=list)
+    #: Obligations the reaction could not meet, with the binding reason.
+    #: Reported rather than faked - an unmet obligation is a result.
+    unmet: list = field(default_factory=list)
 
 
 def signing_ceiling(team: str, env, revealed=None) -> int:
@@ -577,12 +584,23 @@ def signing_ceiling(team: str, env, revealed=None) -> int:
 
 
 def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None,
-               stipulated=frozenset(), revealed=None):
-    """One branch: every team plans, contested players resolve, losers react."""
+               stipulated=frozenset(), revealed=None, obligations=None):
+    """One branch: every team plans, contested players resolve, losers react.
+
+    ``obligations`` carries what the seed trade's own validator findings
+    require - see sim/obligations.py. A hard cap the trade triggered LOWERS
+    that team's ceiling for the whole reaction; before this was wired the
+    ceiling was a constant no finding could reach, and a team hard-capped at
+    the first apron would be spent to the second.
+    """
     env = environment_for(SEASON)
     rng = random.Random(seed)
     scheduler = Scheduler(teams=TEAMS)
     ceilings = {t: signing_ceiling(t, env, revealed) for t in TEAMS}
+    hard_caps = dict(getattr(obligations, "hard_caps", {}) or {})
+    for team, line in hard_caps.items():
+        if team in ceilings:
+            ceilings[team] = min(ceilings[team], int(line))
 
     # Only POST-freeze arrivals are removed. The June trades - Giannis and
     # Portis to Miami, LaMelo Ball and Josh Green to Minnesota, Jaylen Brown to
@@ -681,8 +699,87 @@ def run_branch(outcome_key, league, commitments, *, seed=20260731, pool_ids=None
         ):
             results[loser].lost_contests.append(contest.player_id)
 
-    # Round two: the cascade. Only teams that lost a contest wake and go again.
+    # The roster-minimum obligation. A team the seed left below the minimum
+    # MUST return to it; that is not a preference the shortlist expresses,
+    # so it is a separate pass with its own accounting. The cheapest legal
+    # route is used - filling a roster spot is not a discretionary signing -
+    # and if no route fits, the obligation is recorded UNMET rather than
+    # forced through, because a simulation that quietly breaks a cap to
+    # satisfy a roster rule has stopped being deterministic about either.
+    shortfalls = dict(getattr(obligations, "roster_shortfall", {}) or {})
     taken = {p for r in results.values() for p in r.signed}
+
+    def cheapest_affordable(team, pid):
+        """The cheapest LEGAL way to fill a roster spot.
+
+        Deliberately not gated on ``ceilings[team]``. That ceiling is a
+        BEHAVIOURAL budget - signing_ceiling's own docstring calls it "the
+        budget a team plans signings against", derived from what franchises
+        were measured to spend. An obligation is not a plan: the roster
+        minimum is a rule, and a team does not get to decline it because it
+        already spent to its habitual ceiling. What DOES bind is a hard cap
+        the seed trade triggered, which is law rather than habit, so that
+        one is enforced here explicitly.
+
+        Gating this on the behavioural ceiling produced a false result on
+        the first wiring: GSW reported ROSTER_MINIMUM UNMET purely because
+        its discretionary signings had already reached the second apron.
+        """
+        from mironba.rules.signing import HARD_CAP_TRIGGERS
+
+        state = states[team]
+        routes = signing_routes(state, agent_for(pid, team), env)
+        limit = hard_caps.get(team)
+        usable = [
+            r for r in routes.routes
+            if limit is None
+            or state.committed_salary + r.max_first_year <= int(limit)
+        ]
+        if not usable:
+            return None
+        # Prefer a route that triggers NO hard cap, then the cheapest. The
+        # first wiring took cheapest-only and filled a NYK roster spot with
+        # the taxpayer mid-level at $440,750 - legal, and cheaper than the
+        # minimum, but it hard-caps the team at the second apron for the
+        # rest of the league year. Spending an exception that carries a
+        # season-long constraint to satisfy a roster rule is a real cost the
+        # reaction does not otherwise track, so it is avoided rather than
+        # incurred invisibly.
+        return min(usable, key=lambda r: (r.route in HARD_CAP_TRIGGERS,
+                                          r.max_first_year))
+
+    for team in sorted(shortfalls):
+        if team not in results:
+            continue
+        need = shortfalls[team]
+        for pid in ranked_pool[::-1]:      # cheapest end of the market first
+            if need <= 0:
+                break
+            if pid in taken:
+                continue
+            route = cheapest_affordable(team, pid)
+            if route is None:
+                continue
+            commit(team, pid, route)
+            taken.add(pid)
+            results[team].obligations.append({
+                "rule": "ROSTER_MINIMUM", "player_id": pid,
+                "route": route.route, "salary": route.max_first_year,
+            })
+            need -= 1
+        if need > 0:
+            limit = hard_caps.get(team)
+            results[team].unmet.append({
+                "rule": "ROSTER_MINIMUM", "short_by": need,
+                "reason": (
+                    f"no legal route left with "
+                    f"${states[team].committed_salary:,} committed"
+                    + (f" against the ${int(limit):,} hard cap the seed "
+                       "trade triggered" if limit is not None
+                       else " and no free agent left that any route covers")),
+            })
+
+    # Round two: the cascade. Only teams that lost a contest wake and go again.
     for team in TEAMS:
         if not results[team].lost_contests:
             continue

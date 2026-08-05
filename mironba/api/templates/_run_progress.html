@@ -1,0 +1,33 @@
+<div class="panel jobpanel"
+     {% if not p.done %}
+     hx-get="/runs/progress/{{ p.run_id }}"
+     hx-trigger="every 1s"
+     hx-swap="outerHTML"
+     hx-target="this"
+     {% endif %}>
+  <div class="jobhead">
+    <span class="pulse">{% if p.done %}run finished{% else %}running{% endif %}</span>
+    <span class="step">{{ p.elapsed }}s elapsed · a stipulated run is fully
+      deterministic and typically takes about {{ p.typical_s }}s on this
+      machine — measured, not estimated</span>
+  </div>
+  <div class="joblog runlog">
+    {% for line in p.lines %}<div class="runline mono">{{ line }}</div>{% endfor %}
+    {% if not p.done %}
+    <div class="jobstep pending">
+      <span class="jobtick spin">◌</span>
+      <span class="jobname">the simulation CLI is running as a separate
+        process — this page is reading its output, not computing it</span>
+    </div>
+    {% endif %}
+  </div>
+  {% if p.done and p.returncode != 0 %}
+  <div class="err"><b>THE RUN FAILED</b> — exit code {{ p.returncode }}. The
+    output above is the child process's own, unedited. Nothing was written to
+    this page that the run did not print.</div>
+  {% elif p.done and not p.wrote_manifest %}
+  <div class="err"><b>NO MANIFEST</b> — the run exited cleanly but wrote no
+    manifest, so there is nothing for the run view to read. That is reported
+    rather than papered over.</div>
+  {% endif %}
+</div>

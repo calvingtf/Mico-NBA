@@ -10,6 +10,12 @@ the honesty constraints testable with the same pytest machinery as every
 other surface, and there is no build step to drift. No SPA because there
 is no client state worth owning.
 
+**What it starts, and what it does not compute:** the Run button spawns the
+simulation CLI as a subprocess and then reads the manifest that child wrote.
+``mironba/api/runner.py`` states why that preserves the fence instead of
+evading it, and a test checks the property that matters - after a run is
+started from here, ``mironba.sim`` is still absent from this process.
+
 **What it reads:** committed artifacts only. The import fence test keeps
 ``mironba.sim``, ``mironba.models`` and ``mironba.eval`` out of this
 package entirely - a UI that can reach the simulation can quietly become a
@@ -55,17 +61,21 @@ LLM_PATH_LABEL = ("LLM path: one model per tick in the intent loop - "
 #: the distinctive one: a refusal, with the shortfall quoted from rules/.
 EXAMPLES = (
     {"demonstrates": "Under-specified — the solver builds the return",
+     "shows": "8 legal return packages", "demo": "/demo/solver-enumeration",
      "sentence": "Victor Wembanyama traded to the Warriors",
      "expect": "names an incoming player and no return, so rules/solver.py "
                "enumerates every legal package GSW could send (8 of them) "
                "and you pick one."},
     {"demonstrates": "Fully specified — validates LEGAL",
+     "shows": "seed causes 4 of 9 trades", "demo": "/runs/curry-lakers-2026",
      "sentence": ("Stephen Curry traded from GSW to LAL for Austin Reaves "
                   "and Quentin Grimes on 2026-07-06"),
      "expect": "both sides named; the validator approves it and still "
                "reports its findings (LAL ends hard-capped at the first "
                "apron; GSW drops below the roster minimum)."},
     {"demonstrates": "REFUSED — the rules say no, with the shortfall",
+     "shows": "the validator refuses this",
+     "demo": "/demo/validator-refusal",
      "sentence": ("Giannis Antetokounmpo traded from MIA to NYK for "
                   "Karl-Anthony Towns"),
      "expect": "a plausible-looking star swap that is illegal: New York "
@@ -109,6 +119,8 @@ def index(request: Request):
         "llm_label": LLM_PATH_LABEL,
         "hero": hero_frames(limit=9),
         "numbers": headline_numbers()[:2],
+        "examples": EXAMPLES,
+        "latency": measured_latency(),
     })
 
 
@@ -145,28 +157,41 @@ def _events_after(run_dir: Path, after: int) -> list:
 
 @app.get("/live", response_class=HTMLResponse)
 def live_index(request: Request):
-    """Watch a run directory as it is written.
+    """Watch a run, and start one.
 
-    The UI cannot START a run - the import fence keeps sim/ out - so this
-    watches what the CLI produces. That is the honest replacement for a
-    fixed time estimate: elapsed and event count, measured while it runs.
+    The UI starts a run by SPAWNING the CLI, never by importing it: see
+    mironba/api/runner.py for why that keeps the fence intact. Either way
+    what this page shows is observation - the child's own stdout, or the
+    event log the CLI wrote - with elapsed measured, never estimated.
     """
+    from mironba.api import runner
+
     runs = sorted((d for d in RUNS.iterdir() if d.is_dir()),
                   key=lambda d: d.stat().st_mtime, reverse=True)[:12]
     rows = [{"id": d.name, "events": (d / "events.jsonl").is_file(),
              "mtime": d.stat().st_mtime} for d in runs]
     return templates.TemplateResponse(request, "live.html", {
-        "rows": rows, "llm_label": LLM_PATH_LABEL})
+        "rows": rows, "scenarios": runner.known_scenarios(),
+        "typical_s": runner.TYPICAL_RUN_S, "llm_label": LLM_PATH_LABEL})
 
 
 @app.get("/live/{run_id}", response_class=HTMLResponse)
 def live_run(request: Request, run_id: str):
+    """Watch one run.
+
+    A run this UI started is watched by reading the child process's stdout;
+    a run started in a terminal is watched by tailing its event log. Both
+    are observation - neither computes anything here.
+    """
+    from mironba.api import runner
+
+    progress = runner.progress(run_id)
     run_dir = RUNS / run_id
-    if ".." in run_id or not run_dir.is_dir():
+    if ".." in run_id or (not progress and not run_dir.is_dir()):
         raise HTTPException(404)
     return templates.TemplateResponse(request, "live_run.html", {
         "run_id": run_id, "manifest": _manifest(run_dir),
-        "llm_label": LLM_PATH_LABEL})
+        "progress": progress, "llm_label": LLM_PATH_LABEL})
 
 
 @app.get("/live/{run_id}/events", response_class=HTMLResponse)
@@ -371,9 +396,79 @@ async def authoring_write(request: Request):
     except AuthoringError as exc:
         return templates.TemplateResponse(request, "_draft_error.html", {
             "error": str(exc)})
-    return HTMLResponse(f"<div class='ok'>wrote {path.name} - confirmed "
-                        "explicitly by you, the same gate as the CLI</div>")
+    from mironba.api import runner
 
+    return templates.TemplateResponse(request, "_written.html", {
+        "path": path.name, "scenario_id": scenario_id,
+        "typical_s": runner.TYPICAL_RUN_S})
+
+
+
+# -- pre-run demos: a first look costs no wait -------------------------------
+
+DEMOS = ROOT / "demos"
+
+
+@app.get("/demo/{name}", response_class=HTMLResponse)
+def demo_view(request: Request, name: str):
+    """One pre-run demo, read from a committed artifact.
+
+    Drafting live calls a 27B model and takes minutes; these skip the
+    extraction step and record what the DETERMINISTIC half produced. The
+    page says which half it is showing - see mironba/report/demos.py.
+    """
+    path = DEMOS / f"{name}.json"
+    if "/" in name or ".." in name or not path.is_file():
+        raise HTTPException(404, "no such pre-run demo")
+    record = _read_json(path)
+    generated = _read_json(DEMOS / "manifest.json").get("generated_at", "")
+    return templates.TemplateResponse(request, "demo.html", {
+        "d": record, "draft": record["draft"], "generated": generated,
+        "llm_label": LLM_PATH_LABEL})
+
+
+# -- starting a run: a subprocess, never an import ---------------------------
+
+
+@app.post("/runs/start", response_class=HTMLResponse)
+def runs_start(request: Request, scenario_id: str = Form(...)):
+    """Start the CLI for a written scenario, as a SUBPROCESS.
+
+    See mironba/api/runner.py for why this preserves the import fence rather
+    than working around it: the computation stays in sim/, and everything
+    this UI shows afterwards is read back off the manifest the child wrote.
+    """
+    from mironba.api import runner
+
+    try:
+        run_id = runner.start(scenario_id)
+    except ValueError as exc:
+        return templates.TemplateResponse(request, "_draft_error.html", {
+            "error": str(exc)})
+    response = templates.TemplateResponse(request, "_run_progress.html", {
+        "p": runner.progress(run_id)})
+    response.headers["HX-Redirect"] = f"/live/{run_id}"
+    return response
+
+
+@app.get("/runs/progress/{run_id}", response_class=HTMLResponse)
+def runs_progress(request: Request, run_id: str):
+    """One polling step of a started run: the child's stdout so far.
+
+    On a clean exit this answers with HX-Redirect, which lands the user on
+    that run's own view - the cascade it produced - rather than back on a
+    list of run directories.
+    """
+    from mironba.api import runner
+
+    progress = runner.progress(run_id)
+    if not progress:
+        raise HTTPException(404, "no such started run")
+    response = templates.TemplateResponse(request, "_run_progress.html", {
+        "p": progress})
+    if progress["done"] and progress["returncode"] == 0:
+        response.headers["HX-Redirect"] = f"/runs/{run_id}"
+    return response
 
 # -- (f) run gallery and (b) run view ---------------------------------------
 
@@ -413,8 +508,13 @@ def run_view(request: Request, run_id: str):
         from mironba.report.timeline import load_run
 
         feed = load_run(run_dir)
+    from mironba.api.graph import cascade_payoff, obligations_view
+
     return templates.TemplateResponse(request, "run.html", {
         "run_id": run_id, "manifest": manifest, "feed": feed,
+        "payoff": cascade_payoff(manifest),
+        "duties": obligations_view(manifest),
+        "trade": manifest.get("trade") or {},
         "unfalsifiable": manifest.get("unfalsifiable", False),
         "llm_label": LLM_PATH_LABEL})
 

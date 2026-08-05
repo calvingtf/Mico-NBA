@@ -94,6 +94,23 @@
 </section>
 
 <section class="doors">
+  <h2>See it work — nothing to wait for</h2>
+  <p class="lede">Each of these is already run. Writing your own scenario
+  calls a local model and takes a measured
+  {% if latency.p50 %}{{ (latency.p50 / 60)|round(1) }} minutes at the
+  median{% else %}several minutes{% endif %}; these cost one click.</p>
+  <div class="cards">
+    {% for ex in examples %}
+    <a class="card door prerun-card" href="{{ ex.demo }}">
+      <b>{{ ex.shows }}</b>
+      <span class="mono exsentence">“{{ ex.sentence }}”</span>
+      <span>{{ ex.demonstrates }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="doors">
   <h2>Where to go</h2>
   <div class="cards">
     <a class="card door" href="/authoring"><b>Write a scenario</b>
@@ -110,8 +127,9 @@
       unfalsifiable.</span></a>
     <a class="card door" href="/results"><b>Results</b>
       <span>Every figure with its null — failures included.</span></a>
-    <a class="card door" href="/live"><b>Live run</b>
-      <span>Watch a run directory as the CLI writes it.</span></a>
+    <a class="card door" href="/live"><b>Run one now</b>
+      <span>Start a declared scenario and watch the reaction happen —
+      deterministic, about six seconds.</span></a>
   </div>
 </section>
 {% endblock %}

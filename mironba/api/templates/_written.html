@@ -1,0 +1,16 @@
+<div class="panel">
+  <p class="ok">wrote {{ path }} — confirmed explicitly by you, the same gate
+  as the CLI</p>
+  <p class="whatis"><b>Validation is not simulation.</b> What you just
+  confirmed is a scenario file whose seed trade <code>rules/</code> approved.
+  Nothing has reacted to it yet: no team has planned an offseason, no
+  follow-on trade exists. Running it is the next step, and it is where the
+  interesting part happens.</p>
+  <form hx-post="/runs/start" hx-target="#draft" hx-swap="innerHTML">
+    <input type="hidden" name="scenario_id" value="{{ scenario_id }}">
+    <p><button type="submit">Run this scenario →</button>
+       <span class="step">spawns the simulation CLI as a separate process —
+       about {{ typical_s }}s, deterministic, no model call — then lands you
+       on what it produced</span></p>
+  </form>
+</div>
