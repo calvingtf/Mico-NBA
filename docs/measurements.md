@@ -2570,3 +2570,31 @@ term sharpens the head of the ranking (p@25) without improving global
 separation (AUC), on ten folds with one MC draw - suggestive of a better
 form, not yet a replacement. Recorded in bench-player-ranker.json under
 interaction_test; anyone re-running --fit reproduces both.
+
+
+## 67. The interaction settled: intervals, and a promotion under a pre-stated rule (2026-08-04)
+
+**What one draw could not say, 10,000 did.** Entry #66's 1.37x-vs-1.60x
+rested on a single Monte Carlo draw of the fold null. The settle run fits
+both variants once per fold, then scores BOTH models' heads against the
+same 10,000 paired within-team label permutations:
+
+- additive: observed 9.6% vs null 7.02% (sd 1.47%), P(null>=obs)=0.035
+- interaction: observed 11.2% vs null 6.97% (sd 1.49%), P=0.0026
+- THE DIFFERENCE: observed +1.60% vs null -0.05% (sd 0.55%, 95% interval
+  [-1.2%, +1.2%]), P(null>=obs)=0.0044
+- fold bootstrap of the observed difference: +1.61% [0.0%, +3.2%];
+  interaction wins 5/10 folds, ties 4, loses 1
+
+**Spread checked, per the degenerate-null lesson:** all three nulls carry
+healthy variance (sd 0.55-1.49 points); no ratio here divides by a
+constant.
+
+**Disposition, by the rule stated before the draws ran** (promote only if
+the difference clears P<=0.05): PROMOTED. The interaction model is the
+recorded headline - p@25 11.2% (1.78x class null, 1.57x within-team), AUC
+0.647, ~2.8 of 25 flagged traded - and the headline matrix now carries
+salary_x_low_minutes as a derived column. The additive model's numbers
+stay recorded (bench interaction_test + entry #64) as the superseded step;
+--fit carries the settle record forward instead of overwriting it, which
+its first run did and the re-run repaired.

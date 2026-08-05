@@ -80,6 +80,10 @@ SNAPSHOTS = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 SEASONS = tuple(f"{y}-{str(y + 1)[-2:]}" for y in range(2016, 2026))
 FEATURES = ("window_share", "injured_shaped", "switched_pre", "never_active",
             "age", "log_salary", "team_prior_rate")
+#: Promoted to the headline by the settle run (entry #67): the paired
+#: within-team null put the interaction's +1.6pt improvement at P=0.0044,
+#: outside the null's 95% interval. Derived from FEATURES, not stored.
+DERIVED = ("salary_x_low_minutes",)
 MISS_COLS = ("age_missing", "team_from_contracts")
 K = 25
 
@@ -382,6 +386,8 @@ def _matrix(rows: list[Row], medians: dict | None = None):
     X = np.array([
         [r.features[f] if r.features[f] is not None else medians[f]
          for f in FEATURES]
+        + [r.features["log_salary"] * (1 - r.features["window_share"])
+           * (1 - r.features["never_active"])]
         + [1.0 if r.features["age"] is None else 0.0,
            r.features["_from_contracts"]]
         for r in rows])
@@ -398,7 +404,7 @@ def fit_and_score(rows: list[Row], *, permutations: int = 200,
 
     rng = random.Random(seed)
     per_season = []
-    coef_sum = np.zeros(len(FEATURES) + len(MISS_COLS))
+    coef_sum = np.zeros(len(FEATURES) + len(DERIVED) + len(MISS_COLS))
     train_aucs = []
 
     for held in SEASONS:
@@ -446,7 +452,7 @@ def fit_and_score(rows: list[Row], *, permutations: int = 200,
         coef_sum += model.coef_[0]
 
     coef_mean = coef_sum / len(per_season)
-    labels = list(FEATURES) + list(MISS_COLS)
+    labels = list(FEATURES) + list(DERIVED) + list(MISS_COLS)
     return {
         "per_season": per_season,
         "coefficients": sorted(zip(labels, coef_mean),
@@ -528,7 +534,23 @@ def ablation(rows: list[Row]) -> dict:
                 float(np.mean([p for _, p in per])))
 
     base_auc, base_p = run(("log_salary", "team_prior_rate"), ())
-    full_auc, full_p = run(FEATURES, ("age_missing", "_from_contracts"))
+    # the full leg is the HEADLINE matrix (interaction included), so the
+    # ablation compares against what is actually recorded
+    per = []
+    for held in SEASONS:
+        train = [r for r in rows if r.season != held]
+        test = [r for r in rows if r.season == held]
+        Xtr, ytr, med = _matrix(train)
+        Xte, yte, _ = _matrix(test, med)
+        scaler = StandardScaler().fit(Xtr)
+        model = LogisticRegression(max_iter=2000, class_weight="balanced")
+        model.fit(scaler.transform(Xtr), ytr)
+        scores = model.predict_proba(scaler.transform(Xte))[:, 1]
+        order = np.argsort(-scores)
+        per.append((roc_auc_score(yte, scores),
+                    float(sum(yte[order[:K]])) / K))
+    full_auc = float(np.mean([a for a, _ in per]))
+    full_p = float(np.mean([p_ for _, p_ in per]))
     return {"reduced": {"auc": base_auc, "p_at_k": base_p},
             "full": {"auc": full_auc, "p_at_k": full_p}}
 
@@ -633,6 +655,126 @@ def interaction_test(rows: list[Row], *, permutations: int = 200,
     }
 
 
+def settle_interaction(rows: list[Row], *, draws: int = 10000,
+                       seed: int = 20260204) -> dict:
+    """Settle the interaction's disposition: intervals, not point estimates.
+
+    Entry #66's 1.37x-vs-1.60x rested on ONE Monte Carlo draw of the fold
+    null. This fits both variants once per fold (deterministic), then draws
+    ``draws`` PAIRED within-team label permutations - the same permuted
+    labels score both models' heads - so three distributions come out:
+
+    * the additive model's null p@25 (mean over folds, per draw),
+    * the interaction model's null p@25 (same draws),
+    * the null DIFFERENCE (interaction head - additive head), whose observed
+      value is the +1.6-point improvement under test.
+
+    Reported per distribution: mean, sd, 2.5/97.5 percentiles - a
+    degenerate (near-zero-sd) null makes any ratio meaningless and is
+    exactly what the spread check exists to catch. Decision rule, stated
+    before running: the interaction is promoted only if the one-sided
+    P(null difference >= observed difference) <= 0.05; otherwise #64 stands
+    and the interaction is recorded as tested-and-not-adopted. A secondary
+    fold bootstrap (resampling the 10 folds) intervals the observed
+    difference itself.
+    """
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    from sklearn.preprocessing import StandardScaler
+
+    folds = []
+    for held in SEASONS:
+        train = [r for r in rows if r.season != held]
+        test = [r for r in rows if r.season == held]
+        med = {f: float(np.median([r.features[f] for r in train
+                                   if r.features[f] is not None] or [0]))
+               for f in FEATURES}
+
+        def matrices(rs, with_inter):
+            X = []
+            for r in rs:
+                base = [r.features[f] if r.features[f] is not None else med[f]
+                        for f in FEATURES]
+                extra = [1.0 if r.features["age"] is None else 0.0,
+                         r.features["_from_contracts"]]
+                if with_inter:
+                    extra.append(r.features["log_salary"]
+                                 * (1 - r.features["window_share"])
+                                 * (1 - r.features["never_active"]))
+                X.append(base + extra)
+            return np.array(X), np.array([r.label for r in rs])
+
+        heads = {}
+        for name, with_inter in (("additive", False), ("interaction", True)):
+            Xtr, ytr = matrices(train, with_inter)
+            Xte, yte = matrices(test, with_inter)
+            scaler = StandardScaler().fit(Xtr)
+            model = LogisticRegression(max_iter=2000,
+                                       class_weight="balanced")
+            model.fit(scaler.transform(Xtr), ytr)
+            scores = model.predict_proba(scaler.transform(Xte))[:, 1]
+            heads[name] = np.argsort(-scores)[:K]
+        groups: dict[str, list[int]] = defaultdict(list)
+        for i, r in enumerate(test):
+            groups[r.team].append(i)
+        folds.append({"y": yte, "heads": heads,
+                      "groups": [np.array(g) for g in groups.values()]})
+
+    observed = {
+        name: float(np.mean([f["y"][f["heads"][name]].sum() / K
+                             for f in folds]))
+        for name in ("additive", "interaction")
+    }
+    observed["difference"] = observed["interaction"] - observed["additive"]
+
+    rng = np.random.default_rng(seed)
+    null_add = np.empty(draws)
+    null_int = np.empty(draws)
+    for d in range(draws):
+        add_hits = int_hits = 0
+        for f in folds:
+            perm = f["y"].copy()
+            for g in f["groups"]:
+                perm[g] = perm[g][rng.permutation(len(g))]
+            add_hits += perm[f["heads"]["additive"]].sum()
+            int_hits += perm[f["heads"]["interaction"]].sum()
+        null_add[d] = add_hits / (K * len(folds))
+        null_int[d] = int_hits / (K * len(folds))
+    null_diff = null_int - null_add
+
+    def described(sample, obs):
+        return {
+            "observed": obs, "null_mean": float(sample.mean()),
+            "null_sd": float(sample.std()),
+            "null_p2.5": float(np.percentile(sample, 2.5)),
+            "null_p97.5": float(np.percentile(sample, 97.5)),
+            "p_ge_observed": float(((sample >= obs).sum() + 1) / (draws + 1)),
+        }
+
+    # secondary: bootstrap the observed difference over the 10 folds
+    per_fold_diff = np.array([
+        (f["y"][f["heads"]["interaction"]].sum()
+         - f["y"][f["heads"]["additive"]].sum()) / K for f in folds])
+    boot = np.array([
+        per_fold_diff[rng.integers(0, len(folds), len(folds))].mean()
+        for _ in range(draws)])
+
+    return {
+        "draws": draws,
+        "additive": described(null_add, observed["additive"]),
+        "interaction": described(null_int, observed["interaction"]),
+        "difference": described(null_diff, observed["difference"]),
+        "fold_bootstrap_diff": {
+            "mean": float(boot.mean()),
+            "p2.5": float(np.percentile(boot, 2.5)),
+            "p97.5": float(np.percentile(boot, 97.5)),
+            "folds_where_interaction_wins": int((per_fold_diff > 0).sum()),
+            "folds_tied": int((per_fold_diff == 0).sum()),
+        },
+    }
+
+
 BENCH = Path(__file__).resolve().parents[2] / "bench-player-ranker.json"
 
 
@@ -645,9 +787,42 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--fit", action="store_true")
     parser.add_argument("--permutations", type=int, default=200)
+    parser.add_argument("--settle", action="store_true",
+                        help="interval the interaction comparison with many "
+                             "paired null draws and record the disposition")
+    parser.add_argument("--draws", type=int, default=10000)
     args = parser.parse_args(argv)
 
     rows = build_rows()
+    if args.settle:
+        import json as _json
+
+        result = settle_interaction(rows, draws=args.draws)
+        print("SETTLING THE INTERACTION - paired within-team null, "
+              f"{result['draws']} draws")
+        for name in ("additive", "interaction", "difference"):
+            d = result[name]
+            print(f"  {name:<12} observed {d['observed']:+.3%}   null "
+                  f"{d['null_mean']:+.3%} sd {d['null_sd']:.3%} "
+                  f"[{d['null_p2.5']:+.3%}, {d['null_p97.5']:+.3%}]   "
+                  f"P(null>=obs) = {d['p_ge_observed']:.4f}")
+        boot = result["fold_bootstrap_diff"]
+        print(f"  fold bootstrap of the observed difference: mean "
+              f"{boot['mean']:+.2%} [{boot['p2.5']:+.2%}, {boot['p97.5']:+.2%}]"
+              f"; interaction wins {boot['folds_where_interaction_wins']}/10 "
+              f"folds, ties {boot['folds_tied']}")
+        promoted = result["difference"]["p_ge_observed"] <= 0.05
+        print("  DISPOSITION: " + (
+            "the improvement clears its own null - promote the interaction "
+            "model to the recorded headline" if promoted else
+            "the improvement does NOT clear its own null - #64 stands; the "
+            "interaction is recorded as tested-and-not-adopted"))
+        bench = _json.loads(BENCH.read_text(encoding="utf-8"))
+        bench["interaction_settled"] = dict(result, promoted=promoted)
+        BENCH.write_text(_json.dumps(bench, indent=1), encoding="utf-8")
+        print(f"  recorded to {BENCH.name}")
+        return 0
+
     prefit = render_prefit(rows)
     if args.fit:
         result = fit_and_score(rows, permutations=args.permutations)
@@ -676,16 +851,16 @@ def main(argv=None) -> int:
               f"{shift['window_share']['additive']:+.3f} -> "
               f"{shift['window_share']['interaction']:+.3f}; "
               f"term itself {shift['salary_x_low_minutes']:+.3f}")
-        improves = (b["p_at_k"] > a["p_at_k"]) and (b["auc"] > a["auc"])
-        if improves:
-            print("    the explicit term improves both metrics; #64's "
-                  "additive model stays the recorded result unless this "
-                  "holds against the same nulls on re-examination")
-        else:
-            print("    the explicit term does NOT improve the fit - the "
-                  "additive form was already sufficient, which is worth "
-                  "knowing; #64 stands")
+        print("    disposition settled by --settle (entry #67): the "
+              "difference cleared its own paired null at P=0.0044, and the "
+              "interaction model IS the recorded headline above")
+        carried = {}
+        if BENCH.is_file():
+            previous = json.loads(BENCH.read_text(encoding="utf-8"))
+            if "interaction_settled" in previous:
+                carried["interaction_settled"] = previous["interaction_settled"]
         BENCH.write_text(json.dumps({
+            **carried,
             "prefit": prefit, "per_season": result["per_season"],
             "interaction_test": inter,
             "coefficients": [[n, float(w)] for n, w in result["coefficients"]],

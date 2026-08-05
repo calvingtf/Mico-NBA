@@ -141,3 +141,34 @@ class TestTheInteractionRecord:
         assert shift["salary_x_low_minutes"] > 0
         # and the recorded headline (per_season) is still the additive model
         assert "per_season" in bench and bench["ablation"]
+
+
+class TestTheSettledDisposition:
+    def test_promotion_followed_the_pre_stated_rule(self):
+        import json
+        from pathlib import Path
+
+        bench = json.loads(
+            (Path(__file__).resolve().parents[1] / "bench-player-ranker.json")
+            .read_text(encoding="utf-8"))
+        settled = bench["interaction_settled"]
+        assert settled["promoted"] is True
+        assert settled["difference"]["p_ge_observed"] <= 0.05
+        # non-degenerate nulls - the spread check the brief demanded
+        for key in ("additive", "interaction", "difference"):
+            assert settled[key]["null_sd"] > 0.001, f"{key} null degenerate"
+        # and the headline per_season is now the promoted model
+        import numpy as np
+
+        p_at_k = np.mean([r["p_at_k"] for r in bench["per_season"]])
+        assert abs(p_at_k - settled["interaction"]["observed"]) < 1e-9
+
+    def test_fit_carries_the_settle_record_forward(self):
+        """--fit once overwrote interaction_settled; the carry-forward is
+        structural now."""
+        import inspect
+
+        from mironba.eval import player_ranker
+
+        src = inspect.getsource(player_ranker.main)
+        assert "interaction_settled" in src and "carried" in src

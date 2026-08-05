@@ -317,18 +317,18 @@ rule (entry #65): closing a leak should *lower* a result — when a fix raises
 a number, that rise is evidence of a second leak, not a better model, and
 nothing is reported until it is explained. The clean numbers:
 
-| | observed | null | ratio / headroom |
+| | observed | null (mean ± sd over 10,000 draws) | ratio / headroom |
 | --- | --- | --- | --- |
-| mean p@25 | **9.6%** | 6.3% class-balance | 1.53x, +3.5% of chance-to-perfect |
-| mean p@25 | **9.6%** | **7.2% within-team** (preserves each team's trade frequency; absorbs team_prior_rate) | **1.34x** |
-| mean test AUC | **0.645** | 0.5 random | train 0.651 — no overfit gap |
+| mean p@25 | **11.2%** | 6.3% class-balance | 1.78x, +5.2% of chance-to-perfect |
+| mean p@25 | **11.2%** | **7.0% ± 1.5% within-team** (preserves each team's trade frequency; absorbs team_prior_rate) | **1.57x**, P(null≥obs)=0.0026 |
+| mean test AUC | **0.647** | 0.5 random | train — no overfit gap |
 
-**Plainly**: of 25 players flagged per deadline, ~2.4 are traded, versus
+**Plainly**: of 25 players flagged per deadline, ~2.8 are traded, versus
 ~1.6 at chance and ~1.8 under the within-team null. A randomly chosen
 traded player outscores a randomly chosen untraded one 65% of the time
-(a coin flip would be 50%). The within-team permutation p on AUC is ≤0.018
-in nine of ten folds; the tenth (2023-24, 10 positives) is p=0.226 —
-underpowered, said so.
+(a coin flip would be 50%). These are the PROMOTED interaction model's
+numbers — see the settle paragraph below for what changed and why; the
+additive model's 9.6%/0.645 remain recorded in the bench and entry #64.
 
 **The decomposition says what the signal is.** Availability split into
 components: `window_share` −0.43 (fewer recent appearances → traded),
@@ -345,16 +345,23 @@ forward-looking snapshot had already dropped ended contracts, and
 forward-absence inversely encodes the label — the test built to pin the
 feature is what exposed it). Availability reaches this model under a
 narrowed fence: the ranker is the one permitted consumer; the planner and
-value model still may not read it. **The interaction, tested explicitly (entry #66).** Salary+team-rate alone
-scoring *below* the base rate while log_salary carries the largest
+value model still may not read it. **The interaction, tested then settled (entries #66–#67).** Salary+team-rate
+alone scoring *below* the base rate while log_salary carries the largest
 coefficient means salary is informative only conditioned on playing time —
 so the product term (salary × low-minutes among pre-January actives) was
-fitted explicitly. It sharpens the head — p@25 9.6% → 11.2% against the same
-fold-matched within-team null (1.37x → 1.60x) — while AUC stays flat
-(0.645 → 0.647), and the main effects migrate into the term exactly as the
-reading predicted (window_share −0.43 → +0.17; the term +0.45). The
-additive model of entry #64 stays the recorded result: a head-sharpening on
-one MC draw is suggestive of a better form, not yet a replacement.
+fitted explicitly. It sharpened the head (p@25 9.6% → 11.2%, AUC flat) and
+the main effects migrated into the term exactly as predicted (window_share
+−0.43 → +0.17; the term +0.45) — but on one Monte Carlo draw of the fold
+null, that was left as suggestive. **The settle run put intervals on it**:
+10,000 paired within-team draws — the same permuted labels scoring both
+models' heads — give a non-degenerate null for the difference (mean −0.05%,
+sd 0.55%, 95% interval [−1.2%, +1.2%]) and the observed +1.6-point
+improvement sits at **P(null ≥ obs) = 0.0044**, with the additive model at
+P=0.035 and the interaction at P=0.0026 against their own nulls. Fold
+bootstrap of the difference: +1.61% [0.0%, +3.2%], interaction winning 5
+folds and tying 4. Per the rule stated before the draws ran, the
+interaction model **is now the recorded headline**; the additive numbers
+stay in the bench as the superseded step.
 
 Recorded in `bench-player-ranker.json`;
 regenerate with `python -m mironba.eval.player_ranker --fit`.
@@ -1093,7 +1100,7 @@ it is the strongest generalizable claim this project has produced:
 | unit | features sit... | observed | null | verdict |
 | --- | --- | --- | --- | --- |
 | team pair | **downstream** of the solver (salary matching, apron tiers, roster slots — inputs the solver already consumed) | p@10 6.0% | 5.01% permutation | 1.20x — inside noise; recorded negative |
-| player | **upstream** of the solver (who is paid what, who is actually playing — before any constraint runs) | p@25 9.6% / AUC 0.645 | 7.2% within-team / 0.5 | 1.34x; AUC wt-p ≤0.018 in 9/10 folds |
+| player | **upstream** of the solver (who is paid what, who is actually playing — before any constraint runs) | p@25 11.2% / AUC 0.647 | 7.0%±1.5% within-team / 0.5 | 1.57x, P=0.0026; the +1.6pt interaction gain itself clears its null at P=0.0044 |
 
 Features the constraint solver has already consumed carry no ranking
 signal; features that precede it do. The general implication: **in a system
@@ -1103,7 +1110,8 @@ been spent — everything surviving is legal-and-similar by construction, and
 a ranker there relearns the solver's residue. Upstream, the model sees the
 world before the constraints flatten it. Both rows carry their own nulls;
 the pair row is 61 trades over ten folds, the player row 353 positives over
-ten deadlines with two leak corrections recorded on the way (entry #64).
+ten deadlines with two leak corrections recorded on the way (entry #64) and
+its functional form settled by a 10,000-draw paired null (entry #67).
 
 ### The convergence
 
@@ -1227,7 +1235,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,043 tests**, run on every commit by the pre-commit gate
+**1,045 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an
