@@ -2626,3 +2626,41 @@ nothing until pulled and read.
 **The probe queue design note:** successes are never wasted - the ladder
 spends its streak on real work first, so "measure the rate" and "collect
 the data" are the same requests.
+
+
+## 69. The egress ledger closed; the archive left the machine (2026-08-05)
+
+**The rate, measured everywhere reachable (items 1-2 of the brief):**
+
+| egress | kind | ladder result |
+|---|---|---|
+| 136.52.76.203 | home (shared residential) | 429 on the FIRST request at 30s, 60s, 120s - zero sustainable; saturation is not ours to pace around |
+| 174.195.129.132 | operator tether | 4 requests @ 12s then 429 (entry #61) - the only egress that has answered |
+| 172.184.209.169 | GitHub Actions (Azure) | 429 on the FIRST request at all three rungs - datacenter ranges ARE throttled harder, now measured |
+
+No VPN exists on the operator machine (profile and client scan: none).
+The tether requirement does NOT disappear. Re-costing: from home and
+cloud the cost is undefined (zero throughput); at the tether's measured
+budget the 12-query recall run is ~3 sessions and the 85-135-request
+backfill is ~22-34 sessions. The sustainable-spacing question stays open
+exactly where it can be answered: the ladder is committed, its queue
+leads with the useful queries, and one tether run of --rate-probe
+answers spacing AND collects the recall data in the same requests.
+
+**The archive off the logged-in machine (item 3), verified end to end:**
+rss-archive.yml polled from the cloud, committed, and the partition
+pulled back clean - with one measured surprise en route: a feed served
+an EMPTY body to the datacenter IP and the parse error killed the whole
+poll, marker included. Both pollers now exclude unparseable bodies the
+way they exclude fetch failures (regression-tested), so a bot-blocked
+feed costs one feed, not the day. Cloud coverage is therefore PARTIAL
+by feed (yahoo answered the runner; espn's body was empty) - which the
+per-feed EXCLUDED lines and the __poll__ marker record per run, and the
+offset local tasks cover from the residential side. Two writers into
+the same partitions are safe via git plus reader-side URL dedup, tested
+against a simulated merge duplicate.
+
+**Tooling notes for the ledger:** GitHub job logs 302 to pre-signed blob
+storage that rejects a forwarded auth header - follow the redirect bare;
+and mironba.data's __init__ imports yaml, so even stdlib-only submodules
+need PyYAML installed in CI.
