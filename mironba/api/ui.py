@@ -77,9 +77,102 @@ def _manifest(run_dir: Path) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
+    """The front door: one line on what this is, the boundary finding as
+    the headline claim, a hero animated from a real run's cascade, and the
+    way in to authoring."""
+    from mironba.api.graph import headline_numbers, hero_frames
+
     return templates.TemplateResponse(request, "index.html", {
         "llm_label": LLM_PATH_LABEL,
+        "hero": hero_frames(limit=9),
+        "numbers": headline_numbers()[:2],
     })
+
+
+@app.get("/league", response_class=HTMLResponse)
+def league_view(request: Request, run: str | None = None):
+    """The league graph: thirty nodes, real edges from a recorded run."""
+    from mironba.api.graph import league_graph
+
+    graph = league_graph(run)
+    if not graph:
+        raise HTTPException(404, "no recorded run carries a reaction and a "
+                                 "cascade to draw")
+    return templates.TemplateResponse(request, "league.html", {
+        "g": graph, "llm_label": LLM_PATH_LABEL,
+        "unfalsifiable": graph["unfalsifiable"]})
+
+
+def _events_after(run_dir: Path, after: int) -> list:
+    path = run_dir / "events.jsonl"
+    if not path.is_file():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except Exception:  # noqa: BLE001 - a half-written line is not an event
+            continue
+        if int(row.get("seq", 0)) > after:
+            rows.append(row)
+    return rows
+
+
+@app.get("/live", response_class=HTMLResponse)
+def live_index(request: Request):
+    """Watch a run directory as it is written.
+
+    The UI cannot START a run - the import fence keeps sim/ out - so this
+    watches what the CLI produces. That is the honest replacement for a
+    fixed time estimate: elapsed and event count, measured while it runs.
+    """
+    runs = sorted((d for d in RUNS.iterdir() if d.is_dir()),
+                  key=lambda d: d.stat().st_mtime, reverse=True)[:12]
+    rows = [{"id": d.name, "events": (d / "events.jsonl").is_file(),
+             "mtime": d.stat().st_mtime} for d in runs]
+    return templates.TemplateResponse(request, "live.html", {
+        "rows": rows, "llm_label": LLM_PATH_LABEL})
+
+
+@app.get("/live/{run_id}", response_class=HTMLResponse)
+def live_run(request: Request, run_id: str):
+    run_dir = RUNS / run_id
+    if ".." in run_id or not run_dir.is_dir():
+        raise HTTPException(404)
+    return templates.TemplateResponse(request, "live_run.html", {
+        "run_id": run_id, "manifest": _manifest(run_dir),
+        "llm_label": LLM_PATH_LABEL})
+
+
+@app.get("/live/{run_id}/events", response_class=HTMLResponse)
+def live_events(request: Request, run_id: str, after: int = 0):
+    """One polling step: the events produced since ``after``."""
+    import time
+
+    run_dir = RUNS / run_id
+    if ".." in run_id or not run_dir.is_dir():
+        raise HTTPException(404)
+    rows = _events_after(run_dir, after)
+    path = run_dir / "events.jsonl"
+    last_write = path.stat().st_mtime if path.is_file() else 0
+    started = _manifest(run_dir).get("started_at", "")
+    highest = after
+    entries = []
+    for row in rows:
+        highest = max(highest, int(row.get("seq", 0)))
+        entries.append({
+            "seq": row.get("seq"), "kind": row.get("kind", ""),
+            "ts": str(row.get("ts", ""))[11:19],
+            "detail": json.dumps({k: v for k, v in row.items()
+                                  if k not in ("seq", "ts", "kind",
+                                               "run_id")})[:160],
+        })
+    return templates.TemplateResponse(request, "_live_events.html", {
+        "entries": entries, "after": highest, "run_id": run_id,
+        "idle_s": round(time.time() - last_write) if last_write else None,
+        "started": started})
 
 
 # -- (a) scenario input -----------------------------------------------------
@@ -319,8 +412,17 @@ def report_view(request: Request):
 
 @app.get("/results", response_class=HTMLResponse)
 def results_view(request: Request):
+    from mironba.api.graph import headline_numbers, season_series, spark_path
+
     figures = [{"file": name, "title": title, "null": null}
                for name, title, null in FIGURE_CAPTIONS
                if (FIGURES / name).is_file()]
+    sparks = []
+    for series in season_series():
+        sparks.append(dict(series,
+                           path=spark_path(series["points"]),
+                           null_path=spark_path(series["nulls"])
+                           if series["nulls"] else ""))
     return templates.TemplateResponse(request, "results.html", {
-        "figures": figures, "llm_label": LLM_PATH_LABEL})
+        "figures": figures, "numbers": headline_numbers(), "sparks": sparks,
+        "llm_label": LLM_PATH_LABEL})

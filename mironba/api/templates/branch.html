@@ -1,42 +1,68 @@
 {% extends "base.html" %}
 {% block title %}branches — {{ scenario_id }}{% endblock %}
 {% block body %}
-<h1>Branch comparison — {{ scenario_id }} (frozen {{ freeze }})</h1>
-{% if interest %}
-<div class="marker">
-  <b>Known at the freeze — dated, sourced inputs:</b>
-  {% for row in interest %}
-    <div>{{ row.date }} · {{ row.team }} in on {{ row.player }}
-         <small>[{{ row.id }} ← {{ row.anchors }}] {{ row.source }}</small></div>
-  {% endfor %}
-  <p>{{ input_marker }}</p>
-</div>
-{% endif %}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+<h1>Branch fork — {{ scenario_id }}</h1>
+<p class="muted">One decision, two worlds, frozen at {{ freeze }}. The trunk
+is everything both worlds share; the split is the decision; each branch is
+what followed.</p>
+
+<svg class="fork" viewBox="0 0 100 34" role="img"
+     aria-label="a shared trunk splitting into two branches at the decision">
+  <path class="trunk" d="M2,17 H34"/>
+  <path class="limb up" d="M34,17 C46,17 46,5 58,5 H97"/>
+  <path class="limb down" d="M34,17 C46,17 46,29 58,29 H97"/>
+  <circle class="split" cx="34" cy="17" r="2.6"/>
+  <text class="forklabel" x="2" y="13">shared world at the freeze</text>
+  <text class="forklabel" x="36" y="14">the decision</text>
+  <text class="forklabel up" x="60" y="2.6">{{ branches[0].label if branches }}</text>
+  <text class="forklabel down" x="60" y="33">{{ branches[1].label if branches|length > 1 }}</text>
+</svg>
+
+<div class="forkgrid">
 {% for b in branches %}
-  <div class="panel">
+  <div class="panel branchpanel {% if b.falsifiable %}scored{% else %}counterfactual{% endif %}">
     {% if b.falsifiable %}
-      <h2>{{ b.label }} — this is what happened (scored)</h2>
+      <h2>{{ b.label }} <span class="chip legal">SCORED — this happened</span></h2>
     {% else %}
       <h2><span class="badge unf">UNFALSIFIABLE</span> {{ b.label }}</h2>
-      <p>This branch did not happen and never will have ground truth. Its
-         value is comparative: same GM, same freeze state, different answer.
-         It is never scored.</p>
+      <p class="marker">This branch did not happen and never will have
+         ground truth. Its value is comparative: same GM, same freeze state,
+         different answer. It is never scored.</p>
     {% endif %}
     <b>Moves</b>
     <table>
     {% for m in b.moves %}
-      <tr><td>{{ m.name }}</td><td>{{ m.route }}</td>
-          <td>${{ "{:,}".format(m.first_year_salary) }}</td></tr>
+      <tr><td>{{ m.name }}</td><td class="mono">{{ m.route }}</td>
+          <td class="mono">${{ "{:,}".format(m.first_year_salary) }}</td></tr>
     {% endfor %}
     </table>
-    <b>Conditionals in this branch</b>
+    <b>Conditionals</b>
     {% for c in b.conditionals %}
-      <div>{% if c.fired %}<b>FIRED</b>{% else %}<small>did not fire</small>{% endif %}
-        <code>{{ c.id }}</code> — <span class="quote">“{{ c.condition }}”</span>
-        → {{ c.commitment }}</div>
+      <div class="cond {% if c.fired %}fired{% endif %}">
+        <span class="chip {% if c.fired %}legal{% else %}muted-chip{% endif %}">
+          {% if c.fired %}FIRED{% else %}did not fire{% endif %}</span>
+        <code>{{ c.id }}</code>
+        <div class="quote">“{{ c.condition }}” → {{ c.commitment }}</div>
+      </div>
     {% endfor %}
   </div>
 {% endfor %}
 </div>
+
+{% if interest %}
+<h2>Known at the freeze</h2>
+<div class="cards">
+  {% for row in interest %}
+  <div class="card evidence">
+    <div class="band pre">PRE</div>
+    <div class="scenario">{{ row.team }} in on {{ row.player }}</div>
+    <div class="facts">{{ row.date }} · {{ row.source }}
+      <span class="mono">[{{ row.id }} ← {{ row.anchors }}]</span></div>
+  </div>
+  {% endfor %}
+</div>
+<p class="marker">{{ input_marker }} POST-freeze evidence exists in the
+store and is <b>never rendered here</b> — the partition test extends to
+this page.</p>
+{% endif %}
 {% endblock %}

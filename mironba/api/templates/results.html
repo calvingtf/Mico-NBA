@@ -2,10 +2,79 @@
 {% block title %}results{% endblock %}
 {% block body %}
 <h1>Results — generated from recorded data, never typed into plotting code</h1>
+
+{% if numbers %}
+<p class="muted">Each bar below starts at its null and travels to the
+observed value. The distance <i>is</i> the finding: a claim whose bar
+barely moves has barely beaten chance, and this page will not hide that.</p>
+<div class="numstrip">
+  {% for n in numbers %}
+  <div class="numcard" data-observed="{{ n.observed }}" data-null="{{ n.null }}"
+       data-unit="{{ n.unit }}">
+    <div class="numlabel">{{ n.label }}</div>
+    <div class="numval"><span class="count">{{ n.null }}</span>{{ n.unit }}</div>
+    <div class="numbar">
+      <i style="--from: {{ (n.null / [n.observed, n.null]|max * 100)|round }}%;
+                --to: {{ (n.observed / [n.observed, n.null]|max * 100)|round }}%"></i>
+    </div>
+    <div class="numnote">from its null {{ n.null }}{{ n.unit }} →
+      observed {{ n.observed }}{{ n.unit }}{% if n.lower_is_better %}
+      (lower is better here){% endif %} — {{ n.note }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% for f in figures %}
 <figure>
   <img src="/figures/{{ f.file }}" alt="{{ f.title }}">
   <figcaption><b>{{ f.title }}.</b> Null: {{ f.null }}.</figcaption>
 </figure>
 {% endfor %}
+
+{% for s in sparks %}
+<figure class="sparkfig">
+  <figcaption><b>{{ s.label }}.</b> Null: {{ s.null_note }}.</figcaption>
+  <svg class="spark" viewBox="0 0 220 34" preserveAspectRatio="none"
+       role="img" aria-label="{{ s.label }}">
+    {% if s.null_path %}<polyline class="sparknull" points="{{ s.null_path }}"/>{% endif %}
+    <polyline class="sparkline" points="{{ s.path }}"/>
+  </svg>
+  <div class="sparklabels step">
+    {% for label in s.labels %}<span>{{ label }}</span>{% endfor %}
+  </div>
+</figure>
+{% endfor %}
+
+<script>
+// Numbers animate from their null to the observed value: the travel shows
+// the gap. Respects prefers-reduced-motion by jumping straight to the end.
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cards = document.querySelectorAll(".numcard");
+  const run = (card) => {
+    const from = Number(card.dataset.null);
+    const to = Number(card.dataset.observed);
+    const out = card.querySelector(".count");
+    const bar = card.querySelector(".numbar i");
+    if (bar) { bar.classList.add("go"); }
+    if (reduce) { out.textContent = to; return; }
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 1100);
+      const eased = 1 - Math.pow(1 - k, 3);
+      out.textContent = (from + (to - from) * eased).toFixed(
+        Math.abs(to) < 10 ? 2 : 1);
+      if (k < 1) { requestAnimationFrame(step); }
+    };
+    requestAnimationFrame(step);
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) { run(e.target); io.unobserve(e.target); }
+    }
+  }, {threshold: 0.4});
+  cards.forEach((c) => io.observe(c));
+})();
+</script>
 {% endblock %}

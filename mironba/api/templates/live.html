@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}live{% endblock %}
+{% block body %}
+<h1>Live run view</h1>
+<p class="muted">This watches a run directory <b>as the CLI writes it</b> —
+elapsed and events measured, not estimated. The UI cannot start a run: the
+import fence keeps <code>sim/</code> out of this package, which is why a
+scenario is executed from the command line and observed here.</p>
+<div class="panel">
+  <b class="mono">python -m mironba.sim.stipulated --scenario curry-lakers-2026 --out runs/&lt;id&gt;/manifest.json</b>
+  <div class="step">start a run in a terminal, then open it below — new
+  events appear as they are produced</div>
+</div>
+<div class="cards">
+{% for r in rows %}
+  <a class="card door" href="/live/{{ r.id }}">
+    <b class="mono">{{ r.id }}</b>
+    <span>{% if r.events %}has an event log — watchable{% else %}manifest
+      only{% endif %}</span>
+  </a>
+{% endfor %}
+</div>
+{% endblock %}

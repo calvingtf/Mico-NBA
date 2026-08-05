@@ -762,7 +762,21 @@ fences it from ever computing (no imports from `sim/`, `models/` or
 python -m mironba.api.serve        # http://127.0.0.1:8300, Ctrl+C stops everything
 ```
 
-Six screens: scenario input (the CLI authoring flow with its confirm gate
+Nine screens. A landing view leads with the boundary finding and an
+**animated hero built from a real run's cascade** (SVG + CSS, no library);
+a **league graph** draws thirty team nodes on a fixed geographic layout with
+the run's own trade and contested-player edges animating in the order they
+occurred — node size is payroll, colour is disposition *as the record proves
+it* (the cascade's counterparty gate admits only SELLER teams, so a recorded
+counterparty was seller-classified at run time; a team that did not
+participate is labelled **unclassified**, because the artifact does not say
+and the page does not guess), and hovering a node shows its payroll bar with
+the cap/tax/apron lines marked. A **live run view** polls a run directory as
+the CLI writes it — elapsed and event count measured, not estimated. The
+branch page is drawn as an actual **fork**: shared trunk, split at the
+decision, both limbs rendered, conditionals marked fired-or-not. Numbers on
+the results page **animate from their null to their observed value**, because
+the travel is the finding. Then: scenario input (the CLI authoring flow with its confirm gate
 intact — writing without the explicit checkbox is a 400; an under-specified
 sentence like *"Wembanyama traded to the Warriors"* is the normal case, so
 the destination's legal return packages are enumerated by `rules/solver.py`

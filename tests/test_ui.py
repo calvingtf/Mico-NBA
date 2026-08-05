@@ -38,10 +38,15 @@ class TestComputesNothing:
 
 class TestNoValueWithoutItsNull:
     def test_every_figure_caption_names_its_null(self):
+        """Counts figure OPENINGS, not the bare '<figure>' string: the
+        sparkline figures carry a class and the original counter skipped
+        them, which would have let a figure ship without its null. This is
+        the stricter form."""
         page = client.get("/results").text
-        figure_count = page.count("<figure>")
+        figure_count = page.count("<figure")
         assert figure_count >= 5
-        assert page.count("Null:") == figure_count
+        assert page.count("Null:") == figure_count, (
+            f"{figure_count} figures but {page.count('Null:')} nulls")
 
 
 class TestPostFreezeNeverRenders:

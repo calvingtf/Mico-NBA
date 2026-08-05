@@ -1,0 +1,22 @@
+<div hx-get="/live/{{ run_id }}/events?after=0"
+     hx-trigger="every 2s" hx-swap="outerHTML" hx-target="this">
+  <div class="livehead step">
+    {{ entries|length }} event(s) ·
+    {% if idle_s is not none %}
+      last write {{ idle_s }}s ago
+      {% if idle_s > 10 %}— idle, the run has probably finished{% else %}
+      — <span class="pulse">running</span>{% endif %}
+    {% else %}no event log yet{% endif %}
+    {% if started %}· started {{ started[11:19] }}{% endif %}
+  </div>
+  {% for e in entries %}
+    <div class="event reveal" style="--i: {{ loop.index0 }}">
+      <div class="meta">{{ e.ts }} · #{{ e.seq }} · {{ e.kind }}</div>
+      <div class="mono step">{{ e.detail }}</div>
+    </div>
+  {% endfor %}
+  {% if not entries %}
+    <div class="step">no events yet — start a run from the CLI and they
+    appear here as they are written</div>
+  {% endif %}
+</div>

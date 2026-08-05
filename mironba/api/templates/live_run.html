@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}live — {{ run_id }}{% endblock %}
+{% block body %}
+<h1>Watching <span class="mono">{{ run_id }}</span></h1>
+<p class="muted">Polling every 2 seconds. Each row is one event exactly as
+it was written to <code>events.jsonl</code>; nothing is summarised or
+inferred.</p>
+{% if manifest %}
+<div class="panel">
+  <div class="step">manifest: model
+    <b>{{ manifest.model_id or manifest.model or "none (deterministic)" }}</b>
+    · seed <b>{{ manifest.seed }}</b>
+    · snapshot <b>{{ manifest.snapshot_date or manifest.data_snapshot or "—" }}</b>
+    {% if manifest.unfalsifiable %}
+    <span class="badge unf">UNFALSIFIABLE</span>{% endif %}</div>
+</div>
+{% endif %}
+<div id="livefeed" class="stream"
+     hx-get="/live/{{ run_id }}/events?after=0"
+     hx-trigger="load, every 2s"
+     hx-swap="innerHTML">
+  <div class="step">connecting…</div>
+</div>
+{% endblock %}

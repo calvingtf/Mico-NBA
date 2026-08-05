@@ -63,7 +63,7 @@ def _payroll_bands(season: str) -> dict:
     from mironba.rules.constants import environment_for
 
     env = environment_for(season)
-    return {"cap": env.salary_cap, "tax": env.tax_line,
+    return {"cap": env.salary_cap, "tax": env.tax_level,
             "apron1": env.first_apron, "apron2": env.second_apron}
 
 
@@ -170,9 +170,21 @@ def league_graph(run_id: str | None = None) -> dict:
             "roster": rosters.get(team, 0),
             "signed": [name_of(p) for p in (row or {}).get("signed", [])],
             "lost": [name_of(p) for p in (row or {}).get("lost_contests", [])],
-            "role": ("seller-gated counterparty" if team in counterparties
-                     else "passed the not-a-seller gate" if team in acquirers
-                     else ""),
+            # DISPOSITION AS THE RECORD PROVES IT, never recomputed: the
+            # cascade's counterparty gate admits only SELLER teams, so a
+            # recorded counterparty was seller-classified at run time and a
+            # recorded acquirer passed the not-a-seller gate. A team that
+            # did not participate is unclassified - the artifact does not
+            # say, and the UI does not get to guess.
+            "disposition": ("seller" if team in counterparties
+                            else "buyer-side" if team in acquirers
+                            else "unclassified"),
+            "role": ("recorded as a counterparty - the cascade gate admits "
+                     "only SELLER teams" if team in counterparties
+                     else "recorded as an acquirer - passed the not-a-seller "
+                          "gate" if team in acquirers
+                     else "did not participate; the record does not classify "
+                          "it and the UI does not guess"),
             "seed": team in seed_teams,
         })
 
@@ -206,13 +218,22 @@ def league_graph(run_id: str | None = None) -> dict:
         "attributable": True, "trigger": "the seed event",
     } for pid, (frm, to) in seed_players.items()]
 
+    # endpoints resolved here, not in the template: a view that has to
+    # search for coordinates is a view doing work
+    xy = {n["team"]: (n["x"], n["y"]) for n in nodes}
+    drawable = []
+    for edge in seed_edges + edges:
+        if edge["source"] in xy and edge["target"] in xy:
+            (x1, y1), (x2, y2) = xy[edge["source"]], xy[edge["target"]]
+            drawable.append(dict(edge, x1=x1, y1=y1, x2=x2, y2=y2))
+
     return {
         "run_id": run_id,
         "scenario": manifest.get("scenario", ""),
         "unfalsifiable": manifest.get("unfalsifiable", False),
         "season": season, "bands": bands,
         "nodes": nodes,
-        "edges": seed_edges + edges,
+        "edges": drawable,
         "seed_label": manifest.get("trade", {}).get("label", ""),
         "counts": {
             "trades": len(trades),
@@ -233,6 +254,7 @@ def hero_frames(limit: int = 8) -> dict:
     if not graph:
         return {}
     edges = [e for e in graph["edges"] if e["kind"] in ("seed", "trade")]
+    # hero nodes keep their coordinates for the inline SVG
     return {
         "run_id": graph["run_id"], "seed_label": graph["seed_label"],
         "unfalsifiable": graph["unfalsifiable"],
@@ -240,3 +262,126 @@ def hero_frames(limit: int = 8) -> dict:
         "edges": edges[:limit],
         "counts": graph["counts"],
     }
+
+
+# --------------------------------------------------------------------------
+# Headline numbers and season series - every one paired with its own null
+# --------------------------------------------------------------------------
+
+
+def headline_numbers() -> list:
+    """(label, observed, null, unit, note) read from recorded bench files.
+
+    Every entry carries the null it is measured against, because the
+    animation is the point: a bar that travels from its null to its
+    observed value SHOWS the gap, and a gap of nothing looks like nothing.
+    """
+    out = []
+
+    ranker = ROOT / "bench-player-ranker.json"
+    if ranker.is_file():
+        bench = _read_json(ranker)
+        seasons = bench["per_season"]
+        observed = 100 * sum(r["p_at_k"] for r in seasons) / len(seasons)
+        null = 100 * sum(r["wt_null_p_at_k"] for r in seasons) / len(seasons)
+        out.append({
+            "label": f"player ranker, precision@{bench.get('k', 25)}",
+            "observed": round(observed, 1), "null": round(null, 1),
+            "unit": "%",
+            "note": "against the WITHIN-TEAM permutation null, which "
+                    "preserves each team's trade frequency; 10 deadlines",
+        })
+
+    pooled = ROOT / "bench-pooled-10season.json"
+    if pooled.is_file():
+        bench = _read_json(pooled)
+        out.append({
+            "label": "deadline precision, 10 seasons",
+            "observed": round(bench["precision"], 2),
+            "null": 2.58, "unit": "%",
+            "note": "proposal-weighted per-season null; statistically clear "
+                    "and practically small (+1.06 pts)",
+        })
+
+    arms = {}
+    for scenario in ARM_SCENARIOS:
+        m16 = ROOT / f"bench-m16-{scenario}.json"
+        m2 = ROOT / f"bench-m2-{scenario}.json"
+        if m16.is_file() and m2.is_file():
+            for arm, path in (("blind", m16), ("feasible", m16),
+                              ("unlock", m2)):
+                row = _read_json(path).get(arm)
+                if row:
+                    arms.setdefault(arm, []).append(row)
+    if arms.get("blind") and arms.get("unlock"):
+        def rate(arm, key, weighted=False):
+            rows = arms[arm]
+            total = sum(r["intents"] for r in rows)
+            if weighted:
+                return 100 * sum(r[key] * r["intents"] for r in rows) / total
+            return 100 * sum(r[key] for r in rows) / total
+
+        out.append({
+            "label": "intent satisfiable on the first attempt",
+            "observed": round(rate("unlock", "intent_satisfiable_first", True), 1),
+            "null": round(rate("blind", "intent_satisfiable_first", True), 1),
+            "unit": "%",
+            "note": "the unaided arm is the null here: same model, same "
+                    "scenarios, only what it was shown changed",
+        })
+        out.append({
+            "label": "named an unreachable target",
+            "observed": round(rate("unlock", "intents_naming_an_unreachable_target"), 1),
+            "null": round(rate("blind", "intents_naming_an_unreachable_target"), 1),
+            "unit": "%", "lower_is_better": True,
+            "note": "same three scenarios; the unaided arm is the control",
+        })
+    return out
+
+
+ARM_SCENARIOS = ("curry-to-lakers", "mid-flexibility-bulls",
+                 "undetermined-byc")
+
+
+def season_series() -> list:
+    """Per-season series with their per-season nulls, for sparklines."""
+    out = []
+    ranker = ROOT / "bench-player-ranker.json"
+    if ranker.is_file():
+        bench = _read_json(ranker)
+        rows = bench["per_season"]
+        out.append({
+            "label": f"player ranker p@{bench.get('k', 25)} by held-out season",
+            "points": [100 * r["p_at_k"] for r in rows],
+            "nulls": [100 * r["wt_null_p_at_k"] for r in rows],
+            "labels": [r["season"] for r in rows],
+            "null_note": "dashed line: the within-team permutation null, "
+                         "recomputed per season",
+        })
+    csv_path = ROOT / "bench-pooled-10season.csv"
+    if csv_path.is_file():
+        with csv_path.open(encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        points, labels = [], []
+        for row in rows:
+            actual = int(row["actual"]) or 1
+            points.append(100 * int(row["matched"]) / actual)
+            labels.append(row["season"])
+        out.append({
+            "label": "deadline recall by season",
+            "points": points, "nulls": [], "labels": labels,
+            "null_note": "per-season nulls are drawn in the committed figure "
+                         "(two seasons fall below theirs)",
+        })
+    return out
+
+
+def spark_path(points: list, width: int = 220, height: int = 34) -> str:
+    """An SVG polyline for a sparkline. Baseline at zero, never truncated."""
+    if not points:
+        return ""
+    top = max(max(points), 1e-9)
+    step = width / max(len(points) - 1, 1)
+    return " ".join(
+        f"{i * step:.1f},{height - (v / top) * (height - 4):.1f}"
+        for i, v in enumerate(points))

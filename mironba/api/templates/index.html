@@ -1,20 +1,117 @@
 {% extends "base.html" %}
 {% block title %}home{% endblock %}
 {% block body %}
-<h1>MiroNBA — counterfactual NBA offseasons, measured against their nulls</h1>
-<p>Everything on these pages is a committed artifact: recorded runs, bench
-files, evidence stores, generated figures. Nothing is computed here.</p>
-<ul>
-  <li><a href="/authoring">Scenario input</a> — plain language in, drafted
-      scenario out; the rules verdict shows before anything is written and
-      writing takes an explicit confirmation.</li>
-  <li><a href="/runs">Run gallery</a> — every recorded run with its manifest:
-      model, seed, snapshot, reproducibility.</li>
-  <li><a href="/branches/lebron-2026">Branch comparison</a> — the two worlds
-      side by side; the counterfactual is labelled unfalsifiable.</li>
-  <li><a href="/report">Report</a> — the report agent's recorded output with
-      its limitations block, which cannot be dismissed.</li>
-  <li><a href="/results">Results</a> — the generated figures, each with its
-      null.</li>
-</ul>
+
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">counterfactual NBA offseasons, measured against their nulls</p>
+    <h1>Seed a trade that never happened.<br>Watch thirty teams react —
+        under the actual CBA.</h1>
+    <p class="lede">An LLM may <i>propose</i>; only <code>rules/</code> may
+       <i>approve</i>. Every number ships beside the score a do-nothing or
+       random system gets on the same data — including the ones that lost.</p>
+    <p class="cta-row">
+      <a class="cta" href="/authoring">Write a scenario →</a>
+      <a class="cta ghost" href="/league">See the league graph</a>
+    </p>
+  </div>
+
+  {% if hero %}
+  <figure class="hero-fig">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="hero-svg"
+         role="img" aria-label="the seed trade, then the cascade it set off">
+      {% for e in hero.edges %}
+        <line class="hero-edge {{ e.kind }}" x1="{{ e.x1 }}" y1="{{ e.y1 }}"
+              x2="{{ e.x2 }}" y2="{{ e.y2 }}"
+              style="--i: {{ loop.index0 }}"><title>{{ e.label }}</title></line>
+      {% endfor %}
+      {% for code, n in hero.nodes.items() %}
+        <circle class="hero-node {{ n.disposition }}{% if n.seed %} seedn{% endif %}"
+                cx="{{ n.x }}" cy="{{ n.y }}"
+                r="{% if n.seed %}2.4{% else %}1.5{% endif %}"
+                style="--i: {{ loop.index0 }}"><title>{{ code }} —
+                {{ n.band_label }}</title></circle>
+      {% endfor %}
+    </svg>
+    <figcaption>
+      <b>{{ hero.seed_label }}</b> — then the cascade, in the order it
+      happened. Drawn from run <code>{{ hero.run_id }}</code>:
+      {{ hero.counts.trades }} generated trades, of which
+      <b>{{ hero.counts.attributable }}</b> are attributable to the seed
+      (the rest happen in the unseeded world too — that diff is the whole
+      claim). {% if hero.unfalsifiable %}<span class="badge unf">UNFALSIFIABLE</span>
+      the seed is stipulated: a demonstration, not a measurement.{% endif %}
+    </figcaption>
+  </figure>
+  {% endif %}
+</section>
+
+<section class="claim">
+  <h2>The boundary finding — the most portable claim here</h2>
+  <p class="big">Features the constraint solver has already consumed carry
+     <b>no ranking signal</b>; features that precede it do.</p>
+  <div class="claim-grid">
+    <div class="claim-card bad">
+      <div class="claim-head">downstream of the solver</div>
+      <div class="claim-num">6.0<span>%</span></div>
+      <div class="claim-sub">pair ranker p@10 · null <b>5.01%</b> ·
+           1.20x — inside noise</div>
+    </div>
+    <div class="claim-card good">
+      <div class="claim-head">upstream of the solver</div>
+      <div class="claim-num">11.2<span>%</span></div>
+      <div class="claim-sub">player ranker p@25 · within-team null
+           <b>7.0%</b> · clears at P=0.0026</div>
+    </div>
+  </div>
+  <p class="muted">In a system with a hard constraint layer, put the model
+     upstream of the constraints, not downstream — downstream, the
+     discriminative variance has already been spent.</p>
+</section>
+
+<section>
+  <h2>What the model is shown decides what it can want</h2>
+  <figure>
+    <img src="/figures/three-arm.svg"
+         alt="Three-arm A/B: unreachable-target rate falls 65.5% to 0; first-attempt satisfiability rises 31% to 100%">
+    <figcaption><b>Three-arm A/B.</b> Null: each arm is the others' control —
+      same model, same scenarios; stand-pat rates 19.4/19.4/20.7% rule out
+      "attempting less".</figcaption>
+  </figure>
+  {% if numbers %}
+  <div class="numstrip">
+    {% for n in numbers %}
+    <div class="numcard" data-observed="{{ n.observed }}" data-null="{{ n.null }}">
+      <div class="numlabel">{{ n.label }}</div>
+      <div class="numval"><span class="count">{{ n.null }}</span>{{ n.unit }}</div>
+      <div class="numbar"><i style="--w: {{ (n.null / [n.observed, n.null]|max * 100)|round }}%"></i></div>
+      <div class="numnote">travels from its null ({{ n.null }}{{ n.unit }})
+        to observed ({{ n.observed }}{{ n.unit }}) — {{ n.note }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="doors">
+  <h2>Where to go</h2>
+  <div class="cards">
+    <a class="card door" href="/authoring"><b>Write a scenario</b>
+      <span>Plain language in. The solver prices every legal return; you
+      confirm before anything is written.</span></a>
+    <a class="card door" href="/league"><b>League graph</b>
+      <span>Thirty teams, real trade and contested-player edges from a
+      recorded run.</span></a>
+    <a class="card door" href="/runs"><b>Run gallery</b>
+      <span>Every run with its manifest: model, seed, snapshot,
+      reproducibility.</span></a>
+    <a class="card door" href="/branches/lebron-2026"><b>Branch fork</b>
+      <span>Two worlds from one decision; the counterfactual is labelled
+      unfalsifiable.</span></a>
+    <a class="card door" href="/results"><b>Results</b>
+      <span>Every figure with its null — failures included.</span></a>
+    <a class="card door" href="/live"><b>Live run</b>
+      <span>Watch a run directory as the CLI writes it.</span></a>
+  </div>
+</section>
 {% endblock %}
