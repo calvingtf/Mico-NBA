@@ -1,0 +1,7 @@
+# Archive partitions are append-only event logs with reader-side URL dedup
+# (tests/test_archive.py simulates the merge artifact). Both writers - the
+# local scheduled task and the GitHub Action - append at EOF, so the union
+# merge driver is the correct resolution: keep both sides' lines, let
+# read_partition dedupe. Without this, every same-day two-writer append is
+# a manual conflict on an unattended machine.
+archive/rss/*.csv merge=union

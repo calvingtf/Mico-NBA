@@ -533,11 +533,20 @@ from the local runs) and commits the dated partitions back. What it commits
 is feed-provided syndication metadata - feed, url, title, the feed's own
 snippet, published_at, fetched_at - no scraped article bodies, matching the
 policy already in force (partitions tracked since the archiver's first
-commit; poll.log gitignored). Two writers into the same append-only
-partitions are safe via git PLUS reader-side dedup: each unions by URL
-against its own copy, merges can leave duplicate lines, and read_partition
-dedupes by URL so coverage, windows and drafts never double-count - a test
-simulates the merge artifact. The local tasks stay as the fallback. So every poll writes a marker even when it appends
+commit; poll.log gitignored). Two writers, ONE record: the repo at
+origin/main is the archive of record, and both sides commit into it - the
+cloud job pushes its partitions, and the local tasks now run
+`scripts/local-archive.cmd` (pull -> poll -> commit -> push) instead of
+silently appending to a working-tree fork (entry #70: the old task never
+pulled or committed, and divergence surfaced only as a pull refusal on the
+next human sync). Same-day two-writer appends resolve through the
+committed `merge=union` attribute on the partitions - correct precisely
+because they are append-only with reader-side URL dedup (both the merge
+artifact and the full two-branch fork are tests, and a real forced
+divergence was merged live with zero duplicate rows). Every health line
+now names the copy it read and its sync state against the record, so a
+coverage report can no longer be green for a surface the record
+contradicts. So every poll writes a marker even when it appends
 nothing - an absent partition and an empty poll must never look the same
 (the sentinel-for-absence failure class) - and `--coverage` enumerates every
 day from the first partition to today, listing each missing day and the

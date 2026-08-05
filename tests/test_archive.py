@@ -281,3 +281,44 @@ class TestABotBlockedFeedCannotKillThePoll:
         today = datetime.now(timezone.utc).date()
         rows = read_partition(today, tmp_path)
         assert any(r["feed"] == "__poll__" for r in rows), "marker lost"
+
+
+class TestTheUnionMergeDriver:
+    def test_divergent_same_day_appends_merge_and_read_clean(self, tmp_path):
+        """The two-writer fork, reproduced in a scratch repo: base partition,
+        two branches each appending a different row, merged with the
+        committed merge=union attribute - both rows survive and
+        read_partition returns them deduped. This is the offline twin of the
+        live forced-divergence verification (entry #70)."""
+        import subprocess
+
+        def git(*args):
+            return subprocess.run(["git", *args], cwd=tmp_path, check=True,
+                                  capture_output=True, text=True)
+
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        (tmp_path / ".gitattributes").write_text(
+            "archive/rss/*.csv merge=union\n", encoding="utf-8")
+        root = tmp_path / "archive" / "rss"
+        write_archive_rows([_row("http://base", "2026-08-05T01:00:00+00:00")],
+                           root=root)
+        git("add", "-A")
+        git("commit", "-q", "-m", "base")
+
+        git("checkout", "-q", "-b", "cloud")
+        write_archive_rows([_row("http://cloud", "2026-08-05T02:00:00+00:00")],
+                           root=root)
+        git("commit", "-aqm", "cloud append")
+
+        git("checkout", "-q", "main")
+        write_archive_rows([_row("http://local", "2026-08-05T03:00:00+00:00")],
+                           root=root)
+        git("commit", "-aqm", "local append")
+
+        git("merge", "-q", "cloud")   # union driver resolves the EOF fork
+        rows = read_partition(date(2026, 8, 5), root)
+        urls = {r["url"] for r in rows}
+        assert urls == {"http://base", "http://cloud", "http://local"}
+        assert len(rows) == 3, "duplicate or lost rows after the union merge"

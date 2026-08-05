@@ -488,6 +488,46 @@ def _next_scheduled_run() -> str:
     return min(times) if times else "unknown (scheduler not queryable)"
 
 
+def copy_state(root: Path = ARCHIVE_ROOT) -> str:
+    """Which copy a report answers for, and its sync state vs the record.
+
+    The archive of record is the REPO at origin/main (both writers commit
+    into it); a coverage line that is green locally while the repo says
+    otherwise is a metric answering for the wrong surface. No network:
+    origin/main is as of the last fetch, and the line says so.
+    """
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=root.parent.parent,
+                              capture_output=True, text=True, timeout=15)
+
+    try:
+        rel = root.relative_to(Path(git("rev-parse", "--show-toplevel")
+                                    .stdout.strip()))
+    except Exception:  # noqa: BLE001 - a non-repo root is its own answer
+        return (f"reading NON-REPO copy at {root} - not the archive of "
+                "record (the repo at origin/main)")
+    dirty = len([l for l in git("status", "--porcelain", str(rel))
+                 .stdout.splitlines() if l.strip()])
+    behind = git("rev-list", "--count", "HEAD..origin/main", "--", str(rel))
+    ahead = git("rev-list", "--count", "origin/main..HEAD", "--", str(rel))
+    behind_n = int(behind.stdout.strip() or 0)
+    ahead_n = int(ahead.stdout.strip() or 0)
+    parts = [f"reading the LOCAL working copy of the record ({rel})"]
+    if not dirty and not behind_n and not ahead_n:
+        parts.append("in sync with origin/main (as of last fetch)")
+    else:
+        if dirty:
+            parts.append(f"{dirty} partition file(s) with uncommitted rows")
+        if ahead_n:
+            parts.append(f"{ahead_n} local commit(s) not pushed")
+        if behind_n:
+            parts.append(f"{behind_n} record commit(s) not pulled")
+        parts.append("(vs origin/main as of last fetch)")
+    return "; ".join(parts)
+
+
 def announce(root: Path = ARCHIVE_ROOT, *, today: date | None = None) -> str:
     """The banner every archive-reading entry point prints FIRST.
 
@@ -516,6 +556,7 @@ def announce(root: Path = ARCHIVE_ROOT, *, today: date | None = None) -> str:
         f"archive health: {h['covered']}/{h['expected']} day(s) covered "
         f"since {h['first']}{gap}; {unrec} unrecoverable day(s)"
         if h["first"] else "archive health: empty")
+    lines.append(f"  [{copy_state(root)}]")
     return chr(10).join(lines)
 
 

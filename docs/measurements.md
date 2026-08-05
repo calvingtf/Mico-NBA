@@ -2664,3 +2664,43 @@ against a simulated merge duplicate.
 storage that rejects a forwarded auth header - follow the redirect bare;
 and mironba.data's __init__ imports yaml, so even stdlib-only submodules
 need PyYAML installed in CI.
+
+
+## 70. Two writers, one record: the local task stopped forking the archive (2026-08-05)
+
+**The trace (reported before any change):** the local scheduled tasks ran
+`python -m mironba.data.ingest.archive` with NO pull before and NO commit
+after - appending to the working tree and exiting. The task itself never
+errored; divergence accumulated silently and surfaced later as a hard
+`git pull` refusal on whoever next synced. Until that manual sync, the
+local coverage report answered for a fork of the record.
+
+**The decision:** the archive of record is THE REPO at origin/main. Both
+writers commit into it; neither side is a mirror.
+
+**The fix, only what the trace showed missing:** scripts/local-archive.cmd
+pulls (--rebase --autostash) BEFORE polling so the union sees cloud rows,
+polls, commits only archive/rss (through the pre-commit suite), pulls
+again for races, pushes. Same-day two-writer appends resolve via the
+committed merge=union attribute on archive/rss/*.csv - correct precisely
+because the files are append-only and readers dedupe by URL (the
+merge-artifact test). A failed push leaves the commit local for the next
+run to carry.
+
+**Verified the way the cloud loop was:** a REAL fork was forced
+deliberately - cloud poll dispatched (committed 4feee3e), local poll run
+without pulling (the old pattern, dirtying the same partition) - then the
+new script ran over it. Both sides survived: five poll markers in the
+day's partition, ZERO duplicate URLs even before reader dedup (the fork
+resolved at the autostash pop through the union driver), linear history,
+push clean. The offline twin lives in the suite: a scratch repo with two
+branches appending to one partition, merged under the attribute, read
+back clean.
+
+**The coverage report answers for a named copy now:** every health line
+carries "[reading the LOCAL working copy of the record (archive/rss);
+in sync with origin/main (as of last fetch)]" - or the exact divergence:
+uncommitted partition files, unpushed commits, unpulled record commits.
+During the forced fork it read "1 partition file(s) with uncommitted
+rows; 1 record commit(s) not pulled" - the wrong-surface failure family,
+made visible instead of possible.
