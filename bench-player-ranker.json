@@ -139,6 +139,31 @@
    "wt_p_auc": 0.001996007984031936
   }
  ],
+ "interaction_test": {
+  "additive": {
+   "auc": 0.6450627872031631,
+   "p_at_k": 0.09600000000000002,
+   "null_p_at_k": 0.06292970999322815,
+   "wt_null_p_at_k": 0.070376
+  },
+  "interaction": {
+   "auc": 0.6468205604904783,
+   "p_at_k": 0.11200000000000002,
+   "null_p_at_k": 0.06292970999322815,
+   "wt_null_p_at_k": 0.07035999999999999
+  },
+  "coef_shift": {
+   "log_salary": {
+    "additive": 1.0758559984635432,
+    "interaction": 0.9829812094417312
+   },
+   "window_share": {
+    "additive": -0.42531190217874454,
+    "interaction": 0.16475967440394548
+   },
+   "salary_x_low_minutes": 0.44573025449916975
+  }
+ },
  "coefficients": [
   [
    "log_salary",

@@ -119,3 +119,25 @@ class TestTheLeakClass:
             (Path(__file__).resolve().parents[1] / "bench-player-ranker.json")
             .read_text(encoding="utf-8"))
         assert "Jan 1" in bench["team_assignment"]
+
+
+class TestTheInteractionRecord:
+    def test_the_bench_records_the_interaction_test_without_replacing_64(self):
+        import json
+        from pathlib import Path
+
+        bench = json.loads(
+            (Path(__file__).resolve().parents[1] / "bench-player-ranker.json")
+            .read_text(encoding="utf-8"))
+        inter = bench["interaction_test"]
+        # same-null comparison: both variants carry the fold-matched wt null
+        assert abs(inter["additive"]["wt_null_p_at_k"]
+                   - inter["interaction"]["wt_null_p_at_k"]) < 0.005
+        # the migration that confirms the hypothesis: window_share's main
+        # effect leaves negative territory once the term exists
+        shift = inter["coef_shift"]
+        assert shift["window_share"]["additive"] < 0
+        assert shift["window_share"]["interaction"] > shift["window_share"]["additive"]
+        assert shift["salary_x_low_minutes"] > 0
+        # and the recorded headline (per_season) is still the additive model
+        assert "per_season" in bench and bench["ablation"]

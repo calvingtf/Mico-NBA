@@ -533,6 +533,106 @@ def ablation(rows: list[Row]) -> dict:
             "full": {"auc": full_auc, "p_at_k": full_p}}
 
 
+def interaction_test(rows: list[Row], *, permutations: int = 200,
+                     seed: int = 20260204) -> dict:
+    """Salary x low-minutes as an EXPLICIT term, against the additive form.
+
+    The ablation showed salary+team_rate alone score BELOW the base rate,
+    yet log_salary carries the largest coefficient - salary is informative
+    only conditioned on playing time, an interaction the additive model
+    reconstructs through its main effects. This fits both forms on the same
+    folds and the same nulls. The term:
+
+        interaction = log_salary x (1 - window_share) x (1 - never_active)
+
+    - "paid but not playing", among players who actually appeared before
+    January (never-actives are a different population and keep their own
+    main effect). The recorded result stays entry #64's additive model
+    unless this beats it against the same nulls.
+    """
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    from sklearn.preprocessing import StandardScaler
+
+    def matrices(rs, med, with_inter):
+        X = []
+        for r in rs:
+            base = [r.features[f] if r.features[f] is not None else med[f]
+                    for f in FEATURES]
+            extra = [1.0 if r.features["age"] is None else 0.0,
+                     r.features["_from_contracts"]]
+            if with_inter:
+                inter = (r.features["log_salary"]
+                         * (1 - r.features["window_share"])
+                         * (1 - r.features["never_active"]))
+                extra.append(inter)
+            X.append(base + extra)
+        return np.array(X), np.array([r.label for r in rs])
+
+    rng = random.Random(seed)
+    out = {"additive": [], "interaction": []}
+    coef = {"additive": [], "interaction": []}
+    for held in SEASONS:
+        train = [r for r in rows if r.season != held]
+        test = [r for r in rows if r.season == held]
+        med = {f: float(np.median([r.features[f] for r in train
+                                   if r.features[f] is not None] or [0]))
+               for f in FEATURES}
+        for name, with_inter in (("additive", False), ("interaction", True)):
+            Xtr, ytr = matrices(train, med, with_inter)
+            Xte, yte = matrices(test, med, with_inter)
+            scaler = StandardScaler().fit(Xtr)
+            model = LogisticRegression(max_iter=2000,
+                                       class_weight="balanced")
+            model.fit(scaler.transform(Xtr), ytr)
+            scores = model.predict_proba(scaler.transform(Xte))[:, 1]
+            order = np.argsort(-scores)
+            auc = roc_auc_score(yte, scores)
+
+            by_team: dict[str, list[int]] = defaultdict(list)
+            for i, r in enumerate(test):
+                by_team[r.team].append(i)
+            wt_hits, wt_auc_ge = [], 0
+            for _ in range(permutations):
+                perm = yte.copy()
+                for idx in by_team.values():
+                    vals = [perm[i] for i in idx]
+                    rng.shuffle(vals)
+                    for i, v in zip(idx, vals):
+                        perm[i] = v
+                wt_hits.append(int(sum(perm[order[:K]])))
+                if len(set(perm)) > 1 and roc_auc_score(perm, scores) >= auc:
+                    wt_auc_ge += 1
+            out[name].append({
+                "auc": auc, "p_at_k": float(sum(yte[order[:K]])) / K,
+                "null_p_at_k": float(np.mean(yte)),
+                "wt_null_p_at_k": float(np.mean(wt_hits)) / K,
+                "wt_p_auc": (wt_auc_ge + 1) / (permutations + 1),
+            })
+            coef[name].append(model.coef_[0])
+
+    def summary(name):
+        rows_ = out[name]
+        return {k: float(np.mean([r[k] for r in rows_]))
+                for k in ("auc", "p_at_k", "null_p_at_k", "wt_null_p_at_k")}
+
+    labels = list(FEATURES) + list(MISS_COLS)
+    add_coef = np.mean(coef["additive"], axis=0)
+    int_coef = np.mean(coef["interaction"], axis=0)
+    return {
+        "additive": summary("additive"),
+        "interaction": summary("interaction"),
+        "coef_shift": {
+            "log_salary": {"additive": float(add_coef[labels.index("log_salary")]),
+                           "interaction": float(int_coef[labels.index("log_salary")])},
+            "window_share": {"additive": float(add_coef[labels.index("window_share")]),
+                             "interaction": float(int_coef[labels.index("window_share")])},
+            "salary_x_low_minutes": float(int_coef[-1]),
+        },
+    }
+
+
 BENCH = Path(__file__).resolve().parents[2] / "bench-player-ranker.json"
 
 
@@ -562,8 +662,32 @@ def main(argv=None) -> int:
               f"{control['full']['auc']:.3f}   "
               f"p@{K} {control['full']['p_at_k']:.1%}   "
               f"(delta {delta_p:+.1%})")
+        inter = interaction_test(rows, permutations=args.permutations)
+        a, b = inter["additive"], inter["interaction"]
+        shift = inter["coef_shift"]
+        print("\n  INTERACTION TEST - salary x low-minutes as an explicit term:")
+        print(f"    additive    : AUC {a['auc']:.3f}   p@{K} {a['p_at_k']:.1%}"
+              f"   (wt-null {a['wt_null_p_at_k']:.1%})")
+        print(f"    +interaction: AUC {b['auc']:.3f}   p@{K} {b['p_at_k']:.1%}"
+              f"   (wt-null {b['wt_null_p_at_k']:.1%})")
+        print(f"    main effects under the term: log_salary "
+              f"{shift['log_salary']['additive']:+.3f} -> "
+              f"{shift['log_salary']['interaction']:+.3f}, window_share "
+              f"{shift['window_share']['additive']:+.3f} -> "
+              f"{shift['window_share']['interaction']:+.3f}; "
+              f"term itself {shift['salary_x_low_minutes']:+.3f}")
+        improves = (b["p_at_k"] > a["p_at_k"]) and (b["auc"] > a["auc"])
+        if improves:
+            print("    the explicit term improves both metrics; #64's "
+                  "additive model stays the recorded result unless this "
+                  "holds against the same nulls on re-examination")
+        else:
+            print("    the explicit term does NOT improve the fit - the "
+                  "additive form was already sufficient, which is worth "
+                  "knowing; #64 stands")
         BENCH.write_text(json.dumps({
             "prefit": prefit, "per_season": result["per_season"],
+            "interaction_test": inter,
             "coefficients": [[n, float(w)] for n, w in result["coefficients"]],
             "train_auc": result["train_auc"], "ablation": control,
             "k": K, "permutations": args.permutations,

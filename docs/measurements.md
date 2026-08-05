@@ -2516,3 +2516,57 @@ reach a profile (test).
 **The pattern's name:** the correction chain 12.4% -> 24.0% -> 9.6% is why
 figures and benches regenerate from recorded sources - each contaminated
 number was believed at the time it was written.
+
+
+## 65. The leak-fix-direction rule (2026-08-04)
+
+**The observation:** closing a leak should LOWER a result - the leak was
+donating signal. The ranker's correction chain went 12.4% -> 24.0% -> 9.6%:
+the first fix (log-derived teams) RAISED p@25 by 11.6 points, and stopping
+there would have reported a doubling as an improvement. The rise was itself
+the evidence: the deadline cutoff had opened a second channel (January
+trades inside the label window), and the "improvement" was that channel's
+donation.
+
+**Standing rule:** when a leak fix raises a number, treat the rise as
+evidence of a SECOND leak rather than a better model, and do not report
+until the rise is explained. A fix that removes contamination and adds
+nothing should move the number toward the null, not away from it.
+
+**Detection signature, recorded beside the rule:** a feature that separates
+classes at 84-91% versus 8-12% is not a strong feature - it is the label
+wearing a feature's name. Real features in this domain separate classes by
+points, not by factors of ten.
+
+**What the existing check could not catch:** missingness-by-class audits
+absence. Both leaks here were PRESENT-AND-WRONG values - a team assignment
+that existed but was post-hoc, an appearance profile that existed but
+included the label window - so the missingness table stayed clean while the
+features leaked. The complement check is the one that worked: ask of each
+feature "could this value be computed only with information from inside or
+after the label window?", per feature, per season - the question that
+caught expiring (#63), the team assignment, and the January channel (#64).
+
+
+## 66. The interaction, tested explicitly - and the main effects migrated (2026-08-04)
+
+**The hypothesis:** salary+team_rate alone score BELOW the base rate yet
+log_salary carries the largest coefficient, so salary must be informative
+only conditioned on playing time - paid-but-not-playing is an interaction
+the additive model reconstructs through its main effects.
+
+**The term:** log_salary x (1 - window_share) x (1 - never_active) -
+salary-weighted low minutes among players who appeared before January.
+
+**Result (same folds, same within-team fold null of 7.0%):** p@25 9.6% ->
+11.2% (1.37x -> 1.60x the fold null); AUC 0.645 -> 0.647, i.e. flat. The
+coefficient migration is the confirmation: window_share's main effect
+flips -0.425 -> +0.165 and log_salary shrinks 1.076 -> 0.983 while the
+explicit term takes +0.446 - the additive form had been spending its main
+effects to imitate the product.
+
+**Disposition:** entry #64's additive model stays the recorded result. The
+term sharpens the head of the ranking (p@25) without improving global
+separation (AUC), on ten folds with one MC draw - suggestive of a better
+form, not yet a replacement. Recorded in bench-player-ranker.json under
+interaction_test; anyone re-running --fit reproduces both.

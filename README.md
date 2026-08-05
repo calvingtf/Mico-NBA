@@ -312,7 +312,10 @@ positives vs 8–12% of negatives), and fixing that by cutting features at
 the deadline exposed the second — January trades sit inside the label
 window and wrote themselves into the features (the leak *inflated* p@25 to
 24.0%). Features now cut strictly at Jan 1, the label window's own start,
-with the team entering January log-derived. The clean numbers:
+with the team entering January log-derived. The chain also named a standing
+rule (entry #65): closing a leak should *lower* a result — when a fix raises
+a number, that rise is evidence of a second leak, not a better model, and
+nothing is reported until it is explained. The clean numbers:
 
 | | observed | null | ratio / headroom |
 | --- | --- | --- | --- |
@@ -342,7 +345,18 @@ forward-looking snapshot had already dropped ended contracts, and
 forward-absence inversely encodes the label — the test built to pin the
 feature is what exposed it). Availability reaches this model under a
 narrowed fence: the ranker is the one permitted consumer; the planner and
-value model still may not read it. Recorded in `bench-player-ranker.json`;
+value model still may not read it. **The interaction, tested explicitly (entry #66).** Salary+team-rate alone
+scoring *below* the base rate while log_salary carries the largest
+coefficient means salary is informative only conditioned on playing time —
+so the product term (salary × low-minutes among pre-January actives) was
+fitted explicitly. It sharpens the head — p@25 9.6% → 11.2% against the same
+fold-matched within-team null (1.37x → 1.60x) — while AUC stays flat
+(0.645 → 0.647), and the main effects migrate into the term exactly as the
+reading predicted (window_share −0.43 → +0.17; the term +0.45). The
+additive model of entry #64 stays the recorded result: a head-sharpening on
+one MC draw is suggestive of a better form, not yet a replacement.
+
+Recorded in `bench-player-ranker.json`;
 regenerate with `python -m mironba.eval.player_ranker --fit`.
 
 Two things it would be easy to over-read, and neither says what it looks like:
@@ -1213,7 +1227,7 @@ red and broke a milestone gate.
 
 ---
 
-**1,042 tests**, run on every commit by the pre-commit gate
+**1,043 tests**, run on every commit by the pre-commit gate
 (`python -m pytest tests -q`). The count includes the fences: writers must
 declare how they merge, cost-acquirers must declare how they persist,
 scenario identifiers may not leave scenario files, no sim path can read an
