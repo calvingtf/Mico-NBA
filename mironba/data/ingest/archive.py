@@ -249,7 +249,15 @@ def poll(root: Path = ARCHIVE_ROOT) -> int:
         except Exception as exc:  # noqa: BLE001 - a dead feed must not kill the poll
             print(f"{name:10} EXCLUDED - fetch failed: {str(exc)[:60]}")
             continue
-        articles, undated = parse_feed(name, raw, stamp)
+        try:
+            articles, undated = parse_feed(name, raw, stamp)
+        except Exception as exc:  # noqa: BLE001 - a bot-blocked body is data
+            # Measured on the GitHub runner: a feed served an EMPTY body to
+            # the datacenter IP and the parse error killed the whole poll,
+            # marker included. One bad feed must not cost the day.
+            print(f"{name:10} EXCLUDED - unparseable body "
+                  f"({len(raw)} bytes: {type(exc).__name__})")
+            continue
         if not articles:
             print(f"{name:10} EXCLUDED - no reliably dated items")
             continue

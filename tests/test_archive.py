@@ -254,3 +254,30 @@ class TestTwoWritersThroughGit:
         rows = read_partition(date(2026, 8, 5), tmp_path)
         assert len(rows) == 1, "duplicate line reached a reader"
         assert day_status(date(2026, 8, 5), tmp_path) == COVERED
+
+
+class TestABotBlockedFeedCannotKillThePoll:
+    def test_empty_body_is_excluded_and_the_marker_still_lands(
+            self, tmp_path, monkeypatch, capsys):
+        """Measured on the GitHub runner: a feed served an empty body to the
+        datacenter IP; parse_feed raised and the whole poll died, marker
+        included. Now: EXCLUDED line, poll continues, __poll__ marker written."""
+        from mironba.data.ingest import archive
+
+        monkeypatch.setattr(archive, "FEEDS", {"bot-blocked": "http://x",
+                                               "healthy": "http://y"})
+        healthy = (b'<?xml version="1.0"?><rss><channel><item>'
+                   b'<title>t</title><link>http://a</link>'
+                   b'<pubDate>Tue, 05 Aug 2026 08:00:00 GMT</pubDate>'
+                   b'</item></channel></rss>')
+        monkeypatch.setattr(
+            archive, "_fetch",
+            lambda url, timeout=30: b"" if url == "http://x" else healthy)
+        archive.poll(tmp_path)
+        out = capsys.readouterr().out
+        assert "unparseable body (0 bytes" in out
+        from datetime import datetime, timezone
+
+        today = datetime.now(timezone.utc).date()
+        rows = read_partition(today, tmp_path)
+        assert any(r["feed"] == "__poll__" for r in rows), "marker lost"

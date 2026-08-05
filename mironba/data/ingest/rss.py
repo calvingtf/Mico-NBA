@@ -237,7 +237,11 @@ def main(argv=None) -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"{name:10} EXCLUDED - fetch failed: {str(exc)[:60]}")
             continue
-        articles, undated = parse_feed(name, raw, fetched_at)
+        try:
+            articles, undated = parse_feed(name, raw, fetched_at)
+        except Exception as exc:  # noqa: BLE001 - same hardening as archive
+            print(f"{name:10} EXCLUDED - unparseable body ({type(exc).__name__})")
+            continue
         if undated and not articles:
             print(f"{name:10} EXCLUDED - no reliable timestamps")
             continue
