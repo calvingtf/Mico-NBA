@@ -1,7 +1,8 @@
 {
-  "generated_at": "2026-08-05T10:28:07.283416+00:00",
+  "generated_at": "2026-08-05T14:36:17.745400+00:00",
   "demos": [
     "solver-enumeration",
+    "signing-routes",
     "validator-refusal"
   ],
   "model": null,

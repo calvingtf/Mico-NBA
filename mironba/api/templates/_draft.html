@@ -46,6 +46,15 @@
     </form>
   {% endif %}
 
+  {% if draft.signing_routes %}
+  <p class="choice-head">A SIGNING, not a trade — judged by
+     <code>rules/signing.py</code>. {{ draft.signing_routes|length }} legal
+     route(s) the destination has:</p>
+  {% for r in draft.signing_routes %}
+    <div class="resolved mono">{{ r.describe }}</div>
+  {% endfor %}
+  {% endif %}
+
   {% for f in draft.findings %}<div class="finding">{{ f }}</div>{% endfor %}
 
   {% for e in draft.errors %}

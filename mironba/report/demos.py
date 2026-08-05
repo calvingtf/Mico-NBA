@@ -3,18 +3,24 @@
     python -m mironba.report.demos          # regenerates demos/*.json
 
 Drafting a scenario from a sentence calls a local 27B model and takes a
-measured p50 of 3.2 minutes. Nobody waits that for a first look, so the three
+measured p50 of 3.2 minutes. Nobody waits that for a first look, so the
 examples on the landing page point at results that are already recorded.
 
 **What is pre-run, and what that costs in fidelity.** The model's job in the
-authoring flow is only to turn an English sentence into a structured
-proposal - who moves where. Everything that follows is deterministic: name
-resolution, ``rules/solver.py`` enumerating legal returns, and
-``rules/trade_validator.py`` ruling on the package. These demos skip the
-model by stating the structured proposal directly and then run the identical
-deterministic path, so the verdict, the packages and the dollar figures are
-produced by the same code the live flow uses - not transcribed from a
-previous run.
+authoring flow is to turn an English sentence into a structured proposal -
+which KIND of event it is, and who moves where. Everything that follows is
+deterministic: name resolution, ``rules/solver.py`` enumerating legal trade
+returns, ``rules/signing.py`` enumerating legal signing routes, and
+``rules/trade_validator.py`` ruling on a package. These demos skip the model
+by stating the structured proposal directly and then run the identical
+deterministic path, so the verdicts, the packages, the routes and the dollar
+figures are produced by the same code the live flow uses - not transcribed
+from a previous run.
+
+That skipped step is not a formality. The event classification folded into
+the full proposal schema answered "trade" on every sentence measured,
+including explicit signings, so a demo that stated it for the model is
+demonstrating strictly less than the live page does.
 
 That is also the honest limit of the demo: it does NOT demonstrate that the
 model extracts this structure correctly from the sentence. It demonstrates
@@ -51,6 +57,23 @@ DEMOS_DECLARED = (
                    "dispose - is the one thing this project will not blur.",
     },
     {
+        "name": "signing-routes",
+        "shows": "a signing, priced by route",
+        "headline": "The second kind of seed: a free agent joins a team",
+        "sentence": "LeBron James signs with the Golden State Warriors",
+        "event": "signing",
+        "moves": [{"player_name": "LeBron James", "from_team": "",
+                   "to_team": "Warriors"}],
+        "reading": "There is no counterparty and no salary matching here, "
+                   "so rules/trade_validator.py has nothing to say about "
+                   "it. The question rules/ answers instead is whether "
+                   "Golden State has a legal ROUTE on the seed date, and "
+                   "what each route permits. The sentence states no amount "
+                   "and the schema has no field for one: the figures below "
+                   "are the solver's, and the run records that they were "
+                   "derived rather than declared.",
+    },
+    {
         "name": "validator-refusal",
         "shows": "the validator refuses this",
         "headline": "A plausible-looking star swap that the rules will not "
@@ -77,7 +100,8 @@ def build(spec: dict) -> dict:
     from mironba.world.authoring import Draft, validate_draft
 
     draft = Draft(sentence=spec["sentence"], kind="stipulated",
-                  seed_date=SEED_DATE, moves=list(spec["moves"]))
+                  seed_date=SEED_DATE, moves=list(spec["moves"]),
+                  event=spec.get("event", "trade"))
     validate_draft(draft)
     return {
         "name": spec["name"],
@@ -102,7 +126,8 @@ def main(argv=None) -> int:
         path.write_text(json.dumps(record, indent=2, default=str),
                         encoding="utf-8")
         draft = record["draft"]
-        print(f"  {spec['name']:<20} {len(draft['package_options'])} package(s), "
+        print(f"  {spec['name']:<20} {len(draft['package_options'])} "
+              f"package(s), {len(draft['signing_routes'])} route(s), "
               f"{len(draft['errors'])} error(s), "
               f"{len(draft['findings'])} finding(s)  -> {path.name}")
         written.append(spec["name"])

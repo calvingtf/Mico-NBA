@@ -59,6 +59,36 @@ simulation and read back off the manifest it wrote.</p>
     </div>
   </div>
 
+  {% if pursuit %}
+  <h3>Who else wanted {{ pursuit.player }}
+    <span class="step">— the interesting half</span></h3>
+  <p class="lede">{{ pursuit.n }} team(s) made a legal offer for him in the
+  run <b>without</b> the seed{% if pursuit.winner %}, and
+  <b>{{ pursuit.winner }}</b> won him there{% endif %}. The seeded run cannot
+  show this and is not asked to: a stipulated player is excluded from the
+  pool precisely so he cannot sign anywhere else. Every route and figure
+  below is one the signing solver enumerated, not an interest anyone
+  asserted.</p>
+  <div class="difflist">
+    {% for r in pursuit.rows %}
+    <div class="diffrow {% if not r.changed %}arb{% endif %}">
+      <b class="mono">{{ r.team }}</b>
+      <span class="with">offered <code>{{ r.route }}</code> up to
+        ${{ "{:,}".format(r.amount) }}{% if r.won_without_seed %}
+        <span class="badge ok">WON HIM WITHOUT THE SEED</span>{% endif %}</span>
+      <span class="without">
+        {% if r.changed %}instead signed {{ r.did_instead or "nobody" }}{% if
+          r.missed %} · lost out on {{ r.missed }}{% endif %}
+        {% else %}did the same thing either way{% endif %}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="marker">{{ pursuit.n_changed }} of {{ pursuit.n }} pursuers acted
+  differently because of the seed. The rest offered and lost in both runs —
+  counted, because "12 teams wanted him" without that split is the kind of
+  number this project exists to refuse.</p>
+  {% endif %}
+
   {% if duties %}
   <h3>Forced to act <span class="step">— what the rules required, before
     anything anyone chose</span></h3>
@@ -177,6 +207,26 @@ simulation and read back off the manifest it wrote.</p>
   trade above passed <code>rules/trade_validator.py</code> — the cascade
   proposes, the rules dispose.</p>
 </section>
+{% endif %}
+
+{% if signing %}
+<h2>The stipulated seed</h2>
+<div class="panel">
+  <p><b>{{ signing.label }}</b>
+    <span class="badge ok">LEGAL</span>
+    <span class="step">— judged by <code>rules/signing.py</code>, not the
+    trade validator: a signing has no counterparty and no salary matching,
+    so the question is whether {{ signing.to }} had a legal route.</span></p>
+  <div class="resolved"><b>{{ signing.name }}</b> → {{ signing.to }} via
+    <code>{{ signing.route }}</code> at
+    ${{ "{:,}".format(signing.salary) }}</div>
+  <div class="finding">{{ signing.salary_source }}</div>
+  <p class="step">{{ signing.n_routes }} legal route(s) the destination
+  had:</p>
+  {% for r in signing.routes %}
+  <div class="resolved mono">{{ r.describe }}</div>
+  {% endfor %}
+</div>
 {% endif %}
 
 {% if trade %}

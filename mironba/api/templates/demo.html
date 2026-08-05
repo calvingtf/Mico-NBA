@@ -41,6 +41,25 @@ only then does the chosen package go to the validator. Enumerating is not
 approving — the verdict column above is the solver's own, per package.</p>
 {% endif %}
 
+{% if draft.signing_routes %}
+<h2>{{ draft.signing_routes|length }} legal signing routes</h2>
+<p class="lede">No counterparty, no salary matching — so the trade validator
+has nothing to say. <code>rules/signing.py</code> answers the question that
+does apply: what may this team legally pay him, and under which
+exception.</p>
+<div class="tradelist">
+  {% for r in draft.signing_routes %}
+  <div class="trade caused">
+    <div class="tradehead"><b>{{ r.route }}</b></div>
+    <div class="tradebody">up to ${{ "{:,}".format(r.max_first_year) }} in
+      year one · {{ r.max_years }} year(s) · {{ r.raise_pct }}% raises{% if
+      r.hard_cap %} · hard-caps at the {{ r.hard_cap|replace("_", " ") }}{%
+      endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if draft.errors %}
 <h2>Refused</h2>
 {% for e in draft.errors %}

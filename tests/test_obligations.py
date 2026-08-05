@@ -112,7 +112,10 @@ class TestTheRecordedRunsHonourThem:
     def _manifest(self, run_id: str) -> dict:
         path = RUNS / run_id / "manifest.json"
         if not path.is_file():
-            pytest.skip(f"{run_id} not present")
+            pytest.skip(
+                f"runs/{run_id} absent (runs/ is gitignored). Regenerate in "
+                f"~6s: python -m mironba.sim.stipulated --scenario {run_id} "
+                f"--out runs/{run_id}/manifest.json")
         return json.loads(path.read_text(encoding="utf-8"))
 
     def test_the_run_recorded_its_obligations(self, run_id):

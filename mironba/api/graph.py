@@ -151,8 +151,13 @@ def league_graph(run_id: str | None = None) -> dict:
     counterparties = {t["counterparty"] for t in trades}
     acquirers = {t["acquirer"] for t in trades}
 
+    # A signing run has no trade at all - manifest["trade"] is null, not an
+    # empty dict - so the seed edges come from whichever kind it carries.
     seed_players = {p["player_id"]: (p["from"], p["to"])
-                    for p in manifest.get("trade", {}).get("players", [])}
+                    for p in (manifest.get("trade") or {}).get("players", [])}
+    seed_signing = manifest.get("signing") or {}
+    if seed_signing:
+        seed_players[seed_signing["player_id"]] = ("", seed_signing["to"])
     seed_teams = {t for pair in seed_players.values() for t in pair}
 
     nodes = []
@@ -234,7 +239,9 @@ def league_graph(run_id: str | None = None) -> dict:
         "season": season, "bands": bands,
         "nodes": nodes,
         "edges": drawable,
-        "seed_label": manifest.get("trade", {}).get("label", ""),
+            "seed_label": (manifest.get("trade")
+                           or manifest.get("signing")
+                           or {}).get("label", ""),
         "counts": {
             "trades": len(trades),
             "attributable": len(cascade.get("attributable_to_seed", [])),
@@ -385,6 +392,54 @@ def spark_path(points: list, width: int = 220, height: int = 34) -> str:
     return " ".join(
         f"{i * step:.1f},{height - (v / top) * (height - 4):.1f}"
         for i, v in enumerate(points))
+
+
+def pursuit_view(manifest: dict) -> dict:
+    """Who else pursued the stipulated signee, and what they did instead.
+
+    The seeded run cannot answer this and should not be asked to: a
+    stipulated player is excluded from the signable pool precisely so he
+    cannot sign anywhere else, so no contest for him exists there. The
+    UNSEEDED run has one, and every row below is a team that made a legal
+    offer under an enumerated route in that run - not a team a model
+    thought was interested.
+    """
+    rows = manifest.get("pursuit") or []
+    if not rows:
+        return {}
+    from mironba.report.timeline import name_of
+
+    signing = manifest.get("signing") or {}
+    out = []
+    for row in rows:
+        out.append({
+            "team": row["team"],
+            "route": row["route"],
+            "amount": row["amount"],
+            "won_without_seed": row.get("won_him_without_the_seed", False),
+            "did_instead": ", ".join(name_of(p)
+                                     for p in row.get("did_instead", [])),
+            "missed": ", ".join(name_of(p)
+                                for p in row.get("missed_out_on", [])),
+            "changed": bool(row.get("did_instead")
+                            or row.get("missed_out_on")),
+        })
+    return {
+        "player": signing.get("name", ""),
+        "to": signing.get("to", ""),
+        "rows": out,
+        "n": len(out),
+        "n_changed": sum(1 for r in out if r["changed"]),
+        "winner": next((r["team"] for r in out if r["won_without_seed"]), ""),
+    }
+
+
+def signing_view(manifest: dict) -> dict:
+    """The stipulated signing and every route the destination had."""
+    signing = manifest.get("signing") or {}
+    if not signing:
+        return {}
+    return dict(signing, n_routes=len(signing.get("routes", [])))
 
 
 def obligations_view(manifest: dict) -> dict:

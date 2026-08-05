@@ -73,6 +73,12 @@ EXAMPLES = (
      "expect": "both sides named; the validator approves it and still "
                "reports its findings (LAL ends hard-capped at the first "
                "apron; GSW drops below the roster minimum)."},
+    {"demonstrates": "A signing, not a trade — priced by route",
+     "shows": "a signing, priced by route", "demo": "/demo/signing-routes",
+     "sentence": "LeBron James signs with the Golden State Warriors",
+     "expect": "no counterparty and no salary matching, so rules/signing.py "
+               "answers instead: every legal route the destination has, and "
+               "the maximum under each. The amount is never stated."},
     {"demonstrates": "REFUSED — the rules say no, with the shortfall",
      "shows": "the validator refuses this",
      "demo": "/demo/validator-refusal",
@@ -249,9 +255,10 @@ def _draft_job(job_id: str, sentence: str) -> None:
     import time
     import traceback
 
-    from mironba.world.authoring import (_drafting_client, complete_moves,
-                                         draft_from_sentence,
-                                         needs_moves_call, validate_draft)
+    from mironba.world.authoring import (_drafting_client, complete_event,
+                                         complete_moves, draft_from_sentence,
+                                         needs_event_call, needs_moves_call,
+                                         validate_draft)
 
     job = JOBS[job_id]
     start = time.monotonic()
@@ -268,6 +275,12 @@ def _draft_job(job_id: str, sentence: str) -> None:
              f"kind={draft.kind} · players "
              f"{', '.join(draft.player_names) or 'none'} · teams "
              f"{', '.join(draft.team_codes) or 'none'}")
+        if needs_event_call(draft):
+            draft = complete_event(draft, client)
+            mark(f"event classified: {draft.event}",
+                 "asked on its own with a one-field schema - folded into "
+                 "the full proposal this field answered 'trade' on every "
+                 "sentence measured, including explicit signings")
         if needs_moves_call(draft):
             mark("step 2/2: the one-shot returned no movements",
                  "asking again with the tiny movements-only schema - the "
@@ -508,12 +521,15 @@ def run_view(request: Request, run_id: str):
         from mironba.report.timeline import load_run
 
         feed = load_run(run_dir)
-    from mironba.api.graph import cascade_payoff, obligations_view
+    from mironba.api.graph import (cascade_payoff, obligations_view,
+                                   pursuit_view, signing_view)
 
     return templates.TemplateResponse(request, "run.html", {
         "run_id": run_id, "manifest": manifest, "feed": feed,
         "payoff": cascade_payoff(manifest),
         "duties": obligations_view(manifest),
+        "pursuit": pursuit_view(manifest),
+        "signing": signing_view(manifest),
         "trade": manifest.get("trade") or {},
         "unfalsifiable": manifest.get("unfalsifiable", False),
         "llm_label": LLM_PATH_LABEL})

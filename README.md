@@ -4,13 +4,25 @@
 ships without the score a do-nothing or random system gets on the same data.**
 
 Seed a decision that has not happened yet — *where does LeBron James sign?* —
-or stipulate one that never did — *Stephen Curry traded to the Lakers* — and
-the system freezes the world at a declared instant, lets thirty teams react
-through deterministic CBA rules (an LLM may *propose*; only `rules/` may
-*approve*), and scores the branch that actually occurred against what teams
-really did. Most of what follows are negative results. They are the point:
-the simulation is ordinary; the harness around it is built to report failure
-at the resolution needed to act on it.
+or stipulate a transaction that never did, as either a **trade** (*Stephen
+Curry traded to the Lakers*) or a **signing** (*LeBron James signs with the
+Warriors*). Either way the seed is checked against the 2023 CBA before
+anything reacts to it: a trade through `rules/trade_validator.py`, a signing
+through `rules/signing.py`, and a refusal quotes the binding constraint to
+the dollar rather than bending to make the premise happen. The system then
+freezes the world at a declared instant, lets thirty teams react through
+deterministic rules (an LLM may *propose*; only `rules/` may *approve*), and
+scores the branch that actually occurred against what teams really did.
+
+**What is not seedable, and will not be.** Injuries, rule changes, draft
+outcomes and player development. The seed is a *transaction* — who moves
+where, or who signs where — because that is what `rules/` can rule on. A
+system that accepted *"what if Wembanyama tore his ACL"* would be inventing
+the very thing it claims to check. The boundary is the point, not a gap.
+
+Most of what follows are negative results. They are the point: the
+simulation is ordinary; the harness around it is built to report failure at
+the resolution needed to act on it.
 
 ## Quickstart
 

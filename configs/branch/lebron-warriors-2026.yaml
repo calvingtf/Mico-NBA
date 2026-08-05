@@ -1,0 +1,31 @@
+id: lebron-warriors-2026
+kind: stipulated
+season: "2025-26"
+freeze: 2026-07-06
+freeze_rationale: >
+  The end of the July moratorium, the same boundary every other scenario
+  uses: every input to the reaction is a contract or transaction dated on or
+  before this instant, and the stipulated signing is inserted at the
+  boundary itself.
+subjects:
+  - jamesle01
+  - GSW
+decision: >
+  STIPULATED, NOT PENDING: LeBron James signs with Golden State - a signing
+  seed rather than a trade seed. There is no counterparty and no salary
+  matching, so rules/trade_validator.py has nothing to say about it; the
+  question rules/ answers here is whether Golden State has a legal ROUTE to
+  sign him on the seed date, and on what terms. There is no ground truth for
+  a world where this signing occurred, so the output is a demonstration and
+  is labelled unfalsifiable.
+next_season: "2026-27"
+scored_teams: []
+stipulation:
+  label: LeBron James signs with the Golden State Warriors
+  # No salary and no route are declared. The signing solver enumerates every
+  # legal route and the runner records which one it used and whether that
+  # choice was the file's or the solver's - a derived figure that presented
+  # itself as a stated one is the failure this omission prevents.
+  signing:
+    player_id: jamesle01
+    to: GSW

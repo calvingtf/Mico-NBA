@@ -43,7 +43,9 @@
       "the rules refuse this package: ERROR SALARY_MATCH: [NYK] takes back $58,456,566 against $57,078,728 outgoing; limit is $57,078,728 (above the first apron after the trade, 100% apron matching in 2026-27). Name a return in the sentence, or seed a different trade."
     ],
     "package_options": [],
-    "chosen_package": null
+    "chosen_package": null,
+    "event": "trade",
+    "signing_routes": []
   },
   "model": null,
   "model_reason": "the structured proposal is stated, not extracted; everything below it is deterministic",

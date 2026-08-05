@@ -1,0 +1,61 @@
+{
+  "name": "signing-routes",
+  "shows": "a signing, priced by route",
+  "headline": "The second kind of seed: a free agent joins a team",
+  "reading": "There is no counterparty and no salary matching here, so rules/trade_validator.py has nothing to say about it. The question rules/ answers instead is whether Golden State has a legal ROUTE on the seed date, and what each route permits. The sentence states no amount and the schema has no field for one: the figures below are the solver's, and the run records that they were derived rather than declared.",
+  "sentence": "LeBron James signs with the Golden State Warriors",
+  "draft": {
+    "sentence": "LeBron James signs with the Golden State Warriors",
+    "kind": "stipulated",
+    "seed_date": "2026-07-06",
+    "decision": "",
+    "player_names": [],
+    "team_codes": [],
+    "moves": [
+      {
+        "player_name": "LeBron James",
+        "from_team": "",
+        "to_team": "GSW"
+      }
+    ],
+    "scored_teams": [],
+    "resolved": {
+      "LeBron James": "jamesle01",
+      "team:Warriors": "GSW"
+    },
+    "ambiguities": {},
+    "errors": [],
+    "findings": [
+      "LeBron James appears in the 2026-27 contract file with PHI but was on LAL the season before, so that deal is an arrival the freeze date (2026-07-06) precedes. At the freeze he was signable, which is the same rule the reaction uses to build its pool",
+      "years of service and prior salary are not in the authoring snapshot for a player with no contract row, so both are held at zero; the routes below are a LOWER bound on the terms available and the run itself uses the full league state",
+      "taxpayer_mle: up to $6,064,000 in year one, 2 year(s), 5% raises, hard-caps at the second apron",
+      "minimum: up to $1,357,763 in year one, 2 year(s), 5% raises",
+      "the sentence states no amount and no route; the run will use the best legal route (taxpayer_mle at $6,064,000) and record that the figure was derived, not declared"
+    ],
+    "next_steps": [],
+    "package_options": [],
+    "chosen_package": null,
+    "event": "signing",
+    "signing_routes": [
+      {
+        "route": "taxpayer_mle",
+        "max_first_year": 6064000,
+        "max_years": 2,
+        "raise_pct": 5,
+        "hard_cap": "second_apron",
+        "describe": "taxpayer_mle: up to $6,064,000 in year one, 2 year(s), 5% raises, hard-caps at the second apron"
+      },
+      {
+        "route": "minimum",
+        "max_first_year": 1357763,
+        "max_years": 2,
+        "raise_pct": 5,
+        "hard_cap": null,
+        "describe": "minimum: up to $1,357,763 in year one, 2 year(s), 5% raises"
+      }
+    ]
+  },
+  "model": null,
+  "model_reason": "the structured proposal is stated, not extracted; everything below it is deterministic",
+  "seed_date": "2026-07-06"
+}

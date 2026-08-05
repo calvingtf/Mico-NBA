@@ -247,6 +247,13 @@ WORLD_KNOWLEDGE_FIELDS = {
                        "The snapshot decides.",
     "moves.to_team": "CHECKED: code must exist. The snapshot cannot check "
                      "the destination further - it IS the counterfactual.",
+    "event": "CONSTRAINED-AT-DECODE: Literal['trade','signing'] - which "
+             "KIND of stipulated event the sentence describes. The model "
+             "classifies from the verb; the SNAPSHOT then overrules it, "
+             "because whether a player was under contract at the freeze is "
+             "a fact and not a reading. A 'signing' for a player on the "
+             "same team in both season snapshots is refused and told to say "
+             "'traded' instead - the same discipline as deriving from_team.",
     "scored_teams": "CHECKED: codes must exist in the ingested team table "
                     "(was UNCHECKED until this audit; a wrong code passed "
                     "validation and would have bound TEAMS to garbage)",
@@ -287,6 +294,14 @@ class Draft:
     #: the returns, and a human picks one by index.
     package_options: list = field(default_factory=list)
     chosen_package: int | None = None
+    #: "trade" or "signing" - which KIND of stipulated event this is. The
+    #: model classifies from the sentence; determinism then checks the
+    #: classification against the snapshot, because whether a player is
+    #: under contract is a fact and not a reading of the sentence.
+    event: str = "trade"
+    #: Legal signing routes the destination has, when event == "signing":
+    #: [{route, max_first_year, max_years, raise_pct, hard_cap, describe}].
+    signing_routes: list = field(default_factory=list)
 
     @property
     def awaiting_package(self) -> bool:
@@ -326,6 +341,16 @@ def draft_from_sentence(sentence: str, client) -> Draft:
         kind: Literal["stipulated", "pending_decision"] = Field(
             description="'stipulated' if the sentence asserts an event; "
                         "'pending_decision' if something is unresolved")
+        event: Literal["trade", "signing"] = Field(
+            default="trade",
+            description="'trade' if the sentence describes an EXCHANGE "
+                        "between teams - players moving both ways, or a "
+                        "verb like traded/dealt/swapped/acquired even when "
+                        "only one side is named. 'signing' if a player "
+                        "JOINS a team as a free agent with nothing going "
+                        "back - verbs like signs/joins/agrees with. The "
+                        "verb decides it: 'X traded to Y' is a trade even "
+                        "though only one player is named.")
         seed_date: str = Field(
             default="",
             description="ISO date ONLY if the sentence states one; leave "
@@ -358,9 +383,68 @@ def draft_from_sentence(sentence: str, client) -> Draft:
         sentence=sentence, kind=proposal.kind, seed_date=proposal.seed_date,
         decision=proposal.decision, player_names=list(proposal.player_names),
         team_codes=list(proposal.team_codes),
-        moves=moves,
+        moves=moves, event=proposal.event,
         scored_teams=list(proposal.scored_teams),
     )
+
+
+
+#: Sentences whose event kind is not in doubt, with the answer. Used to
+#: measure the classifier against a stated null - a balanced set, so
+#: always-answer-"trade" scores exactly half and any classifier has to beat
+#: that to have said anything.
+CLASSIFIER_SET = (
+    ("Stephen Curry traded from GSW to LAL for Austin Reaves and Quentin "
+     "Grimes on 2026-07-06", "trade"),
+    ("Victor Wembanyama traded to the Warriors", "trade"),
+    ("Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+     "trade"),
+    ("The Lakers deal Rui Hachimura to Chicago for Nikola Vucevic", "trade"),
+    ("Anthony Davis is swapped to Boston for Jaylen Brown", "trade"),
+    ("Golden State acquires Zach LaVine from Sacramento", "trade"),
+    ("LeBron James signs with the Golden State Warriors", "signing"),
+    ("DeMar DeRozan signs a two-year deal with the Knicks", "signing"),
+    ("Paul George joins the Nets in free agency", "signing"),
+    ("Terry Rozier agrees to terms with Portland", "signing"),
+    ("Kentavious Caldwell-Pope signs with Orlando", "signing"),
+    ("Jonas Valanciunas inks a deal with the Spurs", "signing"),
+)
+
+
+def classify_event(sentence: str, client) -> str:
+    """Trade or signing, as its OWN call with a one-field schema.
+
+    Measured, not assumed. Folded into the main proposal schema this field
+    was answered "trade" on every sentence tried, including "LeBron James
+    signs with the Golden State Warriors" - the model was not classifying
+    at all, it was falling through to the default, the same under-filling
+    that leaves ``moves`` empty and is why ``complete_moves`` exists.
+
+    The charter's rule for this is to shrink the schema rather than to
+    prompt harder, so the classification is asked on its own with nothing
+    else to fill in. ``event`` on the Proposal is kept as a first guess and
+    this overrides it.
+    """
+    from typing import Literal
+
+    from pydantic import BaseModel, Field
+
+    class EventKind(BaseModel):
+        event: Literal["trade", "signing"] = Field(
+            description="'trade' if players are EXCHANGED between teams - "
+                        "traded, dealt, swapped, acquired - even when only "
+                        "one side is named. 'signing' if a free agent JOINS "
+                        "a team with nothing going back - signs, joins, "
+                        "agrees to terms, inks a deal.")
+
+    answer = client.complete(
+        [{"role": "user", "content":
+          "Does this sentence describe a TRADE (an exchange between teams) "
+          "or a SIGNING (a free agent joining a team, nothing going back)?"
+          f"\n\nSentence: {sentence}"}],
+        schema=EventKind, profile="authoring", purpose="event_classification",
+    )
+    return answer.event
 
 
 def _fail(draft: Draft, message: str, next_step: str) -> None:
@@ -379,8 +463,30 @@ def choose_package(draft: Draft, index: int) -> Draft:
     return draft
 
 
+def needs_event_call(draft: Draft) -> bool:
+    """True while the event kind is still the schema's default guess."""
+    return draft.kind == "stipulated"
+
+
+def complete_event(draft: Draft, client) -> Draft:
+    """Classify trade-vs-signing on its own, and record what changed."""
+    guessed = draft.event
+    draft.event = classify_event(draft.sentence, client)
+    if draft.event != guessed:
+        draft.findings.append(
+            f"event kind reclassified {guessed!r} -> {draft.event!r} by the "
+            "dedicated one-field call; the combined schema is measurably "
+            "unreliable on this field")
+    return draft
+
+
 def needs_moves_call(draft: Draft) -> bool:
-    """True when the tiny second LLM call (movements only) is still needed."""
+    """True when the tiny second LLM call (movements only) is still needed.
+
+    Signings need it as much as trades: the one-shot returned empty moves
+    for three of the first four sentences measured, whichever kind they
+    were, and a signing with no movement has no player and no destination.
+    """
     return draft.kind == "stipulated" and not draft.moves
 
 
@@ -516,8 +622,182 @@ def validate_draft(draft: Draft, on_step=None) -> Draft:
 
     if (draft.kind == "stipulated" and not draft.errors
             and not draft.ambiguities):
-        _validate_package(draft, on_step=on_step)
+        if draft.event == "signing":
+            _validate_signing(draft, on_step=on_step)
+        else:
+            _validate_package(draft, on_step=on_step)
     return draft
+
+
+
+def _prior_season_team(pid: str, season: str) -> str:
+    """Which team held this player the season BEFORE ``season``.
+
+    Empty when the prior snapshot has no row for him. Mirrors the
+    denominator of ``LeagueState.arrivals`` so authoring and the runner
+    answer "was he signable at the freeze" the same way.
+    """
+    start = int(season[:4]) - 1
+    prior = f"{start}-{str(start + 1)[-2:]}"
+    # The SAME file LeagueState.load reads for team_2526. There is exactly
+    # one contract-years snapshot and it starts at the target season, so
+    # looking for prior-season rows there finds nothing and silently makes
+    # every player look like an arrival - which passed Stephen Curry, who is
+    # on Golden State in both seasons, as a free agent. The prior season
+    # lives in its own directory as a roster-level contracts file.
+    path = SNAPSHOTS / f"bbref-{prior}" / "contracts.csv"
+    if not path.is_file():
+        return ""
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            if row["player_id"] == pid:
+                return row["team_id"]
+    return ""
+
+    when = signings.get(pid)
+    if when is not None and when > freeze:
+        return when
+    return None
+
+def _validate_signing(draft: Draft, on_step=None) -> None:
+    """A stipulated SIGNING through rules/signing.py, not the trade validator.
+
+    The trade validator has nothing to say here: no counterparty, no salary
+    matching, no aggregation. The question is whether the destination has a
+    legal ROUTE on the seed date, and rules/signing_solver.feasible_signings
+    plus rules/signing.signing_routes answer it. Same boundary as the trade
+    path - the model names a player and a team and never an amount.
+    """
+    def step(name: str, detail: str = "") -> None:
+        if on_step is not None:
+            on_step(name, detail)
+
+    from mironba.rules.constants import environment_for
+    from mironba.rules.signing import FreeAgent, TeamCapState, signing_routes
+    from mironba.rules.signing_solver import feasible_signings
+
+    if len(draft.moves) != 1:
+        _fail(draft, f"a signing names one player joining one team; this "
+                     f"sentence produced {len(draft.moves)} movements",
+              "state one player and one destination, or describe it as a "
+              "trade if players move both ways")
+        return
+    move = draft.moves[0]
+    pid = draft.resolved.get(move["player_name"], "")
+    destination = move["to_team"]
+    if not pid or not destination:
+        _fail(draft, "a signing needs a resolved player and a destination",
+              "name the player and the team he joins")
+        return
+
+    seed = date.fromisoformat(draft.seed_date)
+    season = f"{seed.year}-{str(seed.year + 1)[-2:]}" if seed.month >= 7 else \
+             f"{seed.year - 1}-{str(seed.year)[-2:]}"
+    contracts = SNAPSHOTS / f"bbref-contracts-{season}" / "contract_years.csv"
+    if not contracts.is_file():
+        _fail(draft, f"no contract snapshot for {season}; the signing cannot "
+                     "be priced",
+              "seed the scenario in a season the contract ingest covers")
+        return
+    with contracts.open(encoding="utf-8", newline="") as handle:
+        rows = [r for r in csv.DictReader(handle) if r["season"] == season]
+    salaries = {r["player_id"]: int(r["salary"]) for r in rows}
+    payroll: dict[str, int] = {}
+    roster: dict[str, set] = {}
+    for r in rows:
+        payroll[r["team_id"]] = payroll.get(r["team_id"], 0) + int(r["salary"])
+        roster.setdefault(r["team_id"], set()).add(r["player_id"])
+
+    # The snapshot decides whether this is a signing at all - but it has to
+    # be asked AS OF THE FREEZE, and the two layers must agree about it.
+    #
+    # The contract file is an end-of-season artifact: it records that LeBron
+    # James holds a 2026-27 deal with Philadelphia. He was not under it on
+    # the freeze date. Refusing the stipulation on the row alone would use
+    # post-freeze information to rule out a counterfactual set AT the
+    # freeze - the same leak class the ranker corrections were about,
+    # arriving through a gate rather than through a feature. The first
+    # version of this check did that and refused every signing worth
+    # writing.
+    #
+    # The runner's own rule is ``LeagueState.arrivals``: on this team in the
+    # target season and NOT on it in the prior one. That is computable here
+    # from the two snapshots, so authoring applies the same definition
+    # rather than a stricter one of its own - two layers disagreeing about
+    # what is signable is worse than either answer.
+    if pid in salaries:
+        holder = next((t for t, ids in roster.items() if pid in ids), "?")
+        prior_team = _prior_season_team(pid, season)
+        if prior_team == holder or not prior_team:
+            _fail(draft,
+                  f"{move['player_name']} is under contract with {holder} "
+                  f"for {season} and "
+                  + (f"was on {holder} the season before"
+                     if prior_team else
+                     "has no prior-season row to show he changed teams")
+                  + "; a signing cannot be stipulated for a player who is "
+                    "not a free agent",
+                  f"describe this as a trade instead - "
+                  f"'{move['player_name']} traded to {destination}' - and "
+                  "the solver will price the return")
+            return
+        draft.findings.append(
+            f"{move['player_name']} appears in the {season} contract file "
+            f"with {holder} but was on {prior_team or 'no ingested team'} "
+            f"the season before, so that deal is an arrival the freeze date "
+            f"({draft.seed_date}) precedes. At the freeze he was signable, "
+            "which is the same rule the reaction uses to build its pool")
+        salaries = {k: v for k, v in salaries.items() if k != pid}
+        roster[holder] = {x for x in roster.get(holder, set()) if x != pid}
+
+    env = environment_for(season)
+    names = player_table()
+    state = TeamCapState(team_id=destination, season=season,
+                         committed_salary=payroll.get(destination, 0),
+                         roster_count=len(roster.get(destination, ())))
+    # Years of service and prior salary drive the Bird and max-salary tiers.
+    # The authoring snapshot carries neither for a player with no row in the
+    # target season, and inventing them would put a number in the model's
+    # mouth by another door. Both are left at the conservative floor and the
+    # finding says so: the routes below are therefore a LOWER bound on what
+    # the destination could offer, never an upper one.
+    agent = FreeAgent(player_id=pid, name=names.get(pid, pid),
+                      years_of_service=0, prior_salary=0, years_with_team=0)
+    draft.findings.append(
+        "years of service and prior salary are not in the authoring "
+        "snapshot for a player with no contract row, so both are held at "
+        "zero; the routes below are a LOWER bound on the terms available "
+        "and the run itself uses the full league state")
+    step("signing solver enumerating routes",
+         f"{destination} on {draft.seed_date}")
+    scan = feasible_signings(state, [agent], env)
+    result = signing_routes(state, agent, env)
+    draft.signing_routes = [
+        {"route": r.route, "max_first_year": r.max_first_year,
+         "max_years": r.max_years, "raise_pct": r.raise_pct,
+         "hard_cap": r.hard_cap, "describe": r.describe()}
+        for r in result.routes
+    ]
+    step("signing solver finished",
+         f"{len(result.routes)} legal route(s)")
+    if result.routes:
+        draft.findings.extend(r.describe() for r in result.routes)
+        draft.findings.append(
+            f"the sentence states no amount and no route; the run will use "
+            f"the best legal route ({result.best().route} at "
+            f"${result.best().max_first_year:,}) and record that the figure "
+            "was derived, not declared")
+        return
+    reason = "; ".join(f"{route}: {why}"
+                       for route, why in sorted(result.blocked.items()))
+    if not reason:
+        reason = scan.empty_reason or "no route and no reason - a bug"
+    _fail(draft,
+          f"NO LEGAL ROUTE: {destination} cannot sign "
+          f"{move['player_name']} on {draft.seed_date}. {reason}",
+          "that is a real answer, not a flow failure - this counterfactual "
+          "is not constructible under the 2023 CBA at this date. Name a "
+          "different destination, or accept the refusal")
 
 
 def _validate_package(draft: Draft, on_step=None) -> None:
@@ -763,7 +1043,24 @@ def scenario_yaml(draft: Draft, scenario_id: str) -> str:
         lines.append(f"  - {code}")
     lines.append(f'next_season: "{next_season}"')
     lines += ["decision: >", f"  {draft.decision}"]
-    if draft.kind == "stipulated":
+    # decision_subject is deliberately NOT emitted. run_branch removes
+    # SUBJECT from the signable pool, so naming a stipulated signee there
+    # would remove him from the run WITHOUT the seed as well and the
+    # comparison would silently come back empty - see
+    # sim/signing_seed.build_signing, which refuses that configuration.
+    if draft.kind == "stipulated" and draft.event == "signing":
+        move = draft.moves[0]
+        lines += ["scored_teams: []", "stipulation:",
+                  f"  label: {draft.sentence}",
+                  "  # No salary and no route are declared. The signing "
+                  "solver enumerates every",
+                  "  # legal route and the runner records which it used and "
+                  "whether that choice",
+                  "  # was this file's or the solver's.",
+                  "  signing:",
+                  f"    player_id: {draft.resolved[move['player_name']]}",
+                  f"    to: {move['to_team']}"]
+    elif draft.kind == "stipulated":
         lines += ["scored_teams: []", "stipulation:",
                   f"  label: {draft.sentence}", "  players:"]
         for move in draft.moves:
@@ -819,8 +1116,11 @@ def write_scenario(draft: Draft, scenario_id: str, *, confirmed: bool = False,
 
 def render(draft: Draft) -> str:
     lines = [f"sentence: {draft.sentence}",
-             f"proposed: kind={draft.kind} seed={draft.seed_date}",
+             f"proposed: kind={draft.kind} event={draft.event} "
+             f"seed={draft.seed_date}",
              f"decision: {draft.decision}"]
+    for route in draft.signing_routes:
+        lines.append(f"  route      {route['describe']}")
     for name, pid in sorted(draft.resolved.items()):
         lines.append(f"  resolved   {name} -> {pid}")
     for name, candidates in sorted(draft.ambiguities.items()):
@@ -880,6 +1180,8 @@ def main(argv=None) -> int:
 
     client = _drafting_client()
     draft = draft_from_sentence(args.sentence, client)
+    if needs_event_call(draft):
+        draft = complete_event(draft, client)
     if needs_moves_call(draft):
         draft = complete_moves(draft, client)
     for name, pid in args.choose:

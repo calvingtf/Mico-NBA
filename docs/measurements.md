@@ -2845,3 +2845,88 @@ in-process check could only ever have passed for the wrong reason.
 about 6 seconds — fully deterministic, no model call anywhere. The whole arc
 (confirm write → start → stream → land on the chain-reaction view) was timed
 end to end at ~6s.
+
+## #74 — the classifier never classified, and two layers disagreed about free agency
+
+A stipulated seed can now be a SIGNING as well as a trade. Three things had
+to be measured rather than assumed, and all three came back against the
+first implementation.
+
+**The classifier answered "trade" on every sentence, including explicit
+signings.** Adding `event: Literal["trade","signing"]` to the existing
+proposal schema and describing it carefully produced this, on the first four
+sentences tried:
+
+| sentence | truth | answered |
+|---|---|---|
+| Stephen Curry traded from GSW to LAL for Reaves and Grimes | trade | trade |
+| **LeBron James signs with the Golden State Warriors** | **signing** | **trade** |
+| Victor Wembanyama traded to the Warriors | trade | trade |
+| Kevin Durant leaves Phoenix for the Knicks | ambiguous | trade |
+
+One of two unambiguous sentences correct — exactly what always answering
+"trade" scores. The model was not classifying; it was falling through to the
+field default. `moves` came back empty on three of the four as well, which is
+the same under-filling that `complete_moves` already exists to repair, and it
+identifies the cause: the model drops fields from a schema this size rather
+than answering them badly.
+
+The charter's rule for this is to shrink the schema, not to prompt harder.
+`classify_event()` asks the question alone, with one field and nothing else
+to fill in. On the two decisive sentences it answers **signing** and
+**trade** correctly, where the combined schema answered trade for both.
+
+**n=2 is not a result and is not claimed as one.** A balanced 12-sentence set
+(`CLASSIFIER_SET`, six of each) with its majority-class null — 6 of 12 by
+construction — is declared in the module and has not finished running. What
+is established is narrow: the combined-schema field was measurably
+non-functional, and the dedicated call fixes the specific sentence that
+exposed it. Latency: 91s for a trade sentence, 334s for the signing one, the
+latter contended with another job on the same Ollama server.
+
+**Two layers disagreed about who is a free agent.** The runner's signable
+pool is `free_agent_pool() | (arrivals - pre_freeze)` — 264 players. The
+authoring gate used `contracts_2627` alone — and refused LeBron James,
+Giannis Antetokounmpo, Paul George and Jaylen Brown, who are exactly the
+players worth stipulating. They hold 2026-27 contracts signed in July,
+*after* the 2026-07-06 freeze. Refusing on the row alone uses post-freeze
+information to rule out a counterfactual set at the freeze: the same leak
+class as the ranker corrections, arriving through a gate rather than a
+feature.
+
+The fix aligns authoring with the runner's own definition — on this team in
+the target season and NOT on it in the prior one. The first attempt at that
+read prior-season rows from `bbref-contracts-2026-27/contract_years.csv`,
+which contains 2026-27 onward and nothing earlier, so every lookup returned
+empty, every player looked like an arrival, and **Stephen Curry passed as a
+free agent**. The prior season lives in `bbref-2025-26/contracts.csv`, which
+is the file `LeagueState.load` was reading all along.
+
+**A scenario can hide its own null.** `run_branch` removes `SUBJECT` from the
+signable pool. The first signing scenario named its signee as
+`decision_subject`, copying the trade scenarios — so the signee was removed
+from the run WITHOUT the seed too. The null could not contest him, "who else
+wanted him" returned nobody, and the diff reported that the seed changed
+nothing. Every one of those readings is false and none looks like an error.
+`build_signing` now refuses the configuration by name.
+
+Corrected, the same scenario reads: **18 teams made a legal offer for LeBron
+James in the unseeded run; OKC won him there.** With the seed he goes to
+Golden State, OKC signs Paul George instead, that costs LAL Paul George, and
+LAL signs Khris Middleton — which costs Dallas Middleton. Three teams signed
+differently in all (OKC, LAL, DAL — Dallas never bid for James), and two
+contested players went elsewhere, one on a higher offer and one on an
+arbitrary tiebreak, counted separately as always.
+
+Two of the eighteen pursuers acted differently. The other sixteen offered and
+lost in both runs, and the page says so: "18 teams wanted him" without that
+split is precisely the kind of number this project exists to refuse.
+
+**What the signing path is judged by.** Not `trade_validator.py` — a signing
+has no counterparty and no salary matching, so it has nothing to say.
+`rules/signing.py` enumerates the routes and `rules/signing_solver.py` owns
+the roster-full answer. Golden State has four legal routes for him; the
+Lakers have none, blocked by a 16-player roster rather than by money, and the
+refusal quotes that rather than returning an empty list. No schema field
+carries an amount, so the runner takes the best legal route and records that
+the figure was **derived, not declared**.

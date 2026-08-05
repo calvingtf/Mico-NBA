@@ -166,7 +166,9 @@
         "verdict": "UNDETERMINED"
       }
     ],
-    "chosen_package": null
+    "chosen_package": null,
+    "event": "trade",
+    "signing_routes": []
   },
   "model": null,
   "model_reason": "the structured proposal is stated, not extracted; everything below it is deterministic",

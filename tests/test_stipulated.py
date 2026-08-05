@@ -115,20 +115,45 @@ class TestTheSeedHolds:
         ]
         assert stipulated_ids, "enumeration found no stipulated scenarios"
 
+        from mironba.sim.signing_seed import (build_signing, chosen_route,
+                                              routes_for)
         from mironba.sim.stipulated import react
 
         for sid in stipulated_ids:
             sc = load_scenario(sid)
             league_mod.bind_scenario(sc)
             league_mod.TEAMS = league_mod._all_teams()
-            trade = build_trade(sc, league_mod.LeagueState.load())
-            movers = {p.player_id for p in trade.players}
-            dest = {p.player_id: p.to_team for p in trade.players}
-            # react() runs the market AND the trade cascade, asserting the
-            # invariant on both paths internally; re-check the end state here
-            # so the test fails even if those asserts are ever removed.
-            league, results, _, _, cascade = react(sc, league_mod, 20260731,
-                                                   seed_trade=trade)
+            loaded = league_mod.LeagueState.load()
+            # Two kinds of seed, one invariant. A stipulated SIGNEE must no
+            # more sign elsewhere or be traded than a stipulated trade
+            # mover; the enumeration globs both because a rule that only
+            # covers the shape you happened to write first is not enumerated.
+            if (sc.stipulation or {}).get("signing"):
+                from mironba.rules.constants import environment_for
+
+                signing = build_signing(sc, loaded, league_mod)
+                env = environment_for(sc.next_season)
+                result = routes_for(signing, loaded, env)
+                route, _source = chosen_route(signing, result)
+                assert route is not None, (
+                    f"{sid}: no legal route, so the scenario cannot run")
+                trade = None
+                movers = {signing.player_id}
+                dest = {signing.player_id: signing.to_team}
+                league, results, _, _, cascade = react(
+                    sc, league_mod, 20260731, seed_signing=signing,
+                    signing_salary=route.max_first_year)
+            else:
+                trade = build_trade(sc, loaded)
+                movers = {p.player_id for p in trade.players}
+                dest = {p.player_id: p.to_team for p in trade.players}
+                # react() runs the market AND the trade cascade, asserting
+                # the invariant on both paths internally; re-check the end
+                # state here so the test fails even if those asserts are
+                # ever removed.
+                league, results, _, _, cascade = react(sc, league_mod,
+                                                       20260731,
+                                                       seed_trade=trade)
             for team in league_mod.TEAMS:
                 assert not movers & set(results[team].signed),                     f"{sid}: {team} signed a stipulated mover"
             for gen in cascade.trades:

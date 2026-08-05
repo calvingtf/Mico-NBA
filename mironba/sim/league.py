@@ -476,6 +476,13 @@ class LeagueState:
                 year_source(SEASON), _july_signings(SEASON, PRIOR_SEASON),
             )
         source, signings = self._expiry_cache
+        # A STIPULATED signing is on the books by assertion. Without this the
+        # expiry machinery would rule a post-freeze arrival's deal EXPIRED,
+        # freeze_state would omit his salary, and the destination would plan
+        # its offseason against a payroll missing the player it was just
+        # stipulated to have signed - a silent cap error, not a visible one.
+        if pid in getattr(self, "_stipulated_signings", ()):
+            return True
         if pid in self._pre_freeze_option_declines():
             return False
         call = extends_into(pid, team, PRIOR_SEASON, FREEZE,
