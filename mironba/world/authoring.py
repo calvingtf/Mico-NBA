@@ -414,16 +414,25 @@ CLASSIFIER_SET = (
 def classify_event(sentence: str, client) -> str:
     """Trade or signing, as its OWN call with a one-field schema.
 
-    Measured, not assumed. Folded into the main proposal schema this field
-    was answered "trade" on every sentence tried, including "LeBron James
-    signs with the Golden State Warriors" - the model was not classifying
-    at all, it was falling through to the default, the same under-filling
-    that leaves ``moves`` empty and is why ``complete_moves`` exists.
+    Measured, not assumed, on the balanced set in ``CLASSIFIER_SET``
+    (entry #74):
+
+        null, always "trade"          6 / 12
+        field in the full schema      6 / 12   said "signing" 0 times
+        this call                    12 / 12   median 49s vs 176s
+
+    Folded into the main proposal schema the field scored exactly the null
+    and never emitted "signing" once in twelve sentences - it was not
+    classifying, it was falling through to the default, the same
+    under-filling that leaves ``moves`` empty and is why ``complete_moves``
+    exists. A field that can only return one of its two values is not a
+    classifier, and accuracy alone would not have shown that.
 
     The charter's rule for this is to shrink the schema rather than to
     prompt harder, so the classification is asked on its own with nothing
-    else to fill in. ``event`` on the Proposal is kept as a first guess and
-    this overrides it.
+    else to fill in. That is 3.6x faster as well as correct: same model,
+    same machine, less to emit. ``event`` on the Proposal is kept as a
+    first guess and this overrides it.
     """
     from typing import Literal
 

@@ -1,0 +1,108 @@
+{
+  "n": 12,
+  "arm_a_correct": 6,
+  "arm_b_correct": 12,
+  "null_correct": 6,
+  "arm_a_says_signing": 0,
+  "arm_b_says_signing": 6,
+  "arm_a_median_s": 175.9,
+  "arm_b_median_s": 49.0,
+  "rows": [
+    {
+      "sentence": "Stephen Curry traded from GSW to LAL for Austin Reaves and Quentin Grimes on 2026-07-06",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 175.9,
+      "arm_b": "trade",
+      "b_s": 45.3
+    },
+    {
+      "sentence": "Victor Wembanyama traded to the Warriors",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 245.7,
+      "arm_b": "trade",
+      "b_s": 49.0
+    },
+    {
+      "sentence": "Giannis Antetokounmpo traded from MIA to NYK for Karl-Anthony Towns",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 248.1,
+      "arm_b": "trade",
+      "b_s": 79.7
+    },
+    {
+      "sentence": "The Lakers deal Rui Hachimura to Chicago for Nikola Vucevic",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 359.6,
+      "arm_b": "trade",
+      "b_s": 90.2
+    },
+    {
+      "sentence": "Anthony Davis is swapped to Boston for Jaylen Brown",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 268.7,
+      "arm_b": "trade",
+      "b_s": 61.3
+    },
+    {
+      "sentence": "Golden State acquires Zach LaVine from Sacramento",
+      "truth": "trade",
+      "arm_a": "trade",
+      "a_s": 346.1,
+      "arm_b": "trade",
+      "b_s": 52.8
+    },
+    {
+      "sentence": "LeBron James signs with the Golden State Warriors",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 149.4,
+      "arm_b": "signing",
+      "b_s": 62.0
+    },
+    {
+      "sentence": "DeMar DeRozan signs a two-year deal with the Knicks",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 91.2,
+      "arm_b": "signing",
+      "b_s": 10.9
+    },
+    {
+      "sentence": "Paul George joins the Nets in free agency",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 73.9,
+      "arm_b": "signing",
+      "b_s": 16.5
+    },
+    {
+      "sentence": "Terry Rozier agrees to terms with Portland",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 70.4,
+      "arm_b": "signing",
+      "b_s": 20.5
+    },
+    {
+      "sentence": "Kentavious Caldwell-Pope signs with Orlando",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 69.2,
+      "arm_b": "signing",
+      "b_s": 17.5
+    },
+    {
+      "sentence": "Jonas Valanciunas inks a deal with the Spurs",
+      "truth": "signing",
+      "arm_a": "trade",
+      "a_s": 65.0,
+      "arm_b": "signing",
+      "b_s": 24.5
+    }
+  ]
+}

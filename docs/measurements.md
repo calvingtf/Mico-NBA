@@ -2876,13 +2876,36 @@ The charter's rule for this is to shrink the schema, not to prompt harder.
 to fill in. On the two decisive sentences it answers **signing** and
 **trade** correctly, where the combined schema answered trade for both.
 
-**n=2 is not a result and is not claimed as one.** A balanced 12-sentence set
-(`CLASSIFIER_SET`, six of each) with its majority-class null — 6 of 12 by
-construction — is declared in the module and has not finished running. What
-is established is narrow: the combined-schema field was measurably
-non-functional, and the dedicated call fixes the specific sentence that
-exposed it. Latency: 91s for a trade sentence, 334s for the signing one, the
-latter contended with another job on the same Ollama server.
+**The full measurement, both arms, same 12 sentences.** `CLASSIFIER_SET` is
+balanced six-and-six, so always answering "trade" scores exactly 6 of 12 by
+construction and anything at that line has said nothing.
+
+| arm | correct | said "signing" | median latency |
+|---|---|---|---|
+| null — always "trade" | 6 / 12 | 0 | — |
+| A: field inside the full proposal schema | **6 / 12** | **0 of 6** | 175.9s |
+| B: dedicated one-field call | **12 / 12** | 6 of 6 | **49.0s** |
+
+Arm A is the null. Not close to it — identical to it, and for the reason the
+"said signing" column shows: across twelve sentences it never emitted the
+minority class once. A field that can only return one of its two values is
+not a classifier, and no accuracy number alone would have exposed that. Arm B
+is 12 of 12; under a binomial null at p=0.5 that is P = 0.5^12 = 0.00024.
+
+The dedicated call is also **3.6x faster** — 49s against 176s median. Both
+arms run the same model on the same machine; the difference is how much the
+model is asked to emit. The charter's "keep schemas small" rule was written
+as a defence against schema drift, and this is the first measurement showing
+it buys latency and accuracy at the same time, from the same cause.
+
+**What this does not establish.** The twelve sentences use unambiguous verbs
+— signs, joins, agrees to terms, inks against traded, deals, swaps,
+acquires. It measures whether the model maps a clear verb to the right
+label, which is the easy half. The genuinely ambiguous case ("Kevin Durant
+leaves Phoenix for the Knicks", which could be either) is not in the set and
+has no ground truth to be scored against; the flow's answer there is to let
+the snapshot overrule the classification, which is why a signing for a player
+under contract is refused and told to say "traded" instead.
 
 **Two layers disagreed about who is a free agent.** The runner's signable
 pool is `free_agent_pool() | (arrivals - pre_freeze)` — 264 players. The

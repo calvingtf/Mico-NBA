@@ -168,3 +168,29 @@ class TestWhoElseWantedHim:
         assert winner["did_instead"] or winner["missed_out_on"], (
             "the team that won him in the null must differ somewhere in the "
             "seeded run, or the seed changed nothing for it")
+
+
+class TestTheClassifierSetKeepsItsNullHonest:
+    """The 6-of-12 null is true BY CONSTRUCTION, so the construction is the
+    thing to protect. Let the set drift to nine trades and three signings
+    and always-answer-"trade" quietly becomes a 75% null that a future
+    reading would compare against as though it were 50%."""
+
+    def test_the_set_is_balanced(self):
+        from mironba.world.authoring import CLASSIFIER_SET
+
+        kinds = [truth for _sentence, truth in CLASSIFIER_SET]
+        assert kinds.count("trade") == kinds.count("signing"), (
+            "the majority-class null is only 50% while the set is balanced")
+
+    def test_every_label_is_one_of_the_two(self):
+        from mironba.world.authoring import CLASSIFIER_SET
+
+        for sentence, truth in CLASSIFIER_SET:
+            assert truth in ("trade", "signing"), sentence
+
+    def test_no_sentence_appears_twice(self):
+        from mironba.world.authoring import CLASSIFIER_SET
+
+        sentences = [s for s, _ in CLASSIFIER_SET]
+        assert len(set(sentences)) == len(sentences)
