@@ -80,6 +80,19 @@ class TestEveryCallIsAudited:
             assert row.disposition in (MEASURED, CANDIDATE, SINGLE, BY_DESIGN)
             assert len(row.note) > 60, f"{row.purpose}: reason too thin"
 
+    def test_every_candidate_states_viability_and_round_trip_cost(self):
+        """A candidate that does not say what a split would cost is a
+        wish, not a queue entry. Cost is not one number: +49s once per
+        draft is not +1 round trip per waking team per tick."""
+        for row in CALL_AUDIT:
+            if row.disposition != CANDIDATE:
+                continue
+            note = row.note.lower().replace("-", " ")
+            assert "cost" in note, f"{row.purpose}: no round trip cost"
+            assert "round trip" in note, f"{row.purpose}: cost not in trips"
+            assert "viable" in note or "unmeasured" in note, (
+                f"{row.purpose}: does not say whether a split is viable")
+
     def test_a_multi_field_call_is_never_left_unclassified(self):
         """A call asking for several fields is either measured, declared
         whole on purpose, or named as an unmeasured candidate. What it may

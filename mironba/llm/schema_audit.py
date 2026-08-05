@@ -21,7 +21,11 @@ count nobody has looked at. Each entry declares a disposition:
 
 ``CANDIDATE``
     Multi-field and plausibly splittable, not yet measured. Named so, with
-    the round-trip cost stated, so the queue is visible instead of implied.
+    two things stated: whether a split is VIABLE at all, and what it COSTS
+    in round trips. Cost is not one number - a fixed +49s on a
+    once-per-draft call is not the same as +1 round trip on a call that
+    runs once per waking team per tick, or once per archived article. The
+    queue is visible instead of implied.
 
 ``SINGLE``
     One field. Nothing to split.
@@ -81,13 +85,13 @@ CALL_AUDIT: tuple[CallAudit, ...] = (
         purpose="scenario_draft", module="world/authoring.py",
         schema="Proposal", disposition=CANDIDATE,
         note="The schema #74 was measured inside. `event` was split out of "
-             "it and went 6/12 -> 12/12. Several fields remain, of which "
-             "`kind` is the next candidate: it is the other CLASSIFIER in "
-             "the schema, so it can be measured the same way against the "
-             "same kind of null. `moves` was already split for the same "
-             "symptom (empty on 3 of 4 sentences). Round-trip cost of "
-             "splitting one more field: +1 call, ~49s measured, against a "
-             "p50 of 3.2 min - about 25% more wall clock.",
+             "it and went 6/12 -> 12/12. VIABLE to split further: `kind` is "
+             "the other CLASSIFIER in the schema, so it can be measured the "
+             "same way against the same kind of null, and `moves` was "
+             "already split for the same symptom (empty on 3 of 4 "
+             "sentences). COST: +1 round trip per draft, ~49s measured, "
+             "against a p50 of 3.2 min - about 25% more wall clock, paid "
+             "once per authored scenario rather than per tick.",
     ),
     CallAudit(
         purpose="event_classification", module="world/authoring.py",
@@ -117,16 +121,26 @@ CALL_AUDIT: tuple[CallAudit, ...] = (
     CallAudit(
         purpose="trade_intent", module="agents/gm.py",
         schema="TradeIntent", disposition=CANDIDATE,
-        note="No salaries by construction. Whether any field is inert is "
-             "UNMEASURED. It needs a different null from a classifier's - "
-             "these are extractions and id lists, not labels - so the "
-             "measurement is not a copy of #74 and is not claimed as done.",
+        note="No salaries by construction. VIABLE to split into a target "
+             "call and a tradeable-assets call; the reason field would go "
+             "with whichever it explains. Whether any field is inert is "
+             "UNMEASURED, and it needs a different null from a "
+             "classifier's - these are id lists, not labels, so the null is "
+             "'the empty list' or 'every eligible id', not a majority "
+             "class. COST: +1 round trip per intent, and the intent loop "
+             "runs once per waking team per tick - the only call here on a "
+             "per-tick path, so a split multiplies across the run rather "
+             "than costing a fixed 49s once.",
     ),
     CallAudit(
         purpose="trade_intent_retry", module="agents/gm.py",
         schema="TradeIntent", disposition=CANDIDATE,
         note="The repair retry for the above; same schema, same open "
-             "question.",
+             "question. VIABLE only in lockstep with `trade_intent` - "
+             "splitting one without the other leaves the retry unable to "
+             "repair what the first call produced. COST: the same +1 round "
+             "trip per intent, on the same per-tick path, and only on "
+             "intents that already failed validation once.",
     ),
     CallAudit(
         purpose="package_selection", module="agents/gm.py",
@@ -151,10 +165,15 @@ CALL_AUDIT: tuple[CallAudit, ...] = (
     CallAudit(
         purpose="curation_draft", module="data/ingest/rss.py",
         schema="Draft", disposition=CANDIDATE,
-        note="Named `Draft`, which collides with the authoring dataclass "
-             "of the same name - the audit distinguishes them by base "
-             "class, not by name. On the archive curation path, "
-             "human-gated before "
+        note="VIABLE to split: `kind` is a classifier and could be "
+             "measured exactly as #74 was, with the remaining fields asked "
+             "only for the kind that needs them. COST: +1 round trip per "
+             "ARTICLE, and the archiver polls twice daily across many "
+             "feeds - the highest-volume call site here, so this is the one "
+             "where a split is most expensive and most likely to pay. "
+             "Named `Draft`, which collides with the authoring dataclass "
+             "of the same name; the audit distinguishes them by base "
+             "class, not by name. Human-gated before "
              "anything is written, so an inert field surfaces as a bad "
              "draft a person rejects rather than as a silent wrong number - "
              "which lowers the priority, not the question.",
