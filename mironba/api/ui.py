@@ -740,8 +740,15 @@ def run_narrative_progress(request: Request, run_id: str, report_id: str):
 @app.get("/branches/{scenario_id}", response_class=HTMLResponse)
 def branch_view(request: Request, scenario_id: str):
     path = ROOT / f"branch-{scenario_id}.json"
-    if not path.is_file() or "/" in scenario_id:
+    if "/" in scenario_id or ".." in scenario_id:
         raise HTTPException(404)
+    if not path.is_file():
+        # Linked from the landing page, so a 404 here reads as a broken
+        # site rather than as "nothing has produced this yet".
+        return templates.TemplateResponse(request, "branch.html", {
+            "scenario_id": scenario_id, "branches": [], "freeze": "",
+            "interest": [], "input_marker": "",
+            "llm_label": LLM_PATH_LABEL})
     data = _read_json(path)
     from mironba.report.evidence_view import (INPUT_MARKER, known_at_freeze,
                                               load_scenario_ledger)

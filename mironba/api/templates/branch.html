@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block title %}branches — {{ scenario_id }}{% endblock %}
 {% block body %}
+{% if not branches %}
+<h1>Branch fork — {{ scenario_id }}</h1>
+{% with what="This branch comparison has not been produced yet.",
+        why="A fork is written by the backtest, which runs one scenario down
+             both branches and scores the one that happened. It takes a few
+             minutes because it calls a model per tick.",
+        command="python -m mironba.eval.backtest --scenario " ~ scenario_id,
+        link="/runs", link_label="Or look at a completed run" %}
+  {% include "_empty.html" %}
+{% endwith %}
+{% else %}
 <h1>Branch fork — {{ scenario_id }}</h1>
 <p class="muted">One decision, two worlds, frozen at {{ freeze }}. The trunk
 is everything both worlds share; the split is the decision; each branch is
@@ -64,5 +75,6 @@ what followed.</p>
 <p class="marker">{{ input_marker }} POST-freeze evidence exists in the
 store and is <b>never rendered here</b> — the partition test extends to
 this page.</p>
+{% endif %}
 {% endif %}
 {% endblock %}

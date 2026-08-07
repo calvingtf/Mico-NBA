@@ -1,20 +1,27 @@
 {% extends "base.html" %}
 {% block title %}league graph{% endblock %}
 {% block body %}
+{# The heading and the run-summary line describe A RUN, so neither exists
+   until there is one. Left outside the guard, the summary line dereferenced
+   g.counts on an empty dict and 500'd the page it was meant to soften. #}
 {% if unfalsifiable %}
 <h1><span class="badge unf">UNFALSIFIABLE</span> League graph — {{ g.scenario }}</h1>
 <p class="marker">The seed event of this run is stipulated: no ground truth
 exists or ever will. Every edge below is what the machinery did with that
 premise — a demonstration, not a measurement.</p>
-{% else %}
+{% elif g and g.nodes %}
 <h1>League graph — {{ g.scenario }}</h1>
+{% else %}
+<h1>League graph</h1>
 {% endif %}
 
+{% if g and g.nodes %}
 <p class="muted">Run <code>{{ g.run_id }}</code> · {{ g.counts.trades }}
 generated trades ({{ g.counts.attributable }} attributable to the seed,
 {{ g.counts.unseeded }} in the unseeded world) ·
 {{ g.counts.gate_kills }} candidate pairs killed by the counterparty gate.
 Edges animate in the order they occurred.</p>
+{% endif %}
 
 {% if g and g.nodes %}
 {% include "_graph.html" %}
@@ -37,7 +44,7 @@ Edges animate in the order they occurred.</p>
 {% endwith %}
 {% endif %}
 
-{% if g.runs %}
+{% if g and g.runs %}
 <h2>Other recorded runs</h2>
 <div class="cards">
   {% for r in g.runs[:8] %}

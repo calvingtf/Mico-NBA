@@ -3551,3 +3551,72 @@ once on `body`: this page is mostly columns of dollar figures, and
 proportional digits make them ragged on the decimal. The hero carries
 `margin-left: -0.035em` so the capital's sidebearing does not read as an
 indent against the paragraph beneath it.
+
+## #83 — the front door was a 500 on every fresh clone
+
+Cloned the repo to a scratch directory and walked every route. `runs/` is
+gitignored, so a clone has none, and `RUNS.iterdir()` raised
+FileNotFoundError:
+
+| route | fresh clone, before |
+|---|---|
+| **`/`** | **500 Internal Server Error** |
+| `/league` | **500** |
+| `/runs` | **500** |
+| `/live` | **500** |
+| `/branches/lebron-2026` | 404 (`branch-*.json` is gitignored too) |
+| `/runs/curry-lakers-2026` | 404 |
+| `/authoring`, `/results`, `/demo/*` | 200 |
+
+**Four of the eight routes a first visitor can reach, the landing page among
+them**, and the landing page links to two of the 404s. Every test passed
+throughout, because every test ran in a working tree that had runs. The
+pages that survived are the ones reading committed artifacts — `/results`
+from `docs/figures/`, `/demo/*` from `demos/`, `/authoring` from the
+snapshots. Everything touching `runs/` fell over.
+
+### The decision: both, because they fix different failures
+
+The 500s are a bug. An absent `runs/` means nothing has been run yet, which is
+a state; `run_dirs()` returns `[]` now at all three call sites.
+
+Fixing only that still leaves a clone reading a *description* of the null diff
+and the graph without ever seeing one. So **one** reference run is committed:
+`runs/curry-lakers-2026/manifest.json` (108 KB) and `branch-lebron-2026.json`
+(6 KB), with narrow `.gitignore` negations. The policy line is the archive's,
+written into the ignore file itself: **a manifest is our own deterministic
+output** — no model call anywhere in it, regenerable in about six seconds from
+committed snapshots — and our outputs may be committed where scraped
+third-party data may not. A test asserts exactly one run is tracked, that its
+`model` is null, and that no `llm_calls.jsonl` rides along.
+
+### Empty states
+
+One shared partial, five uses: the gallery, the authoring draft area, the
+league graph, the live index, and the branch fork. Each names what is missing,
+why that is a state rather than a fault, and the one command or link that
+fills it.
+
+The two graph routes and the branch route answer with that state instead of a
+404. Nothing is wrong with those requests, and a 404 tells the reader they
+mistyped something.
+
+**Verified by stripping a clone back down.** With `runs/` and the branch
+artifact deleted: 8 routes, **0 non-200**, and each empty state carrying its
+command verbatim. Two things only that pass caught:
+
+* `/league` still 500'd. The heading and the run-summary line — "Run X · 9
+  generated trades …" — sat *outside* the guard I had just added, so the
+  summary dereferenced `g.counts` on an empty dict and crashed the page that
+  existed to soften the emptiness. Both describe a run, so neither renders
+  until there is one.
+* `/branches/lebron-2026` still 404'd, and it is linked from the landing page.
+
+### The test that would have caught it
+
+`tests/test_fresh_clone.py` points `RUNS` at a directory that does not exist
+and asserts every first-visit route renders, that none is blank or
+half-drawn (>120 characters of visible text), that each empty state names its
+command, and that **every href on the landing page resolves**. A run id that
+was never created is still a 404 — empty states are for pages with nothing to
+show, not for genuine not-founds.
