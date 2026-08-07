@@ -376,3 +376,82 @@ class TestEveryPageShowsWhatItsHeadingSays:
         for path in templates.glob("*.html"):
             text = path.read_text(encoding="utf-8")
             assert 'href="/report"' not in text, f"{path.name} links to /report"
+
+
+class TestTheTaglineHasOneVersion:
+    """A tagline that differs between the repo and the running app is the
+    same claim in two versions, and the reader has no way to know which is
+    current. These assert the copy is shared, not merely similar.
+    """
+
+    #: The two hero lines and the sentence under them. Whitespace-collapsed
+    #: on both sides: the README wraps at 79 columns and the template wraps
+    #: at its own width, so a literal match would be testing line length.
+    HERO_LINES = (
+        "Stipulate a trade or a signing that never happened.",
+        "Check it against the CBA. Watch thirty teams react.",
+    )
+    LEDE = ("You write a sentence. The rules engine approves it, or refuses "
+            "it and quotes the shortfall to the dollar. Then the league "
+            "reacts.")
+    NULL_PROMISE = ("Every number here appears beside what a random or "
+                    "do-nothing system scores on the same data. Including "
+                    "the ones that lost.")
+
+    @staticmethod
+    def _flat(text: str) -> str:
+        import html as htmlmod
+        import re
+
+        return " ".join(htmlmod.unescape(re.sub(r"<[^>]+>", " ", text)).split())
+
+    def test_the_readme_and_the_landing_page_carry_the_same_hero(self):
+        readme = self._flat((ROOT / "README.md").read_text(encoding="utf-8"))
+        page = self._flat(client.get("/").text)
+        for line in self.HERO_LINES:
+            assert line in readme, f"README lost a hero line: {line}"
+            assert line in page, f"the landing page lost a hero line: {line}"
+
+    def test_the_readme_and_the_landing_page_carry_the_same_lede(self):
+        readme = self._flat((ROOT / "README.md").read_text(encoding="utf-8"))
+        page = self._flat(client.get("/").text)
+        assert self.LEDE in readme
+        assert self.LEDE in page
+
+    def test_the_null_promise_sits_with_the_figures_not_the_hero(self):
+        """In the hero it was an assertion about the project; above the
+        figures it is a promise about what the reader is looking at."""
+        page = self._flat(client.get("/").text)
+        results = self._flat(client.get("/results").text)
+        assert self.NULL_PROMISE not in page, (
+            "the null promise is back in the hero")
+        assert self.NULL_PROMISE in results
+        readme = self._flat((ROOT / "README.md").read_text(encoding="utf-8"))
+        assert self.NULL_PROMISE in readme
+
+    def test_the_boundary_sits_with_the_architecture_not_the_hero(self):
+        """A first-time reader cannot parse "only rules/ may approve" before
+        anything has told them rules/ is a directory."""
+        from mironba.api.ui import BOUNDARY_CLAIM
+
+        page = self._flat(client.get("/").text)
+        assert BOUNDARY_CLAIM in page
+        hero = page[:page.find("How it is put together")]
+        assert "may approve" not in hero, (
+            "the boundary is back above the architecture heading")
+
+    def test_the_charter_sentence_survives_verbatim(self):
+        """The first sentence is the charter's own and is exact. It is
+        preserved word for word rather than paraphrased."""
+        from mironba.api.ui import BOUNDARY_CLAIM
+
+        charter = "An LLM may propose; only rules/ may approve."
+        assert BOUNDARY_CLAIM.startswith(charter)
+        readme = self._flat((ROOT / "README.md").read_text(encoding="utf-8"))
+        assert "An LLM may *propose*; only `rules/` may *approve*." in readme
+
+    def test_the_null_promise_is_not_counted_as_a_figure_caption(self):
+        """It deliberately avoids the string the figure-null test counts. A
+        preamble is not a caption, and one that read as a caption would
+        silently break the invariant that every figure names its null."""
+        assert "Null:" not in self.NULL_PROMISE

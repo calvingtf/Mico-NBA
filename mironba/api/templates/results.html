@@ -3,6 +3,14 @@
 {% block body %}
 <h1>Results — generated from recorded data, never typed into plotting code</h1>
 
+{# Moved here from the landing hero. In the hero it was an assertion about
+   the project; above the figures it is a promise about what the reader is
+   looking at. Deliberately does NOT contain the string "Null:" - the
+   figure-null test counts those against the figure count, and a preamble
+   is not a caption. #}
+<p class="lede">Every number here appears beside what a random or do-nothing
+system scores on the same data. Including the ones that lost.</p>
+
 {% if numbers %}
 <p class="muted">Each bar below starts at its null and travels to the
 observed value. The distance <i>is</i> the finding: a claim whose bar

@@ -1,18 +1,10 @@
 # MiroNBA
 
-**A counterfactual-NBA simulator whose eval harness is the product: no number
-ships without the score a do-nothing or random system gets on the same data.**
+**Stipulate a trade or a signing that never happened.
+Check it against the CBA. Watch thirty teams react.**
 
-Seed a decision that has not happened yet — *where does LeBron James sign?* —
-or stipulate a transaction that never did, as either a **trade** (*Stephen
-Curry traded to the Lakers*) or a **signing** (*LeBron James signs with the
-Warriors*). Either way the seed is checked against the 2023 CBA before
-anything reacts to it: a trade through `rules/trade_validator.py`, a signing
-through `rules/signing.py`, and a refusal quotes the binding constraint to
-the dollar rather than bending to make the premise happen. The system then
-freezes the world at a declared instant, lets thirty teams react through
-deterministic rules (an LLM may *propose*; only `rules/` may *approve*), and
-scores the branch that actually occurred against what teams really did.
+You write a sentence. The rules engine approves it, or refuses it and quotes
+the shortfall to the dollar. Then the league reacts.
 
 **What is not seedable, and will not be.** Injuries, rule changes, draft
 outcomes and player development. The seed is a *transaction* — who moves
@@ -63,6 +55,9 @@ two leak corrections behind the player number:
 
 ## Remaining headline results
 
+Every number here appears beside what a random or do-nothing system scores on
+the same data. Including the ones that lost.
+
 **What the model is shown decides what it can want.** Same local model, same
 scenarios, three information arms — the strongest positive result here, and a
 controlled one (each arm is the others' control; stand-pat rates 19.4/19.4/20.7%
@@ -82,6 +77,10 @@ typed into plotting code. A moved anchor fails the build; it never silently
 plots a default.
 
 ## Architecture: two paths, one approver
+
+An LLM may *propose*; only `rules/` may *approve*. The model names players and
+selects from a list — it never emits a package, never states terms, and
+nothing it says reaches world state without passing the validator.
 
 ```mermaid
 flowchart LR

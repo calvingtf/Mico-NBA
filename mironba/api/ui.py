@@ -56,6 +56,17 @@ LLM_PATH_LABEL = ("LLM path: one model per tick in the intent loop - "
                   "not thirty agents. The thirty-team reaction is "
                   "deterministic code.")
 
+#: The boundary, in the charter's own words followed by what they mean
+#: mechanically. It used to sit in the landing hero, where a first-time
+#: reader met "only rules/ may approve" before anything had told them
+#: rules/ was a directory. It belongs where the architecture is explained.
+BOUNDARY_CLAIM = (
+    "An LLM may propose; only rules/ may approve. The model names players "
+    "and selects from a list - it never emits a package, never states "
+    "terms, and nothing it says reaches world state without passing the "
+    "validator."
+)
+
 #: Three sentences, each demonstrating a DIFFERENT behaviour of the flow -
 #: labelled by what they demonstrate, not by their content. The third is
 #: the distinctive one: a refusal, with the shortfall quoted from rules/.
@@ -127,6 +138,7 @@ def index(request: Request):
         "numbers": headline_numbers()[:2],
         "examples": EXAMPLES,
         "latency": measured_latency(),
+        "boundary": BOUNDARY_CLAIM,
     })
 
 
