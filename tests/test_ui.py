@@ -455,3 +455,81 @@ class TestTheTaglineHasOneVersion:
         preamble is not a caption, and one that read as a caption would
         silently break the invariant that every figure names its null."""
         assert "Null:" not in self.NULL_PROMISE
+
+
+class TestHonestySurvivesBoostedNavigation:
+    """hx-boost replaces the BODY. Anything an honesty rule depends on that
+    lives outside the body would be dropped on every navigation after the
+    first, and every existing test would still pass, because they fetch
+    whole documents.
+
+    So these assert the invariants against the body alone - which is
+    exactly what a boosted navigation swaps in.
+    """
+
+    @staticmethod
+    def _body(html: str) -> str:
+        start = html.find(">", html.find("<body")) + 1
+        return html[start:html.rfind("</body>")]
+
+    def test_boost_is_declared_on_the_body(self):
+        page = client.get("/").text
+        assert 'hx-boost="true"' in page
+        assert 'hx-boost="true"' in page[page.find("<body"):
+                                         page.find(">", page.find("<body"))]
+
+    def test_the_limitations_block_is_inside_the_swapped_body(self):
+        import html as htmlmod
+
+        from mironba.agents.report import LIMITATIONS
+
+        body = htmlmod.unescape(
+            self._body(client.get("/runs/curry-lakers-2026").text))
+        assert "LIMITATIONS" in body
+        assert "undismissable" in body
+        for item in LIMITATIONS:
+            assert item in body, f"a limitation lives outside the body: {item}"
+
+    def test_every_null_caption_is_inside_the_swapped_body(self):
+        body = self._body(client.get("/results").text)
+        assert body.count("<figure") >= 5
+        assert body.count("Null:") == body.count("<figure"), (
+            "a figure or its null sits outside the body and would be lost "
+            "on a boosted navigation")
+
+    def test_the_graph_caption_and_its_null_survive_the_swap(self):
+        body = self._body(client.get("/runs/curry-lakers-2026").text)
+        assert '<figure class="graphfig"' in body
+        assert "attributable to the seed" in body
+        assert "Null:" in body
+
+    def test_the_llm_path_label_is_inside_the_swapped_body(self):
+        import html as htmlmod
+
+        from mironba.api.ui import LLM_PATH_LABEL
+
+        for path in ("/", "/runs", "/results"):
+            body = htmlmod.unescape(self._body(client.get(path).text))
+            assert LLM_PATH_LABEL in body, (
+                f"{path} carries the label outside the body")
+
+    def test_reduced_motion_removes_the_transition_not_just_shortens_it(self):
+        """The preference is for no motion. A fast animation is still
+        motion, so the media query sets animation:none on the view
+        transition pseudo-elements and drops the shared-element name."""
+        page = client.get("/").text
+        assert page.count("prefers-reduced-motion") == 1, (
+            "two blocks answering the same media query is how a preference "
+            "ends up half-honoured")
+        at = page.find("prefers-reduced-motion")
+        block = page[at:page.find("\n  }", at)]
+        assert "animation: none !important" in block
+        assert "view-transition-name: none" in block
+        assert ".pulse { animation: none; }" in block
+
+    def test_the_shared_element_is_named_on_the_graph_only(self):
+        """One element may carry a view-transition-name at a time. The
+        graph qualifies because exactly one renders per page."""
+        page = client.get("/runs/curry-lakers-2026").text
+        assert "view-transition-name: league-graph" in page
+        assert page.count('class="league"') == 1

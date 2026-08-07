@@ -3453,3 +3453,101 @@ derived id equalled `curry-to-lakers-2026` (it got `-3`). The test was at
 fault: it asserted a NAME while implicitly depending on which files happened
 to exist. It is hermetic now, with the collision behaviour tested separately
 through the helper that does consult the directory.
+
+## #82 — the inconsistency, counted before it was removed
+
+A visual pass, bounded to three items. No screen, number, null or limitation
+text changed. What follows is the count of variants that existed, because that
+count *is* the measure of the inconsistency.
+
+### Component extraction
+
+166 distinct classes across 19 templates. By pattern:
+
+| pattern | variants before | after |
+|---|---|---|
+| card-like surfaces | **12** | one rule, nine names |
+| small explanatory text | **9** named, 36 rules setting the size | one declaration |
+| badges | 1 base + 5 modifiers, `.badge.unf` **declared twice** | once |
+| reduced-motion blocks | **2** | 1 |
+| metric strips | 7 | 7, kept |
+| figure frames | 3 | 3, kept |
+
+**The surfaces were the find.** Nine of the twelve carried a byte-identical
+recipe — `background: var(--surface)`, `1px solid var(--line)`,
+`var(--radius)`, a padding step — and differed only in that padding.
+`.thinnote` was the same recipe in the warning palette. One rule now, each
+class keeping its own name so no markup changed; **36 duplicate declarations
+removed**. What went away is nine independent chances for one of them to be
+given a different border by someone editing in a hurry.
+
+**Small text was the same story spread wider.** `.step`, `.muted`,
+`.resolved`, `.finding`, `.runline`, `.exnote`, `.numnote`, `.boundary-note`,
+`figcaption` all meant "small, muted, explanatory" and set it independently;
+36 rules named that font size. One declaration now, 17 collapsed, each class
+keeping only what makes it different — a mono face, a rule down the left, a
+margin.
+
+**Two selectors were defined twice and one of them mattered.** `.badge.unf`
+had a flat background at one end of the sheet and a gradient at the other; the
+later won, so the earlier was dead code that read as live. And adding the
+view-transition rules created a *second* `prefers-reduced-motion` block — two
+blocks answering the same media query is how a preference ends up
+half-honoured, since the next animation gets added to whichever one the author
+scrolled to. One block.
+
+**Kept bespoke, with reasons.** The 7 metric strips (`numstrip`, `bignums`,
+`claim-grid`, sparkline, the two hover meters) are genuinely different shapes
+carrying different data, not one shape drawn seven ways. The 3 figure frames
+do three jobs — a graph, a sparkline, the hero — and share `figcaption`, which
+is where their common styling already lives.
+
+**No Jinja macros, deliberately.** The brief asks for a shared partial; the
+measured duplication was in *styling*, not structure — the door cards, stat
+cards and figures differ in content and arity at every site while their CSS
+did not. A macro layer would have added indirection without removing
+duplication, and the CSS primitives deliver the "one styling" the
+inconsistency actually consisted of.
+
+### Page transitions
+
+`hx-boost` on the body plus `htmx.config.globalViewTransitions = true`: htmx
+wraps each swap in `document.startViewTransition` where the browser has it and
+does a plain swap where it does not. No router, no framework, and the pages
+stay ordinary server-rendered documents that work with JavaScript off.
+
+The shared element is the league graph — the one thing that appears on two
+pages at two sizes, embedded on a run and full width on that run's own graph
+page — so `view-transition-name: league-graph` lets the browser morph the same
+element rather than cross-fade two pictures of it. Only one element may hold a
+name at a time, which holds because exactly one graph renders per page.
+
+Deliberately small: 120ms out, 180ms in, opacity only, no slide. A page of
+tables and numbers that slides sideways reads as a demonstration of a
+transition rather than as a page arriving.
+
+**The honesty tests needed a new form.** They fetch whole documents; hx-boost
+swaps the **body**. Anything an honesty rule depended on that lived outside the
+body would be dropped on every navigation after the first and every existing
+test would still have passed. Seven tests now assert the invariants against
+the body alone — LIMITATIONS every line, the figure-to-null count, the graph
+caption and its null, the LLM-path label on three pages.
+
+### Typography
+
+**Minor third, ratio 1.200, anchored at 1rem**, eight steps from 0.694rem to
+2.488rem. What it replaced was 0.8 / 0.92 / 1.05 / 1.3 — ratios of 1.15, 1.14
+and 1.24, three different intervals pretending to be a scale — plus literals
+scattered through the sheet at .93em, .72rem, .7rem, .68rem and .74rem.
+
+A minor third and not a major: this page mixes running prose with dense
+tables, and 1.25 pulls the display sizes far enough from body text that a
+table caption and a section heading stop reading as the same system.
+
+Tracking is a token per role — `-0.021em` display, `-0.011em` heading,
+`0.08em` small caps — tighter as size grows, because default spacing reads
+loose at display sizes and uppercase needs air at 11px. `tabular-nums` is set
+once on `body`: this page is mostly columns of dollar figures, and
+proportional digits make them ragged on the decimal. The hero carries
+`margin-left: -0.035em` so the capital's sidebearing does not read as an
+indent against the paragraph beneath it.
