@@ -1,0 +1,207 @@
+{
+  "freeze": "2026-07-06",
+  "branches": [
+    {
+      "label": "lebron-2026-destination=signs_with_blocker",
+      "moves": [
+        {
+          "player_id": "jamesle01",
+          "name": "LeBron James",
+          "route": "cap_space",
+          "first_year_salary": 14484823,
+          "years": 4,
+          "hard_cap": null
+        },
+        {
+          "player_id": "porzikr01",
+          "name": "Kristaps Porzingis",
+          "route": "non_bird",
+          "first_year_salary": 36878048,
+          "years": 4,
+          "hard_cap": null
+        },
+        {
+          "player_id": "greendr01",
+          "name": "Draymond Green",
+          "route": "non_taxpayer_mle",
+          "first_year_salary": 7175952,
+          "years": 4,
+          "hard_cap": "first_apron"
+        },
+        {
+          "player_id": "horfoal01",
+          "name": "Al Horford",
+          "route": "non_bird",
+          "first_year_salary": 6822000,
+          "years": 4,
+          "hard_cap": null
+        },
+        {
+          "player_id": "meltode01",
+          "name": "De'Anthony Melton",
+          "route": "taxpayer_mle",
+          "first_year_salary": 5849000,
+          "years": 2,
+          "hard_cap": "second_apron"
+        }
+      ],
+      "committed_after": 221686000,
+      "falsifiable": false,
+      "commitments": [
+        "COND-03"
+      ]
+    },
+    {
+      "label": "lebron-2026-destination=signs_elsewhere",
+      "moves": [
+        {
+          "player_id": "porzikr01",
+          "name": "Kristaps Porzingis",
+          "route": "non_bird",
+          "first_year_salary": 36878048,
+          "years": 4,
+          "hard_cap": null
+        },
+        {
+          "player_id": "greendr01",
+          "name": "Draymond Green",
+          "route": "non_taxpayer_mle",
+          "first_year_salary": 15044000,
+          "years": 4,
+          "hard_cap": "first_apron"
+        },
+        {
+          "player_id": "horfoal01",
+          "name": "Al Horford",
+          "route": "non_bird",
+          "first_year_salary": 6822000,
+          "years": 4,
+          "hard_cap": null
+        },
+        {
+          "player_id": "meltode01",
+          "name": "De'Anthony Melton",
+          "route": "taxpayer_mle",
+          "first_year_salary": 6064000,
+          "years": 2,
+          "hard_cap": "second_apron"
+        },
+        {
+          "player_id": "paytoga02",
+          "name": "paytoga02",
+          "route": "taxpayer_mle",
+          "first_year_salary": 6064000,
+          "years": 2,
+          "hard_cap": "second_apron"
+        },
+        {
+          "player_id": "curryse01",
+          "name": "curryse01",
+          "route": "taxpayer_mle",
+          "first_year_salary": 337775,
+          "years": 2,
+          "hard_cap": "second_apron"
+        }
+      ],
+      "committed_after": 221686000,
+      "falsifiable": true,
+      "commitments": [
+        "COND-03"
+      ]
+    }
+  ],
+  "scores": [
+    {
+      "player": "Draymond Green",
+      "player_id": "greendr01",
+      "retained_actual": true,
+      "retained_sim": true,
+      "route_actual": "bird",
+      "route_sim": "bird",
+      "salary_actual": 27678571,
+      "max_sim": 57736350,
+      "within_max": true,
+      "exact_expected": null
+    },
+    {
+      "player": "Al Horford",
+      "player_id": "horfoal01",
+      "retained_actual": true,
+      "retained_sim": true,
+      "route_actual": "non_bird",
+      "route_sim": "non_bird",
+      "salary_actual": 6822000,
+      "max_sim": 15044000,
+      "within_max": true,
+      "exact_expected": null
+    },
+    {
+      "player": "Kristaps Porzingis",
+      "player_id": "porzikr01",
+      "retained_actual": true,
+      "retained_sim": true,
+      "route_actual": "non_bird",
+      "route_sim": "non_bird",
+      "salary_actual": 19512195,
+      "max_sim": 36878048,
+      "within_max": true,
+      "exact_expected": null
+    },
+    {
+      "player": "Charles Bassey",
+      "player_id": "bassech01",
+      "retained_actual": true,
+      "retained_sim": false,
+      "route_actual": "minimum",
+      "route_sim": "minimum",
+      "salary_actual": 2449421,
+      "max_sim": 6064000,
+      "within_max": true,
+      "exact_expected": 2845883
+    },
+    {
+      "player": "De'Anthony Melton",
+      "player_id": "meltode01",
+      "retained_actual": true,
+      "retained_sim": true,
+      "route_actual": "non_bird",
+      "route_sim": "non_bird",
+      "salary_actual": 3451779,
+      "max_sim": 6064000,
+      "within_max": true,
+      "exact_expected": null
+    }
+  ],
+  "audit": [
+    {
+      "surface": "evidence file (PRE partition)",
+      "checked": 16,
+      "rejected": 0,
+      "detail": "20 POST items withheld; max date 2026-07-06"
+    },
+    {
+      "surface": "conditional commitments",
+      "checked": 4,
+      "rejected": 0,
+      "detail": "2 POST commitments withheld"
+    },
+    {
+      "surface": "transaction log (2025-26)",
+      "checked": 1131,
+      "rejected": 2,
+      "detail": "2 post-freeze row(s) excluded by redact_after; latest kept 2026-06-24"
+    },
+    {
+      "surface": "player performance ingest",
+      "checked": 11,
+      "rejected": 0,
+      "detail": "seasons 2014-15..2024-25; none is 2026-27 or later, so no on-court result from the season being projected is readable"
+    },
+    {
+      "surface": "contract snapshot (GSW roster)",
+      "checked": 12,
+      "rejected": 5,
+      "detail": "5 post-freeze signing(s) present in the file and excluded from the freeze state by gsw_freeze_state(); this snapshot has no date column and cannot be filtered, so the exclusion is by name and is the weakest link in the audit"
+    }
+  ]
+}

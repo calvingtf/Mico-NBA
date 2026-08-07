@@ -116,6 +116,24 @@ FIGURE_CAPTIONS = (
 )
 
 
+
+def run_dirs() -> list:
+    """Run directories, newest first. Empty when runs/ does not exist.
+
+    A fresh clone has no runs/ at all - it is gitignored - and
+    ``RUNS.iterdir()`` raised FileNotFoundError, so the LANDING PAGE, the
+    gallery, the live index and the league graph all returned 500 on a
+    clone. Four of the eight routes a first visitor can reach, and the
+    front door among them. An absent directory is a legitimate state here,
+    not an error: it means nothing has been run yet, which is exactly what
+    every one of those pages now says.
+    """
+    if not RUNS.is_dir():
+        return []
+    return sorted((d for d in RUNS.iterdir() if d.is_dir()),
+                  key=lambda d: d.stat().st_mtime, reverse=True)
+
+
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -149,8 +167,11 @@ def league_view(request: Request, run: str | None = None):
 
     graph = league_graph(run)
     if not graph:
-        raise HTTPException(404, "no recorded run carries a reaction and a "
-                                 "cascade to draw")
+        # NOT a 404. There is nothing wrong with the request - there is
+        # simply no run to draw yet, which is the ordinary state of a fresh
+        # clone, and a 404 tells the reader they mistyped something.
+        return templates.TemplateResponse(request, "league.html", {
+            "g": {}, "llm_label": LLM_PATH_LABEL, "unfalsifiable": False})
     # /league is the newest run by default. Per-run graphs live at
     # /runs/{id}/league and are linked from each run view, so a freshly
     # authored scenario does not have to become the newest demo to be seen.
@@ -187,8 +208,7 @@ def live_index(request: Request):
     """
     from mironba.api import runner
 
-    runs = sorted((d for d in RUNS.iterdir() if d.is_dir()),
-                  key=lambda d: d.stat().st_mtime, reverse=True)[:12]
+    runs = run_dirs()[:12]
     rows = [{"id": d.name, "events": (d / "events.jsonl").is_file(),
              "mtime": d.stat().st_mtime} for d in runs]
     return templates.TemplateResponse(request, "live.html", {
@@ -605,9 +625,7 @@ def run_gallery(request: Request):
     rows = []
     # newest first BY TIME, not by name - reverse-alphabetical put one run
     # family's ~60 dirs on the whole first page and hid every badge
-    run_dirs = sorted((d for d in RUNS.iterdir() if d.is_dir()),
-                      key=lambda d: d.stat().st_mtime, reverse=True)
-    for run_dir in run_dirs:
+    for run_dir in run_dirs():
         m = _manifest(run_dir)
         rows.append({
             "id": run_dir.name,
@@ -674,10 +692,10 @@ def run_league(request: Request, run_id: str):
     manifest = _manifest(run_dir)
     graph = run_graph(manifest, run_id)
     if not graph:
-        raise HTTPException(
-            404, "this run recorded no reaction, so there is no league state "
-                 "to draw. A manifest-only run is not an empty graph - it is "
-                 "a run that never reached the reaction.")
+        return templates.TemplateResponse(request, "league.html", {
+            "g": {}, "run_id": run_id, "llm_label": LLM_PATH_LABEL,
+            "unfalsifiable": False,
+            "no_reaction": True})
     return templates.TemplateResponse(request, "league.html", {
         "g": graph, "llm_label": LLM_PATH_LABEL,
         "unfalsifiable": graph["unfalsifiable"]})

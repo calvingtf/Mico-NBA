@@ -38,7 +38,14 @@ every legal package the destination could send and you pick one.</p>
      <code>rules/</code> — you confirm before anything is written</span></p>
 </form>
 
-<div id="draft"></div>
+<div id="draft">
+{% with what="No draft yet.",
+        why="Type a sentence above, or click one of the three examples. The
+             model proposes the structure; determinism resolves the names
+             and rules/ rules on the package before anything is written." %}
+  {% include "_empty.html" %}
+{% endwith %}
+</div>
 
 <script>
 for (const button of document.querySelectorAll(".example")) {

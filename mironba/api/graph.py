@@ -103,6 +103,9 @@ BAND_LABEL = {
 def stipulated_runs() -> list:
     """Runs whose manifest carries a reaction + cascade (the graph's food)."""
     out = []
+    if not RUNS.is_dir():
+        # A fresh clone. Nothing has been run; that is a state, not a fault.
+        return out
     for run_dir in sorted((d for d in RUNS.iterdir() if d.is_dir()),
                           key=lambda d: d.stat().st_mtime, reverse=True):
         path = run_dir / "manifest.json"

@@ -5,6 +5,17 @@
 <p class="muted">{{ total }} recorded runs; newest 60 shown. No manifest, no
 result. Columns shown per card: model · seed · snapshot · gpu ·
 reproducible.</p>
+{% if not rows %}
+{% with what="No runs yet.",
+        why="runs/ is where every simulation writes its manifest, and this
+             clone has none. A run is deterministic and takes about six
+             seconds - no model is called anywhere in it.",
+        command="python -m mironba.sim.stipulated --scenario curry-lakers-2026 --out runs/curry-lakers-2026/manifest.json",
+        link="/live", link_label="Or start one from the browser" %}
+  {% include "_empty.html" %}
+{% endwith %}
+{% endif %}
+
 <div class="cards">
 {% for r in rows %}
   <div class="card">

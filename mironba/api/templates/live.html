@@ -29,6 +29,16 @@
   </div>
 </div>
 
+{% if not rows %}
+{% with what="Nothing to watch yet.",
+        why="No run directory exists. Start one with the picker above and
+             this list fills as it writes - or run the command directly.",
+        command="python -m mironba.sim.stipulated --scenario curry-lakers-2026 --out runs/curry-lakers-2026/manifest.json",
+        link="/authoring", link_label="Or write a scenario first" %}
+  {% include "_empty.html" %}
+{% endwith %}
+{% endif %}
+
 <h2>Run directories</h2>
 <p class="muted">Newest first. Ones with an event log can be watched live;
 the rest recorded a manifest only.</p>

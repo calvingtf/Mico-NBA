@@ -16,7 +16,26 @@ generated trades ({{ g.counts.attributable }} attributable to the seed,
 {{ g.counts.gate_kills }} candidate pairs killed by the counterparty gate.
 Edges animate in the order they occurred.</p>
 
+{% if g and g.nodes %}
 {% include "_graph.html" %}
+{% elif no_reaction %}
+{% with what="This run drew no league state.",
+        why="It recorded a manifest but no reaction, so there are no teams
+             to place and no edges to draw. That is a run which stopped
+             before the reaction, not an empty graph.",
+        link="/runs", link_label="Back to the run gallery" %}
+  {% include "_empty.html" %}
+{% endwith %}
+{% else %}
+{% with what="No graph yet.",
+        why="The graph is drawn from a completed run, and this clone has
+             none. Any run produces one - it is deterministic and takes
+             about six seconds.",
+        command="python -m mironba.sim.stipulated --scenario curry-lakers-2026 --out runs/curry-lakers-2026/manifest.json",
+        link="/authoring", link_label="Or write your own scenario" %}
+  {% include "_empty.html" %}
+{% endwith %}
+{% endif %}
 
 {% if g.runs %}
 <h2>Other recorded runs</h2>

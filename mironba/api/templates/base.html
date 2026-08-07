@@ -638,6 +638,22 @@
   .step, .runline { font-family: var(--mono); }
   .nextstep, .thinnote { color: var(--ink); }
   .runline { font-size: var(--step--2); }
+
+  /* ------------------------------------------------------ empty states ---
+     An empty screen is an invitation to act; a blank one is a bug the
+     reader has to diagnose. Every one of these names what is missing and
+     the single thing that fills it. */
+  .empty { border: 1px dashed var(--line); border-radius: var(--radius);
+           padding: var(--space-4) var(--space-3); margin: var(--space-3) 0;
+           text-align: center; }
+  .empty-what { color: var(--ink); font-size: var(--step-1);
+                letter-spacing: var(--track-heading);
+                margin-bottom: var(--space-2); }
+  .empty p { color: var(--muted); font-size: var(--step--1);
+             max-width: 46rem; margin: 0 auto var(--space-2); }
+  .empty-do { text-transform: uppercase; letter-spacing: var(--track-caps);
+              font-size: var(--step--2); color: var(--accent); }
+  .empty .cmd { text-align: left; max-width: 46rem; margin: 0 auto; }
 </style>
 </head>
 <!-- hx-boost: links and form GETs become body swaps, so navigation can

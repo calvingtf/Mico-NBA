@@ -1,0 +1,15 @@
+{# One empty state, four uses. Each says WHAT is missing, WHY that is a
+   state rather than a fault, and THE ONE THING that fills it - a command
+   to copy or a link to click. An empty screen is an invitation to act;
+   a blank one is a bug the reader has to diagnose. #}
+<div class="empty">
+  <div class="empty-what">{{ what }}</div>
+  <p>{{ why }}</p>
+  {% if command %}
+  <p class="empty-do">Run this:</p>
+  <div class="mono cmd">{{ command }}</div>
+  {% endif %}
+  {% if link %}
+  <p><a class="cta" href="{{ link }}">{{ link_label }} →</a></p>
+  {% endif %}
+</div>

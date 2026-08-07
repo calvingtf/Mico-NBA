@@ -1,0 +1,4886 @@
+{
+  "scenario": "curry-lakers-2026",
+  "kind": "stipulated",
+  "unfalsifiable": true,
+  "label": "UNFALSIFIABLE: the seed event is stipulated, so no ground truth exists or ever will. Nothing below is scored and no null is stated because there is nothing to compare against. This output is a demonstration of the machinery, not a measurement.",
+  "seed": 20260731,
+  "model": null,
+  "model_reason": "deterministic run; no LLM call is made",
+  "temperature": null,
+  "temperature_reason": "no sampling occurs",
+  "prompt_template_hash": null,
+  "prompt_template_hash_reason": "no prompt is rendered",
+  "data_snapshot": "2026-27",
+  "freeze": "2026-07-06",
+  "seed_kind": "trade",
+  "trade": {
+    "label": "Stephen Curry to the Los Angeles Lakers",
+    "legal": true,
+    "players": [
+      {
+        "player_id": "curryst01",
+        "from": "GSW",
+        "to": "LAL",
+        "salary": 62587158
+      },
+      {
+        "player_id": "reaveau01",
+        "from": "LAL",
+        "to": "GSW",
+        "salary": 41240250
+      },
+      {
+        "player_id": "grimequ01",
+        "from": "LAL",
+        "to": "GSW",
+        "salary": 13953489
+      }
+    ],
+    "findings": [
+      "WARNING ROSTER_MINIMUM: [GSW] roster would be 13; the team must return to 14 within two weeks",
+      "WARNING HARD_CAP: [LAL] takes back more than 110% of outgoing salary and is hard-capped at the first apron ($209,015,000) for the rest of 2026-27"
+    ]
+  },
+  "signing": null,
+  "pursuit": [],
+  "reaction": {
+    "ATL": {
+      "team": "ATL",
+      "persona": "balanced-default",
+      "committed_start": 174362931,
+      "committed_end": 216578931,
+      "signed": [
+        "djurini01",
+        "houstca01",
+        "nfalyda01",
+        "reathdu01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Zaccharie Risacher",
+        "could no longer afford Gabe Vincent",
+        "could no longer afford Keaton Wallace"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "djurini01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "houstca01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "nfalyda01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "reathdu01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "BKN": {
+      "team": "BKN",
+      "persona": "balanced-default",
+      "committed_start": 96966504,
+      "committed_end": 219004450,
+      "signed": [
+        "agbajoc01",
+        "bufkiko01",
+        "claxtni01",
+        "highsha01",
+        "johnske07"
+      ],
+      "lost_contests": [],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Cam Thomas",
+        "could no longer afford Hunter Tyson",
+        "could no longer afford Dariq Whitehead",
+        "could no longer afford Ziaire Williams",
+        "could no longer afford Jalen Wilson"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "agbajoc01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "bufkiko01",
+          "route": "cap_space",
+          "salary": 26754246
+        },
+        {
+          "player_id": "claxtni01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "highsha01",
+          "route": "non_bird",
+          "salary": 6739200
+        },
+        {
+          "player_id": "johnske07",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "BOS": {
+      "team": "BOS",
+      "persona": "balanced-default",
+      "committed_start": 124114485,
+      "committed_end": 215079000,
+      "signed": [
+        "antetgi01",
+        "bantoda01",
+        "bassech01",
+        "davisjd01",
+        "shulgma01"
+      ],
+      "lost_contests": [
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford John Tonje",
+        "could no longer afford Nikola Vu\u010devi\u0107",
+        "could no longer afford Amari Williams"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "antetgi01",
+          "route": "cap_space",
+          "salary": 40846515
+        },
+        {
+          "player_id": "bantoda01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "bassech01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "davisjd01",
+          "route": "non_taxpayer_mle",
+          "salary": 13966000
+        },
+        {
+          "player_id": "shulgma01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "CHA": {
+      "team": "CHA",
+      "persona": "balanced-default",
+      "committed_start": 92965905,
+      "committed_end": 214407072,
+      "signed": [
+        "branhma01",
+        "bridgmi02",
+        "conlemi01",
+        "greenjo02"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Nick Smith",
+        "could no longer afford Xavier Tillman"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "branhma01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "bridgmi02",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "conlemi01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "greenjo02",
+          "route": "early_bird",
+          "salary": 23916667
+        }
+      ]
+    },
+    "CHI": {
+      "team": "CHI",
+      "persona": "balanced-default",
+      "committed_start": 101248153,
+      "committed_end": 217819000,
+      "signed": [
+        "carteje01",
+        "gueyemo01",
+        "iveyja01",
+        "richani01",
+        "sextoco01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Anfernee Simons",
+        "could no longer afford Guerschon Yabusele"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "carteje01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "gueyemo01",
+          "route": "cap_space",
+          "salary": 22472597
+        },
+        {
+          "player_id": "iveyja01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "richani01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "sextoco01",
+          "route": "non_bird",
+          "salary": 22770000
+        }
+      ]
+    },
+    "CLE": {
+      "team": "CLE",
+      "persona": "balanced-default",
+      "committed_start": 224235507,
+      "committed_end": 224235507,
+      "signed": [],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": []
+    },
+    "DAL": {
+      "team": "DAL",
+      "persona": "balanced-default",
+      "committed_start": 143500616,
+      "committed_end": 221143000,
+      "signed": [
+        "baglema01",
+        "johnsaj01",
+        "jonesty01",
+        "mcgeeja01",
+        "middlkh01",
+        "nembhry01"
+      ],
+      "lost_contests": [
+        "antetgi01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Dwight Powell",
+        "could no longer afford Olivier-Maxence Prosper",
+        "could no longer afford Brandon Williams"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "baglema01",
+          "route": "cap_space",
+          "salary": 21460384
+        },
+        {
+          "player_id": "johnsaj01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "jonesty01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "mcgeeja01",
+          "route": "non_taxpayer_mle",
+          "salary": 13966000
+        },
+        {
+          "player_id": "middlkh01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "nembhry01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "DEN": {
+      "team": "DEN",
+      "persona": "balanced-default",
+      "committed_start": 211336587,
+      "committed_end": 221686000,
+      "signed": [
+        "brownbr01",
+        "hardati02"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Jonas Valan\u010di\u016bnas",
+        "could no longer afford Peyton Watson"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "brownbr01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "hardati02",
+          "route": "taxpayer_mle",
+          "salary": 4285413
+        }
+      ]
+    },
+    "DET": {
+      "team": "DET",
+      "persona": "balanced-default",
+      "committed_start": 112727818,
+      "committed_end": 221143000,
+      "signed": [
+        "durenja01",
+        "harrito02",
+        "jonesis01",
+        "klintbo01",
+        "leverca01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Dario \u0160ari\u0107",
+        "could no longer afford Marcus Sasser",
+        "could no longer afford Isaiah Stewart"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "durenja01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "harrito02",
+          "route": "early_bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "jonesis01",
+          "route": "non_taxpayer_mle",
+          "salary": 13806682
+        },
+        {
+          "player_id": "klintbo01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "leverca01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "GSW": {
+      "team": "GSW",
+      "persona": "balanced-default",
+      "committed_start": 139257324,
+      "committed_end": 224135421,
+      "signed": [
+        "brownja02",
+        "curryse01",
+        "paytoga02",
+        "postqu01",
+        "biberta01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Pat Spencer",
+        "could no longer afford Omer Yurtseven"
+      ],
+      "obligations": [
+        {
+          "rule": "ROSTER_MINIMUM",
+          "player_id": "biberta01",
+          "route": "minimum",
+          "salary": 2449421
+        }
+      ],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "brownja02",
+          "route": "cap_space",
+          "salary": 25703676
+        },
+        {
+          "player_id": "curryse01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "paytoga02",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "postqu01",
+          "route": "taxpayer_mle",
+          "salary": 440750
+        },
+        {
+          "player_id": "biberta01",
+          "route": "minimum",
+          "salary": 2449421
+        }
+      ]
+    },
+    "HOU": {
+      "team": "HOU",
+      "persona": "balanced-default",
+      "committed_start": 188091686,
+      "committed_end": 221686000,
+      "signed": [
+        "finnedo01",
+        "greenje02",
+        "holidaa01",
+        "okogijo01",
+        "moranja01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [
+        "moranja01"
+      ],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "finnedo01",
+          "route": "non_bird",
+          "salary": 15240000
+        },
+        {
+          "player_id": "greenje02",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "holidaa01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "okogijo01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "moranja01",
+          "route": "taxpayer_mle",
+          "salary": 162314
+        }
+      ]
+    },
+    "IND": {
+      "team": "IND",
+      "persona": "balanced-default",
+      "committed_start": 193215974,
+      "committed_end": 221686000,
+      "signed": [
+        "bradlto01",
+        "brownko01",
+        "jacksqu01",
+        "joneska03"
+      ],
+      "lost_contests": [],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Garrison Mathews",
+        "could no longer afford Mac McClung",
+        "could no longer afford Monte Morris",
+        "could no longer afford Micah Potter",
+        "could no longer afford Jeremiah Robinson-Earl",
+        "could no longer afford James Wiseman"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "bradlto01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "brownko01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "jacksqu01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "joneska03",
+          "route": "taxpayer_mle",
+          "salary": 1298026
+        }
+      ]
+    },
+    "LAC": {
+      "team": "LAC",
+      "persona": "balanced-default",
+      "committed_start": 143796050,
+      "committed_end": 219065087,
+      "signed": [
+        "baldwpa01",
+        "bogdabo01",
+        "collijo01",
+        "mathube01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "baldwpa01",
+          "route": "cap_space",
+          "salary": 21164950
+        },
+        {
+          "player_id": "bogdabo01",
+          "route": "early_bird",
+          "salary": 28035000
+        },
+        {
+          "player_id": "collijo01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "mathube01",
+          "route": "non_bird",
+          "salary": 11025087
+        }
+      ]
+    },
+    "LAL": {
+      "team": "LAL",
+      "persona": "balanced-default",
+      "committed_start": 76876839,
+      "committed_end": 209015000,
+      "signed": [
+        "ballla01",
+        "georgpa01",
+        "hachiru01",
+        "hayesja02"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Luke Kennard",
+        "could no longer afford Maxi Kleber",
+        "could no longer afford Ja Morant"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "ballla01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "georgpa01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "hachiru01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "hayesja02",
+          "route": "non_taxpayer_mle",
+          "salary": 8417411
+        }
+      ]
+    },
+    "MEM": {
+      "team": "MEM",
+      "persona": "balanced-default",
+      "committed_start": 55625338,
+      "committed_end": 205950800,
+      "signed": [
+        "aldamsa01",
+        "anderky01",
+        "anthoco01",
+        "caldwke01",
+        "diakima01"
+      ],
+      "lost_contests": [],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Taj Gibson",
+        "could no longer afford Eric Gordon",
+        "could no longer afford Christian Koloko",
+        "could no longer afford Georges Niang"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "aldamsa01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "anderky01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "anthoco01",
+          "route": "cap_space",
+          "salary": 26855162
+        },
+        {
+          "player_id": "caldwke01",
+          "route": "non_bird",
+          "salary": 25945800
+        },
+        {
+          "player_id": "diakima01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        }
+      ]
+    },
+    "MIA": {
+      "team": "MIA",
+      "persona": "balanced-default",
+      "committed_start": 118050792,
+      "committed_end": 221686000,
+      "signed": [
+        "herroty01",
+        "jakucka01",
+        "jaqueja01",
+        "johnske10",
+        "powelno01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Terry Rozier",
+        "could no longer afford Kel'el Ware",
+        "could no longer afford Jahmir Young"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "herroty01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "jakucka01",
+          "route": "room_exception",
+          "salary": 9366000
+        },
+        {
+          "player_id": "jaqueja01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "johnske10",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "powelno01",
+          "route": "taxpayer_mle",
+          "salary": 5724708
+        }
+      ]
+    },
+    "MIL": {
+      "team": "MIL",
+      "persona": "balanced-default",
+      "committed_start": 95059737,
+      "committed_end": 221686000,
+      "signed": [
+        "antetth01",
+        "harriga01",
+        "hayesni01",
+        "lillada01",
+        "livinch01"
+      ],
+      "lost_contests": [
+        "antetgi01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Vasilije Mici\u0107",
+        "could no longer afford Bobby Portis",
+        "could no longer afford Taurean Prince",
+        "could no longer afford Tyler Smith"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "antetth01",
+          "route": "cap_space",
+          "salary": 41240250
+        },
+        {
+          "player_id": "harriga01",
+          "route": "cap_space",
+          "salary": 28661013
+        },
+        {
+          "player_id": "hayesni01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "lillada01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "livinch01",
+          "route": "taxpayer_mle",
+          "salary": 440750
+        }
+      ]
+    },
+    "MIN": {
+      "team": "MIN",
+      "persona": "balanced-default",
+      "committed_start": 156615113,
+      "committed_end": 209015000,
+      "signed": [
+        "inglejo01",
+        "phillju01",
+        "randlju01",
+        "reidna01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "inglejo01",
+          "route": "room_exception",
+          "salary": 9366000
+        },
+        {
+          "player_id": "phillju01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "randlju01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "reidna01",
+          "route": "non_taxpayer_mle",
+          "salary": 12945887
+        }
+      ]
+    },
+    "NOP": {
+      "team": "NOP",
+      "persona": "balanced-default",
+      "committed_start": 192090918,
+      "committed_end": 207134918,
+      "signed": [
+        "looneke01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01",
+        "middlkh01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Jaden Springer",
+        "could no longer afford Dalen Terry"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "looneke01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        }
+      ]
+    },
+    "NYK": {
+      "team": "NYK",
+      "persona": "balanced-default",
+      "committed_start": 213049914,
+      "committed_end": 221686000,
+      "signed": [
+        "grantje01",
+        "hukpoar01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01",
+        "middlkh01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Mitchell Robinson"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "grantje01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "hukpoar01",
+          "route": "taxpayer_mle",
+          "salary": 2572086
+        }
+      ]
+    },
+    "OKC": {
+      "team": "OKC",
+      "persona": "balanced-default",
+      "committed_start": 204289992,
+      "committed_end": 221686000,
+      "signed": [
+        "dortlu01",
+        "jamesle01",
+        "joeis01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Mason Plumlee",
+        "could no longer afford Aaron Wiggins"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "dortlu01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "jamesle01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "joeis01",
+          "route": "taxpayer_mle",
+          "salary": 5268008
+        }
+      ]
+    },
+    "ORL": {
+      "team": "ORL",
+      "persona": "balanced-default",
+      "committed_start": 213226229,
+      "committed_end": 221686000,
+      "signed": [
+        "howarje01",
+        "wagnemo01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "grantje01",
+        "jamesle01",
+        "middlkh01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "howarje01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "wagnemo01",
+          "route": "taxpayer_mle",
+          "salary": 2395771
+        }
+      ]
+    },
+    "PHI": {
+      "team": "PHI",
+      "persona": "balanced-default",
+      "committed_start": 124042646,
+      "committed_end": 221143000,
+      "signed": [
+        "batesem01",
+        "broomjo01",
+        "drumman01",
+        "lowryky01",
+        "oubreke01",
+        "payneca01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "batesem01",
+          "route": "cap_space",
+          "salary": 40918354
+        },
+        {
+          "player_id": "broomjo01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "drumman01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "lowryky01",
+          "route": "non_taxpayer_mle",
+          "salary": 13966000
+        },
+        {
+          "player_id": "oubreke01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "payneca01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "PHX": {
+      "team": "PHX",
+      "persona": "balanced-default",
+      "committed_start": 157762147,
+      "committed_end": 221143000,
+      "signed": [
+        "allengr01",
+        "bealbr01",
+        "coffeam01",
+        "liddeej01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Nassir Little",
+        "could no longer afford Royce O'Neale"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "allengr01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "bealbr01",
+          "route": "non_taxpayer_mle",
+          "salary": 10012603
+        },
+        {
+          "player_id": "coffeam01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "liddeej01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "POR": {
+      "team": "POR",
+      "persona": "balanced-default",
+      "committed_start": 130977618,
+      "committed_end": 221686000,
+      "signed": [
+        "aytonde01",
+        "louzama01",
+        "murrakr01",
+        "ruperra01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "georgpa01",
+        "grantje01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Matisse Thybulle"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "aytonde01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "louzama01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "murrakr01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "ruperra01",
+          "route": "taxpayer_mle",
+          "salary": 2163882
+        }
+      ]
+    },
+    "SAC": {
+      "team": "SAC",
+      "persona": "balanced-default",
+      "committed_start": 174569382,
+      "committed_end": 221686000,
+      "signed": [
+        "cartede02",
+        "derozde01",
+        "eubandr01",
+        "hayeski01",
+        "jeffrda01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Doug McDermott",
+        "could no longer afford Russell Westbrook"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "cartede02",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "derozde01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "eubandr01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "hayeski01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "jeffrda01",
+          "route": "taxpayer_mle",
+          "salary": 4900618
+        }
+      ]
+    },
+    "SAS": {
+      "team": "SAS",
+      "persona": "balanced-default",
+      "committed_start": 174106876,
+      "committed_end": 217413022,
+      "signed": [
+        "biyombi01",
+        "olynyke01",
+        "sochaje01",
+        "waterli01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "ballla01",
+        "brownja02",
+        "georgpa01",
+        "jamesle01"
+      ],
+      "cascade": [],
+      "notes": [],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "biyombi01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "olynyke01",
+          "route": "non_bird",
+          "salary": 16134146
+        },
+        {
+          "player_id": "sochaje01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "waterli01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "TOR": {
+      "team": "TOR",
+      "persona": "balanced-default",
+      "committed_start": 187962379,
+      "committed_end": 221198379,
+      "signed": [
+        "bambamo01",
+        "fultzma01",
+        "keyty01",
+        "lawsoaj01"
+      ],
+      "lost_contests": [
+        "antetgi01",
+        "brownja02"
+      ],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Sandro Mamukelashvili",
+        "could no longer afford Jonathan Mogbo",
+        "could no longer afford Chris Paul",
+        "could no longer afford Garrett Temple"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "bambamo01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "fultzma01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "keyty01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        },
+        {
+          "player_id": "lawsoaj01",
+          "route": "taxpayer_mle",
+          "salary": 6064000
+        }
+      ]
+    },
+    "UTA": {
+      "team": "UTA",
+      "persona": "balanced-default",
+      "committed_start": 148433879,
+      "committed_end": 209015000,
+      "signed": [
+        "balllo01",
+        "bouchch01",
+        "chandke01",
+        "clarkjo01"
+      ],
+      "lost_contests": [],
+      "cascade": [],
+      "notes": [
+        "could no longer afford Andersson Garcia",
+        "could no longer afford Hayden Gray",
+        "could no longer afford Walker Kessler",
+        "could no longer afford Kevin Love",
+        "could no longer afford Bez Mbeng",
+        "could no longer afford Vince Williams"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "balllo01",
+          "route": "cap_space",
+          "salary": 16527121
+        },
+        {
+          "player_id": "bouchch01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "chandke01",
+          "route": "non_taxpayer_mle",
+          "salary": 15044000
+        },
+        {
+          "player_id": "clarkjo01",
+          "route": "non_taxpayer_mle",
+          "salary": 13966000
+        }
+      ]
+    },
+    "WAS": {
+      "team": "WAS",
+      "persona": "balanced-default",
+      "committed_start": 158028292,
+      "committed_end": 221686000,
+      "signed": [
+        "exumda01",
+        "gillan01",
+        "hardyja02",
+        "jonesdi01"
+      ],
+      "lost_contests": [],
+      "cascade": [],
+      "notes": [
+        "could no longer afford D'Angelo Russell",
+        "could no longer afford Marcus Smart",
+        "could no longer afford Tristan Vukcevic",
+        "could no longer afford Jamir Watkins",
+        "could no longer afford Blake Wesley",
+        "could no longer afford Alondes Williams"
+      ],
+      "obligations": [],
+      "unmet": [],
+      "routes": [
+        {
+          "player_id": "exumda01",
+          "route": "room_exception",
+          "salary": 9366000
+        },
+        {
+          "player_id": "gillan01",
+          "route": "bird",
+          "salary": 41240250
+        },
+        {
+          "player_id": "hardyja02",
+          "route": "non_bird",
+          "salary": 7200000
+        },
+        {
+          "player_id": "jonesdi01",
+          "route": "taxpayer_mle",
+          "salary": 5851458
+        }
+      ]
+    }
+  },
+  "contests": [
+    {
+      "player_id": "agbajoc01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "aldamsa01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "allengr01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "anderky01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "antetgi01",
+      "winner": "BOS",
+      "reason": "arbitrary - nothing available separates the offers",
+      "contested": true,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        },
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        },
+        {
+          "team": "POR",
+          "route": "cap_space",
+          "amount": 33983382
+        },
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        },
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "antetth01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "anthoco01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "aytonde01",
+      "winner": "POR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "baglema01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        }
+      ]
+    },
+    {
+      "player_id": "baldwpa01",
+      "winner": "LAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        }
+      ]
+    },
+    {
+      "player_id": "ballla01",
+      "winner": "LAL",
+      "reason": "higher offer",
+      "contested": true,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "balllo01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "bambamo01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "bantoda01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "bassech01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "batesem01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        }
+      ]
+    },
+    {
+      "player_id": "bealbr01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "biyombi01",
+      "winner": "SAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "bogdabo01",
+      "winner": "LAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAC",
+          "route": "early_bird",
+          "amount": 28035000
+        }
+      ]
+    },
+    {
+      "player_id": "bouchch01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "bradlto01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "branhma01",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "bridgmi02",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "broomjo01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        }
+      ]
+    },
+    {
+      "player_id": "brownbr01",
+      "winner": "DEN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "brownja02",
+      "winner": "GSW",
+      "reason": "arbitrary - nothing available separates the offers",
+      "contested": true,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "bird",
+          "amount": 41240250
+        },
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        },
+        {
+          "team": "POR",
+          "route": "cap_space",
+          "amount": 33983382
+        },
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "brownko01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "bufkiko01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "caldwke01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "cartede02",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "carteje01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "chandke01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "clarkjo01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "claxtni01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "coffeam01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "collijo01",
+      "winner": "LAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAC",
+          "route": "non_bird",
+          "amount": 31896000
+        }
+      ]
+    },
+    {
+      "player_id": "conlemi01",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "curryse01",
+      "winner": "GSW",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        }
+      ]
+    },
+    {
+      "player_id": "davisjd01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "derozde01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "early_bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "diakima01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "djurini01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "dortlu01",
+      "winner": "OKC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "drumman01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        }
+      ]
+    },
+    {
+      "player_id": "durenja01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "eubandr01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "exumda01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "finnedo01",
+      "winner": "HOU",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "HOU",
+          "route": "non_bird",
+          "amount": 15240000
+        }
+      ]
+    },
+    {
+      "player_id": "fultzma01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "garcian01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "georgpa01",
+      "winner": "LAL",
+      "reason": "higher offer",
+      "contested": true,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "PHI",
+          "route": "early_bird",
+          "amount": 41240250
+        },
+        {
+          "team": "POR",
+          "route": "cap_space",
+          "amount": 33983382
+        },
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "gibsota01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "gillan01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "gordoer01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "grantje01",
+      "winner": "NYK",
+      "reason": "clearly stronger roster",
+      "contested": true,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "grayha01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "greenje02",
+      "winner": "HOU",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "greenjo02",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "gueyemo01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "hachiru01",
+      "winner": "LAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "hardati02",
+      "winner": "DEN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "hardyja02",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "harriga01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "harrito02",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "hayesja02",
+      "winner": "LAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "hayeski01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "hayesni01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "herroty01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "highsha01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "holidaa01",
+      "winner": "HOU",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "houstca01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "howarje01",
+      "winner": "ORL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "hukpoar01",
+      "winner": "NYK",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "inglejo01",
+      "winner": "MIN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "iveyja01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "jacksqu01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "jakucka01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "jamesle01",
+      "winner": "OKC",
+      "reason": "arbitrary - nothing available separates the offers",
+      "contested": true,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        },
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        },
+        {
+          "team": "POR",
+          "route": "cap_space",
+          "amount": 33983382
+        },
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "jaqueja01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "jeffrda01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "joeis01",
+      "winner": "OKC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "johnsaj01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        }
+      ]
+    },
+    {
+      "player_id": "johnske07",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "johnske10",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "jonesdi01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "jonesis01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "joneska03",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "jonesty01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        }
+      ]
+    },
+    {
+      "player_id": "kennalu01",
+      "winner": "LAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "kesslwa01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "keyty01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "klebima01",
+      "winner": "LAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "klintbo01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "kolokch01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "lawsoaj01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "leverca01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "liddeej01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "lillada01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "littlna01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "livinch01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "looneke01",
+      "winner": "NOP",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "louzama01",
+      "winner": "POR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "loveke01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "lowryky01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        }
+      ]
+    },
+    {
+      "player_id": "mamuksa01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "mathega01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "mathube01",
+      "winner": "LAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        }
+      ]
+    },
+    {
+      "player_id": "mbengbe01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "mccluma01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "mcderdo01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "mcgeeja01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "micicva01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "middlkh01",
+      "winner": "DAL",
+      "reason": "higher offer",
+      "contested": true,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "non_bird",
+          "amount": 39955555
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "mogbojo01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "moranja01",
+      "winner": "LAL",
+      "reason": "higher offer",
+      "contested": true,
+      "offers": [
+        {
+          "team": "LAL",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        },
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        },
+        {
+          "team": "LAC",
+          "route": "cap_space",
+          "amount": 21164950
+        },
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        },
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        },
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        },
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "morrimo01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "murrakr01",
+      "winner": "POR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "nembhry01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        }
+      ]
+    },
+    {
+      "player_id": "nfalyda01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "niangge01",
+      "winner": "MEM",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MEM",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "okogijo01",
+      "winner": "HOU",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "HOU",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "olynyke01",
+      "winner": "SAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAS",
+          "route": "non_bird",
+          "amount": 16134146
+        }
+      ]
+    },
+    {
+      "player_id": "onealro01",
+      "winner": "PHX",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHX",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "oubreke01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "paulch01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "payneca01",
+      "winner": "PHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "PHI",
+          "route": "cap_space",
+          "amount": 40918354
+        }
+      ]
+    },
+    {
+      "player_id": "paytoga02",
+      "winner": "GSW",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "GSW",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "phillju01",
+      "winner": "MIN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIN",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "plumlma01",
+      "winner": "OKC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "portibo01",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "postqu01",
+      "winner": "GSW",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        }
+      ]
+    },
+    {
+      "player_id": "pottemi01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "poweldw01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "powelno01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "princta02",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "prospol01",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "randlju01",
+      "winner": "MIN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIN",
+          "route": "early_bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "reathdu01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "reidna01",
+      "winner": "MIN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIN",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "richani01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "risacza01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "early_bird",
+          "amount": 23096010
+        }
+      ]
+    },
+    {
+      "player_id": "robinje02",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "robinmi01",
+      "winner": "NYK",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "NYK",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "roziete01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "ruperra01",
+      "winner": "POR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "russeda01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "saricda01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "sassema01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "sextoco01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "shulgma01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "simonan01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "smartma01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "early_bird",
+          "amount": 25876996
+        }
+      ]
+    },
+    {
+      "player_id": "smithni01",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "smithty02",
+      "winner": "MIL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIL",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "sochaje01",
+      "winner": "SAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAS",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "spencpa01",
+      "winner": "GSW",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        }
+      ]
+    },
+    {
+      "player_id": "sprinja01",
+      "winner": "NOP",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "stewais01",
+      "winner": "DET",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DET",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "templga01",
+      "winner": "TOR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "TOR",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "terryda01",
+      "winner": "NOP",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "NOP",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "thomaca02",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "thybuma01",
+      "winner": "POR",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "POR",
+          "route": "bird",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "tillmxa01",
+      "winner": "CHA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "tonjejo01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "tysonhu01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "valanjo01",
+      "winner": "DEN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "vincega01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "vucevni01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "vukcetr01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "wagnemo01",
+      "winner": "ORL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ORL",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "wallake01",
+      "winner": "ATL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "ATL",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "wareke01",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "waterli01",
+      "winner": "SAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAS",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "watkija01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "watsope01",
+      "winner": "DEN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DEN",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "weslebl01",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "westbru01",
+      "winner": "SAC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "SAC",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "whiteda01",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "wiggiaa01",
+      "winner": "OKC",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "OKC",
+          "route": "taxpayer_mle",
+          "amount": 6064000
+        }
+      ]
+    },
+    {
+      "player_id": "willial06",
+      "winner": "WAS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "WAS",
+          "route": "room_exception",
+          "amount": 9366000
+        }
+      ]
+    },
+    {
+      "player_id": "william01",
+      "winner": "BOS",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BOS",
+          "route": "cap_space",
+          "amount": 40846515
+        }
+      ]
+    },
+    {
+      "player_id": "willibr03",
+      "winner": "DAL",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "DAL",
+          "route": "cap_space",
+          "amount": 21460384
+        }
+      ]
+    },
+    {
+      "player_id": "willivi01",
+      "winner": "UTA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "UTA",
+          "route": "cap_space",
+          "amount": 16527121
+        }
+      ]
+    },
+    {
+      "player_id": "willizi02",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "wilsoja03",
+      "winner": "BKN",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "BKN",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "wisemja01",
+      "winner": "IND",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "IND",
+          "route": "non_taxpayer_mle",
+          "amount": 15044000
+        }
+      ]
+    },
+    {
+      "player_id": "yabusgu01",
+      "winner": "CHI",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "CHI",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "youngja05",
+      "winner": "MIA",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "MIA",
+          "route": "cap_space",
+          "amount": 41240250
+        }
+      ]
+    },
+    {
+      "player_id": "yurtsom01",
+      "winner": "GSW",
+      "reason": "uncontested",
+      "contested": false,
+      "offers": [
+        {
+          "team": "GSW",
+          "route": "cap_space",
+          "amount": 25703676
+        }
+      ]
+    }
+  ],
+  "obligations": {
+    "hard_caps": {
+      "LAL": 209015000
+    },
+    "roster_shortfall": {
+      "GSW": 1
+    },
+    "findings_seen": {
+      "ROSTER_MINIMUM": 1,
+      "HARD_CAP": 1
+    },
+    "teams_forced": [
+      "GSW",
+      "LAL"
+    ],
+    "discharged": [
+      {
+        "team": "GSW",
+        "signed": [
+          {
+            "rule": "ROSTER_MINIMUM",
+            "player_id": "biberta01",
+            "route": "minimum",
+            "salary": 2449421
+          }
+        ],
+        "unmet": []
+      }
+    ],
+    "hard_cap_respected": {
+      "LAL": true
+    }
+  },
+  "cascade": {
+    "label": "UNFALSIFIABLE: the seed event is stipulated, so no ground truth exists or ever will. Nothing below is scored and no null is stated because there is nothing to compare against. This output is a demonstration of the machinery, not a measurement.",
+    "seeded_trades": [
+      {
+        "round": 1,
+        "acquirer": "CLE",
+        "counterparty": "WAS",
+        "received": [
+          "davisan02"
+        ],
+        "sent": [
+          "schrode01",
+          "mobleev01"
+        ],
+        "incoming_salary": 58456566,
+        "outgoing_salary": 64914828,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "DEN",
+        "counterparty": "WAS",
+        "received": [
+          "mobleev01"
+        ],
+        "sent": [
+          "murraja01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 50105628,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "GSW",
+        "counterparty": "WAS",
+        "received": [
+          "murraja01"
+        ],
+        "sent": [
+          "porzikr01",
+          "greendr01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 47190766,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIA",
+        "counterparty": "WAS",
+        "received": [
+          "youngtr01"
+        ],
+        "sent": [
+          "adebaba01"
+        ],
+        "incoming_salary": 49488300,
+        "outgoing_salary": 49800000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIN",
+        "counterparty": "SAC",
+        "received": [
+          "lavinza01"
+        ],
+        "sent": [
+          "divindo01",
+          "goberru01"
+        ],
+        "incoming_salary": 48967380,
+        "outgoing_salary": 49035000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "OKC",
+        "counterparty": "IND",
+        "received": [
+          "halibty01"
+        ],
+        "sent": [
+          "willija07",
+          "holmgch01"
+        ],
+        "incoming_salary": 48924624,
+        "outgoing_salary": 49274648,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "ORL",
+        "counterparty": "IND",
+        "received": [
+          "siakapa01"
+        ],
+        "sent": [
+          "bitadgo01",
+          "banchpa01"
+        ],
+        "incoming_salary": 48924624,
+        "outgoing_salary": 49108696,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHI",
+        "counterparty": "WAS",
+        "received": [
+          "adebaba01"
+        ],
+        "sent": [
+          "brownja02"
+        ],
+        "incoming_salary": 49800000,
+        "outgoing_salary": 57078728,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHX",
+        "counterparty": "SAC",
+        "received": [
+          "sabondo01"
+        ],
+        "sent": [
+          "flemira01",
+          "greenja05"
+        ],
+        "incoming_salary": 45472000,
+        "outgoing_salary": 38402083,
+        "trigger": "lost contest for antetgi01"
+      }
+    ],
+    "unseeded_trades": [
+      {
+        "round": 1,
+        "acquirer": "CLE",
+        "counterparty": "WAS",
+        "received": [
+          "davisan02"
+        ],
+        "sent": [
+          "schrode01",
+          "mobleev01"
+        ],
+        "incoming_salary": 58456566,
+        "outgoing_salary": 64914828,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "DEN",
+        "counterparty": "WAS",
+        "received": [
+          "mobleev01"
+        ],
+        "sent": [
+          "murraja01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 50105628,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "GSW",
+        "counterparty": "WAS",
+        "received": [
+          "murraja01"
+        ],
+        "sent": [
+          "butleji01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 56832773,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIA",
+        "counterparty": "WAS",
+        "received": [
+          "butleji01"
+        ],
+        "sent": [
+          "adebaba01"
+        ],
+        "incoming_salary": 56832773,
+        "outgoing_salary": 49800000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIN",
+        "counterparty": "WAS",
+        "received": [
+          "adebaba01"
+        ],
+        "sent": [
+          "greenjo02",
+          "goberru01"
+        ],
+        "incoming_salary": 49800000,
+        "outgoing_salary": 51179012,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "NYK",
+        "counterparty": "SAC",
+        "received": [
+          "lavinza01"
+        ],
+        "sent": [
+          "hartjo01",
+          "bridgmi01"
+        ],
+        "incoming_salary": 48967380,
+        "outgoing_salary": 54405905,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "OKC",
+        "counterparty": "IND",
+        "received": [
+          "halibty01"
+        ],
+        "sent": [
+          "willija07",
+          "holmgch01"
+        ],
+        "incoming_salary": 48924624,
+        "outgoing_salary": 49274648,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "ORL",
+        "counterparty": "IND",
+        "received": [
+          "siakapa01"
+        ],
+        "sent": [
+          "bitadgo01",
+          "banchpa01"
+        ],
+        "incoming_salary": 48924624,
+        "outgoing_salary": 49108696,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHI",
+        "counterparty": "WAS",
+        "received": [
+          "youngtr01"
+        ],
+        "sent": [
+          "brownja02"
+        ],
+        "incoming_salary": 49488300,
+        "outgoing_salary": 57078728,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHX",
+        "counterparty": "SAC",
+        "received": [
+          "sabondo01"
+        ],
+        "sent": [
+          "flemira01",
+          "greenja05"
+        ],
+        "incoming_salary": 45472000,
+        "outgoing_salary": 38402083,
+        "trigger": "lost contest for antetgi01"
+      }
+    ],
+    "attributable_to_seed": [
+      {
+        "round": 1,
+        "acquirer": "GSW",
+        "counterparty": "WAS",
+        "received": [
+          "murraja01"
+        ],
+        "sent": [
+          "porzikr01",
+          "greendr01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 47190766,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIA",
+        "counterparty": "WAS",
+        "received": [
+          "youngtr01"
+        ],
+        "sent": [
+          "adebaba01"
+        ],
+        "incoming_salary": 49488300,
+        "outgoing_salary": 49800000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIN",
+        "counterparty": "SAC",
+        "received": [
+          "lavinza01"
+        ],
+        "sent": [
+          "divindo01",
+          "goberru01"
+        ],
+        "incoming_salary": 48967380,
+        "outgoing_salary": 49035000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHI",
+        "counterparty": "WAS",
+        "received": [
+          "adebaba01"
+        ],
+        "sent": [
+          "brownja02"
+        ],
+        "incoming_salary": 49800000,
+        "outgoing_salary": 57078728,
+        "trigger": "lost contest for antetgi01"
+      }
+    ],
+    "displaced_by_seed": [
+      {
+        "round": 1,
+        "acquirer": "GSW",
+        "counterparty": "WAS",
+        "received": [
+          "murraja01"
+        ],
+        "sent": [
+          "butleji01"
+        ],
+        "incoming_salary": 50105628,
+        "outgoing_salary": 56832773,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIA",
+        "counterparty": "WAS",
+        "received": [
+          "butleji01"
+        ],
+        "sent": [
+          "adebaba01"
+        ],
+        "incoming_salary": 56832773,
+        "outgoing_salary": 49800000,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "MIN",
+        "counterparty": "WAS",
+        "received": [
+          "adebaba01"
+        ],
+        "sent": [
+          "greenjo02",
+          "goberru01"
+        ],
+        "incoming_salary": 49800000,
+        "outgoing_salary": 51179012,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "NYK",
+        "counterparty": "SAC",
+        "received": [
+          "lavinza01"
+        ],
+        "sent": [
+          "hartjo01",
+          "bridgmi01"
+        ],
+        "incoming_salary": 48967380,
+        "outgoing_salary": 54405905,
+        "trigger": "lost contest for antetgi01"
+      },
+      {
+        "round": 1,
+        "acquirer": "PHI",
+        "counterparty": "WAS",
+        "received": [
+          "youngtr01"
+        ],
+        "sent": [
+          "brownja02"
+        ],
+        "incoming_salary": 49488300,
+        "outgoing_salary": 57078728,
+        "trigger": "lost contest for antetgi01"
+      }
+    ],
+    "signings_changed": [
+      {
+        "team": "GSW",
+        "only_with_seed": [
+          "biberta01"
+        ],
+        "only_without_seed": []
+      },
+      {
+        "team": "LAL",
+        "only_with_seed": [],
+        "only_without_seed": [
+          "kennalu01"
+        ]
+      },
+      {
+        "team": "PHI",
+        "only_with_seed": [
+          "payneca01"
+        ],
+        "only_without_seed": [
+          "grimequ01"
+        ]
+      }
+    ],
+    "contests_changed": [],
+    "killed_by_counterparty_gate": 385,
+    "killed_by_solver": 41,
+    "depth_reached": 1,
+    "cap_bound": true
+  },
+  "finished_at": "2026-08-05T16:41:57.467451+00:00"
+}
