@@ -187,7 +187,7 @@ class TestInterestIsAnInput:
 
 
 class TestTheLLMPathIsLabelled:
-    @pytest.mark.parametrize("path", ["/", "/runs", "/results", "/report"])
+    @pytest.mark.parametrize("path", ["/", "/runs", "/results"])
     def test_one_model_per_tick_on_every_page(self, path):
         page = client.get(path).text
         assert "one model per tick" in page
@@ -239,22 +239,140 @@ class TestTheConfirmGate:
         assert "confirmation is a human act" in response.text
 
     def test_the_run_view_quotes_validator_reasons_verbatim(self):
-        gallery = client.get("/runs").text
-        import re
-
-        run_ids = re.findall(r'href="/runs/([^"]+)"', gallery)
-        assert run_ids, "no runs with event logs in the gallery"
-        page = client.get(f"/runs/{run_ids[0]}").text
+        """Needs a run with an EVENT LOG, since the timeline is what quotes
+        the validator. Chosen from disk rather than from the gallery's
+        first page: the newest sixty runs are often all manifest-only, and
+        a test that reads the gallery to find one was really asserting
+        something about recent activity."""
+        with_events = sorted(
+            (d for d in (ROOT / "runs").iterdir()
+             if d.is_dir() and (d / "events.jsonl").is_file()),
+            key=lambda d: d.stat().st_mtime, reverse=True)
+        if not with_events:
+            pytest.skip("no run with an event log is present")
+        page = client.get(f"/runs/{with_events[0].name}").text
         assert "refusals lead" in page.lower() or "Timeline" in page
         assert "quoted verbatim" in page
 
-    def test_the_report_limitations_cannot_be_dismissed(self):
-        page = client.get("/report").text
+    def test_the_gallery_links_every_run_the_run_view_can_render(self):
+        """The gallery linked event-log runs only, so a stipulated run a
+        user had just created was the one kind they could not click through
+        to - on the page whose whole job is finding runs."""
+        import re
+
+        gallery = client.get("/runs").text
+        linked = set(re.findall(r'href="/runs/([^"]+)"', gallery))
+        assert linked, "the gallery links nothing at all"
+        for run_id in list(linked)[:5]:
+            assert client.get(f"/runs/{run_id}").status_code == 200
+
+    def test_the_limitations_cannot_be_dismissed(self):
+        """They lived on /report - one link deep, showing one arbitrary
+        artifact. They are on the run view now, which is the page every run
+        lands on, and that is what 'structurally undismissable' has to mean
+        if it means anything."""
+        page = client.get("/runs/curry-lakers-2026").text
         assert "LIMITATIONS" in page
         assert "undismissable" in page
-        assert "<details" not in page, "limitations must not be collapsible"
+        limits = page[page.find('class="limits"'):]
+        limits = limits[:limits.find("</div>")]
+        assert "<details" not in limits, "limitations must not be collapsible"
+
+    def test_every_limitation_line_survives_onto_the_page(self):
+        from mironba.agents.report import LIMITATIONS
+
+        # unescaped: Jinja turns "planner's" into "planner&#39;s", which is
+        # correct output and a false negative for a literal comparison
+        import html as htmlmod
+
+        page = htmlmod.unescape(client.get("/runs/curry-lakers-2026").text)
+        for item in LIMITATIONS:
+            assert item in page, f"limitation dropped from the page: {item}"
 
     def test_manifest_fields_render_in_the_gallery(self):
         page = client.get("/runs").text
         for column in ("model", "seed", "snapshot", "gpu", "reproducible"):
             assert column in page
+
+
+class TestEveryPageShowsWhatItsHeadingSays:
+    """The /report failure, generalised.
+
+    That page said "recorded output of the report agent" and showed a GM's
+    chat answer, because it selected an artifact by DIRECTORY NAME and never
+    checked what the completion was. The heading described the intent; the
+    content came from a different filter. Same shape as a check certifying a
+    different surface than its claim.
+
+    So every remaining page states what its heading promises and what fact
+    in the response proves it - and the proof has to be something only the
+    right content would produce, not a word that happens to be in the
+    template.
+    """
+
+    #: path -> (what the heading claims, a marker only the claimed content
+    #: could put on the page)
+    HEADINGS = {
+        "/": ("the boundary claim and a hero from a recorded run",
+              "attributable to the seed"),
+        "/league": ("a league graph drawn from one recorded run",
+                    'class="graphfig"'),
+        "/runs": ("every run with its manifest fields",
+                  "reproducible"),
+        "/runs/curry-lakers-2026": ("a finished run: its graph, what the "
+                                    "seed caused, and the detail report",
+                                    "Detail report"),
+        "/runs/curry-lakers-2026/league": ("that run's graph, full width",
+                                           'class="graphfig"'),
+        "/authoring": ("a box that turns a sentence into a scenario file",
+                       "turns a sentence into a scenario file"),
+        "/results": ("every figure with its null", "Null:"),
+        "/live": ("runs to watch, and how to start one", "Run it"),
+        "/demo/solver-enumeration": ("a pre-run demo of solver enumeration",
+                                     "legal return packages"),
+        "/demo/signing-routes": ("a pre-run demo of signing routes",
+                                 "legal signing routes"),
+        "/demo/validator-refusal": ("a pre-run demo of a refusal", "Refused"),
+        "/branches/lebron-2026": ("two branches from one decision",
+                                  "One decision, two worlds"),
+    }
+
+    @pytest.mark.parametrize("path", sorted(HEADINGS))
+    def test_the_page_contains_what_its_heading_promises(self, path):
+        response = client.get(path)
+        if response.status_code == 404:
+            pytest.skip(f"{path} has no recorded artifact to draw")
+        assert response.status_code == 200, path
+        _claim, marker = self.HEADINGS[path]
+        # whitespace-collapsed: templates wrap their prose, so a marker can
+        # span a newline and read as absent when it is plainly there. Two of
+        # these failed that way first, which is a test measuring the column
+        # width rather than the content.
+        page = " ".join(response.text.split())
+        assert " ".join(marker.split()) in page, (
+            f"{path} promises {_claim!r} but the page carries no {marker!r}")
+
+    def test_no_page_shows_a_raw_model_envelope(self):
+        """The specific tell on /report: the artifact was a chat completion,
+        so the page rendered `{"answer": "..."}` as prose. No page may show
+        a raw schema envelope."""
+        for path in sorted(self.HEADINGS):
+            response = client.get(path)
+            if response.status_code != 200:
+                continue
+            for envelope in ('{"answer"', '{"what_happened"', '{"reason"'):
+                assert envelope not in response.text, (
+                    f"{path} renders a raw model envelope: {envelope}")
+
+    def test_the_retired_report_route_is_gone_not_hidden(self):
+        """Retired means removed. A route left registered but unlinked is
+        still a page that can be reached and still lies when it is."""
+        assert client.get("/report").status_code == 404
+        assert not (ROOT / "mironba" / "api" / "templates"
+                    / "report.html").exists()
+
+    def test_no_template_links_to_the_retired_route(self):
+        templates = ROOT / "mironba" / "api" / "templates"
+        for path in templates.glob("*.html"):
+            text = path.read_text(encoding="utf-8")
+            assert 'href="/report"' not in text, f"{path.name} links to /report"

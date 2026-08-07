@@ -14,7 +14,12 @@ reproducible.</p>
       {% if r.reproducible %}<span class="badge rep">reproducible</span>
       {% elif r.reproducible is false %}<span class="badge norep">NOT REPRODUCIBLE</span>{% endif %}
     </div>
-    <div class="runid">{% if r.has_events %}<a href="/runs/{{ r.id }}">{{ r.id }}</a>
+    {# Linked when the run view can render it, which is any run with a
+       manifest - not only ones with an event log. The gallery linked
+       event-log runs only, so a stipulated run a user had just created was
+       the one kind they could not click through to, on the page whose job
+       is finding runs. #}
+    <div class="runid">{% if r.has_manifest or r.has_events %}<a href="/runs/{{ r.id }}">{{ r.id }}</a>
         {% else %}{{ r.id }}{% endif %}</div>
     <div class="facts">
       model <b>{{ r.model }}</b> ·

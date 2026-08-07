@@ -3339,3 +3339,117 @@ The full walk with no id supplied is `-m browser`: it drafts
 "Terry Rozier signs with the Portland Trail Blazers" through the real handlers,
 confirms with exactly the browser's payload, and lands on a run whose graph
 precedes its manifest. 3.5 minutes, all of it the model.
+
+## #81 — the page that showed a chat answer under a report's heading
+
+### What it could show
+
+| record | run families | runs | event log |
+|---|---|---|---|
+| event log + manifest | curry-to-lakers, mid-flexibility-bulls, positive-control-pistons, undetermined-byc | 343 | yes |
+| manifest only | curry-lakers, giannis-knicks, lebron-warriors, rozier-to-trail-blazers | 7 | no |
+| llm_calls only | authoring, report | 58 | no |
+
+**343 of 408 recorded runs carry an event log** the report agent could read.
+The 7 that do not are the stipulated runs — which is to say, exactly the kind
+the UI creates. The agent could describe every run except the ones a user
+makes.
+
+### What the page was actually showing
+
+The newest `runs/report-*` directory is `report-20260731T212818Z-65281fc9`,
+and its only call is `purpose=agent_chat`, `schema=AgentReply`. The text
+rendered under **"Report — recorded output of the report agent"** was:
+
+```
+{"answer": "I declined the package because with a one-season win-now
+horizon and a core featuring LeBron James and Luka Dončić, maintaining
+floor spacing was critical..."}
+```
+
+A GM explaining a trade refusal. Raw JSON, unparsed.
+
+The route globbed `runs/report-*` by **directory name**, took the newest with
+any successful completion in it, and never looked at what the completion was.
+Four of the seven directories do hold genuine `purpose=report` /
+`schema=BranchSummary` artifacts; the sort just did not reach them. Same shape
+as a check certifying a different surface than its claim: the heading
+described the intent and the content came from a different filter.
+
+### The choice: (b), and why
+
+Retiring alone would have left the agent unable to describe the run kind users
+create. Repointing it at manifests fixes that, and it *entails* the retirement
+— once the prose is per-run it has no business on a global page. Three reasons
+the global page had to go regardless of what it showed:
+
+1. a report belongs to a run, so one page for it can only ever show an
+   arbitrary one;
+2. the run view already offers a per-run narrative, correctly gated;
+3. LIMITATIONS were one link deep on a page nobody visits. "Structurally
+   undismissable" has to mean *on the page every run lands on*.
+
+`build_manifest_report` now summarises a manifest, and the agent describes
+`curry-lakers-2026` correctly — 9 generated, 10 unseeded, 4 attributable, 5
+displaced, depth 1, 385 gate kills, 41 solver kills, 30 of 30 teams, 2 forced,
+8 contested of which 3 arbitrary, 3 signing differently.
+
+### The closed number set
+
+A manifest is numbers, and prose about numbers is where a summary invents. The
+prose is checked against every figure the manifest states **plus the length of
+every list and mapping in it** — a count of things the manifest enumerates is
+not a new claim, since "9 generated trades" is a fact about a list of nine even
+though the digit appears nowhere in the file.
+
+Two ways that test was nearly useless, both caught by writing it:
+
+* **Player ids donated digits.** `re.findall(r"\d+", "curryst01")` yields
+  `01`, so every id fed the allowed set until it effectively contained 00–99.
+  A word boundary fixed it; the test asserting `manifest_numbers` returns
+  exactly `{"1"}` for one player row is there to keep it fixed.
+* **The model writes words.** The real summary said "**Four** trades were
+  attributable" and "**three** of which resolved on an arbitrary tiebreak". A
+  digit-only check read neither. Both happened to be right, and neither was
+  verified — a summary claiming "fifty teams signed differently" would have
+  passed a test written to stop precisely that.
+
+Scope matters too: the check applies to the model's prose, not to
+`render()`, which appends LIMITATIONS carrying measured figures from elsewhere
+in the project (421 proposals, 10.48 wins). Those are constants, not claims
+about this run, and checking them against this manifest would fail a constant
+for being constant.
+
+### Every page against its own heading
+
+Twelve pages now declare what their heading promises and a marker only the
+promised content could produce, plus an assertion that **no page renders a raw
+model envelope** (`{"answer"`, `{"what_happened"`, `{"reason"`) — the specific
+tell on `/report`. Two markers failed first because template prose wraps and
+the string spanned a newline; whitespace is normalised now, so the test
+measures content rather than column width.
+
+`/report` is removed, not hidden: the route 404s, the template is deleted, the
+nav link is gone, and a test asserts no template links to it. The recorded
+artifacts are untouched under `runs/report-*`.
+
+### The gallery could not link the runs users make
+
+Committing this surfaced one more. `/runs` linked a run only when it carried
+an event log — so a stipulated run, the kind the UI creates, was the one kind
+a user could not click through to, on the page whose whole job is finding
+runs. It links every run the run view can render now, which is any run with a
+manifest.
+
+The test that caught it was itself at fault in the same direction: it read the
+gallery's first page to find a run with a timeline, so it was really asserting
+something about recent activity. It picks from disk now.
+
+### One thing found along the way
+
+Two stray scenarios — `curry-to-lakers-2026` and `-2` — were sitting in
+`configs/branch/` from a manual run, and they broke a test that asserted a
+derived id equalled `curry-to-lakers-2026` (it got `-3`). The test was at
+fault: it asserted a NAME while implicitly depending on which files happened
+to exist. It is hermetic now, with the collision behaviour tested separately
+through the helper that does consult the directory.

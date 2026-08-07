@@ -175,14 +175,20 @@ class TestTheNarrativeIsOptional:
         assert "language model" in page
         assert "minutes, not seconds" in page
 
-    def test_a_run_with_no_event_log_says_why_rather_than_failing(self):
-        """The report agent summarises an event stream. A stipulated run
-        writes a manifest only - that is a real limit, reported as one."""
+    def test_a_manifest_only_run_can_now_be_summarised(self):
+        """It could not be, and that was the point of repointing the agent:
+        the one run kind the UI creates was the one kind it could not
+        describe."""
         from mironba.api import runner
 
         ok, why = runner.report_available(RUN)
-        assert not ok
-        assert "event log" in why
-        assert "Nothing is missing" in why
+        assert ok, why
         page = client.get(f"/runs/{RUN}").text
-        assert "Not available for this run" in page
+        assert "Not available for this run" not in page
+        assert "Write the narrative summary" in page
+
+    def test_a_run_that_recorded_nothing_still_says_why(self):
+        from mironba.api import runner
+
+        ok, why = runner.report_available("no-such-run-anywhere")
+        assert not ok and "no such run" in why

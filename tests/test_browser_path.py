@@ -60,14 +60,33 @@ class TestTheHandlersAcceptWhatTheTemplatesSend:
 
 class TestTheDerivedIdIsShownBeforeItIsWritten:
     def test_the_draft_panel_shows_the_id_that_will_be_used(self):
-        from mironba.api.ui import _derived_id
-        from mironba.world.authoring import Draft
+        """Hermetic on purpose. The first version called the UI helper,
+        which consults the real configs/branch, and it began failing with
+        'curry-to-lakers-2026-3' once two stray scenarios from a manual run
+        were sitting there. A test that asserts a derived NAME must not
+        depend on which files happen to exist - the collision behaviour has
+        its own test below."""
+        from mironba.world.authoring import Draft, derive_scenario_id
 
         draft = Draft(sentence="Stephen Curry traded to the Lakers",
                       kind="stipulated", seed_date="2026-07-06",
                       moves=[{"player_name": "Stephen Curry",
                               "from_team": "GSW", "to_team": "LAL"}])
-        assert _derived_id(draft) == "curry-to-lakers-2026"
+        assert derive_scenario_id(draft, taken=set()) == "curry-to-lakers-2026"
+
+    def test_the_ui_helper_offers_an_unused_id(self):
+        """The UI helper DOES consult the real directory - that is its job.
+        Asserted as a property, not as a literal name."""
+        from mironba.api.ui import _derived_id
+        from mironba.world.authoring import Draft, existing_scenario_ids
+
+        draft = Draft(sentence="Stephen Curry traded to the Lakers",
+                      kind="stipulated", seed_date="2026-07-06",
+                      moves=[{"player_name": "Stephen Curry",
+                              "from_team": "GSW", "to_team": "LAL"}])
+        derived = _derived_id(draft)
+        assert derived and derived not in existing_scenario_ids()
+        assert derived.startswith("curry-to-lakers-2026")
 
     def test_a_collision_gets_a_suffix_rather_than_overwriting(self):
         from mironba.world.authoring import derive_scenario_id
@@ -193,7 +212,6 @@ class TestWhichHandlersHaveNoBrowserPathTest:
             "GAP - polled fragment, reachable only after the narrative "
             "spawns, which no stipulated run can do",
         "/branches/{scenario_id}": "test_ui.py (GET, no form)",
-        "/report": "test_ui.py (GET, no form)",
         "/results": "test_ui.py (GET, no form)",
     }
 

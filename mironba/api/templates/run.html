@@ -333,6 +333,15 @@ than in a footnote — the resolver's own words are quoted, never paraphrased.</
 {% endfor %}— recorded as making no move, which is a result and not a gap.</p>
 {% endif %}
 
+<div class="limits">
+  <b>LIMITATIONS — appended in code, on every run, structurally
+  undismissable. No prompt failure can drop them and no page can collapse
+  them:</b>
+  <ul>
+    {% for item in limitations %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+</div>
+
 <h3>The narrative report <span class="step">— optional, and slow</span></h3>
 <div class="panel" id="narrative">
   <p class="whatis">Everything above is deterministic and was already on

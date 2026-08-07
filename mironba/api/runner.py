@@ -140,24 +140,23 @@ REPORTS: dict = {}
 
 
 def report_available(run_id: str) -> tuple:
-    """(can_run, why_not). The report agent reads an EVENT LOG.
+    """(can_run, why_not). Either record will do.
 
-    A stipulated run writes a manifest and no events.jsonl, so the agent has
-    nothing to read. That is a real limitation of the narrative path and it
-    is reported as one - offering a button that can only fail is worse than
-    saying why it is absent.
+    The agent read event feeds only, which meant the one run kind the UI
+    creates - stipulated, manifest-only - was the one kind it could not
+    describe. It reads a manifest now, so the question is just whether the
+    run recorded anything at all.
     """
     run_dir = RUNS / run_id
     if not run_dir.is_dir():
         return (False, "no such run directory")
-    if not (run_dir / "events.jsonl").is_file():
-        return (False,
-                "this run recorded a manifest and no event log. The report "
-                "agent summarises an event stream, and a stipulated run does "
-                "not write one - every number it would describe is already "
-                "on this page, assembled deterministically. Nothing is "
-                "missing; the narrative path simply does not apply here.")
-    return (True, "")
+    if ((run_dir / "events.jsonl").is_file()
+            or (run_dir / "manifest.json").is_file()):
+        return (True, "")
+    return (False,
+            "this run recorded neither an event log nor a manifest, so "
+            "there is nothing for the report agent to read. That is a run "
+            "that never finished, not a limitation of the narrative.")
 
 
 def start_report(run_id: str) -> str:

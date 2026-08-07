@@ -312,6 +312,20 @@ def authoring_page(request: Request):
 
 
 
+
+def _limitations() -> tuple:
+    """The standing limitations, read from the agent that owns them.
+
+    They lived on /report, a page one link deep that showed one arbitrary
+    artifact. Moving them onto the run view puts them on the page every run
+    lands on - which is what "structurally undismissable" has to mean if it
+    means anything. Imported rather than copied so there is one list.
+    """
+    from mironba.agents.report import LIMITATIONS
+
+    return LIMITATIONS
+
+
 def _draft_from_form(form) -> "object":
     """Rebuild the Draft a form is carrying, or 400 with the reason.
 
@@ -593,6 +607,7 @@ def run_gallery(request: Request):
             "unfalsifiable": m.get("unfalsifiable", False),
             "scenario": m.get("scenario_id") or m.get("scenario", ""),
             "has_events": (run_dir / "events.jsonl").is_file(),
+            "has_manifest": bool(m),
         })
     return templates.TemplateResponse(request, "runs.html", {
         "rows": rows[:60], "total": len(rows), "llm_label": LLM_PATH_LABEL})
@@ -618,6 +633,7 @@ def run_view(request: Request, run_id: str):
         "g": run_graph(manifest, run_id),
         "payoff": cascade_payoff(manifest),
         "detail": detail_report(manifest),
+        "limitations": _limitations(),
         "narrative_ok": __import__(
             "mironba.api.runner", fromlist=["x"]).report_available(run_id),
         "duties": obligations_view(manifest),
@@ -723,30 +739,23 @@ def branch_view(request: Request, scenario_id: str):
         "input_marker": INPUT_MARKER, "llm_label": LLM_PATH_LABEL})
 
 
-# -- (d) report ----------------------------------------------------------------
-
-
-@app.get("/report", response_class=HTMLResponse)
-def report_view(request: Request):
-    from mironba.agents.report import LIMITATIONS
-
-    report_runs = sorted(RUNS.glob("report-*"), reverse=True)
-    text, source = "", ""
-    for run_dir in report_runs:
-        calls = run_dir / "llm_calls.jsonl"
-        if not calls.is_file():
-            continue
-        for line in reversed(calls.read_text(encoding="utf-8").splitlines()):
-            row = json.loads(line)
-            if row.get("ok") and row.get("response_text"):
-                text, source = row["response_text"], run_dir.name
-                break
-        if text:
-            break
-    return templates.TemplateResponse(request, "report.html", {
-        "text": text, "source": source, "limitations": LIMITATIONS,
-        "llm_label": LLM_PATH_LABEL})
-
+# -- (d) report: RETIRED -----------------------------------------------------
+#
+# /report displayed one artifact chosen by globbing runs/report-* by NAME and
+# taking the newest with any successful completion in it. It never looked at
+# what the completion WAS. Two of the seven report-* directories contain only
+# agent_chat calls, the newest was one of them, and the page therefore showed
+# a GM's chat answer - '{"answer": "I declined the package because..."}',
+# raw JSON - under the heading "recorded output of the report agent".
+#
+# The shape was wrong as well as the selection. A report belongs to a run;
+# one global page for it can only ever show an arbitrary one. So the prose
+# moved to where the run is (POST /runs/{id}/narrative, optional, below a
+# deterministic report already on screen), and LIMITATIONS moved into the
+# detail report every run renders - structurally undismissable there in a way
+# a page nobody visits never was.
+#
+# The recorded artifacts are untouched under runs/report-*.
 
 # -- (e) results --------------------------------------------------------------
 

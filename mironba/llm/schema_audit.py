@@ -174,6 +174,15 @@ CALL_AUDIT: tuple[CallAudit, ...] = (
              "nothing a split would protect.",
     ),
     CallAudit(
+        purpose="report_manifest", module="agents/report.py",
+        schema="BranchSummary", disposition=BY_DESIGN,
+        note="The manifest summary. Two prose fields, neither a label, so "
+             "there is no degenerate class to detect and a split would "
+             "protect nothing. What guards this call is not schema size but "
+             "a closed number set: the prose may contain no figure the "
+             "manifest does not support, asserted by test.",
+    ),
+    CallAudit(
         purpose="agent_chat", module="agents/chat.py",
         schema="AgentReply", disposition=BY_DESIGN,
         note="Conversational surface; not on any measured path and not "
