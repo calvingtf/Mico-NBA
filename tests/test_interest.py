@@ -101,12 +101,18 @@ class TestCircularity:
         for name in interest_score.SCORED_OUTPUTS:
             assert "identif" not in name
 
-    def test_the_readme_retires_identification(self):
+    def test_the_docs_retire_identification(self):
+        """UPDATED when the README was cut to a front page: the claim moved
+        to docs/results.md with the result it retires. What must remain
+        true is that the retirement is written down somewhere a reader
+        meets it - not that it sits on the front page."""
         from pathlib import Path
 
-        readme = Path(__file__).resolve().parents[1] / "README.md"
-        text = readme.read_text(encoding="utf-8")
-        assert "retired as a scored metric" in text
+        root = Path(__file__).resolve().parents[1]
+        prose = "\n".join(
+            p.read_text(encoding="utf-8")
+            for p in [root / "README.md", *sorted((root / "docs").glob("*.md"))])
+        assert "retired as a scored metric" in prose
 
 
 class TestRelevanceRouting:

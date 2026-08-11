@@ -74,11 +74,22 @@ class TestTheRecordedBench:
 
     def test_the_pair_ranker_result_is_untouched(self):
         """Different unit, different question - the recorded pair negative
-        stands verbatim in the README."""
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        assert "6.0% against 5.01%" in readme or \
-            "p@10 of 6.0% against 5.01%" in readme or \
-            "6.0% against a 5.01%" in readme.replace("**", "")
+        stands verbatim.
+
+        UPDATED when the README was cut to a front page: the sentence moved
+        to docs/results.md with the rest of the measured results. The point
+        of the test is that the NEGATIVE is not quietly dropped once a
+        positive exists for the other unit, and that holds wherever the
+        prose lives.
+        """
+        prose = "\n".join(
+            p.read_text(encoding="utf-8")
+            for p in [ROOT / "README.md",
+                      *sorted((ROOT / "docs").glob("*.md"))])
+        flat = prose.replace("**", "")
+        assert ("6.0% against 5.01%" in flat
+                or "6.0% against a 5.01%" in flat), (
+            "the recorded pair-ranker negative is no longer stated anywhere")
 
 
 class TestTheLeakClass:

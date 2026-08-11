@@ -55,11 +55,34 @@ class TestNoCurationToTheWins:
 
 class TestCommittedAndReferenced:
     def test_every_figure_exists_and_is_referenced_by_relative_path(self):
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        """Referenced from the README OR from a docs/ page.
+
+        UPDATED when the README was cut to a front page: four of the five
+        figures moved to docs/results.md and docs/retracted.md with the
+        results they illustrate. The invariant was never "every figure is
+        on the front page" - it is that no figure is committed and then
+        orphaned, and that it is reachable by a relative path from prose
+        that explains it.
+        """
+        pages = [(ROOT / "README.md").read_text(encoding="utf-8")]
+        pages += [p.read_text(encoding="utf-8")
+                  for p in sorted((ROOT / "docs").glob("*.md"))]
+        prose = "\n".join(pages)
         for name in FIGURES:
             path = ROOT / "docs" / "figures" / name
             assert path.is_file() and path.stat().st_size > 1000, name
-            assert f"docs/figures/{name}" in readme, f"{name} not referenced"
+            assert (f"docs/figures/{name}" in prose
+                    or f"figures/{name}" in prose), f"{name} not referenced"
+
+    def test_a_figure_never_travels_without_its_null(self):
+        """The rule that actually matters, and it moved with them. Every
+        page carrying a figure must also say what the null was."""
+        for page in sorted((ROOT / "docs").glob("*.md")):
+            text = page.read_text(encoding="utf-8")
+            if "docs/figures/" not in text and "figures/" not in text:
+                continue
+            assert "null" in text.lower(), (
+                f"{page.name} shows a figure and never names a null")
 
     def test_the_readme_names_the_generator(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

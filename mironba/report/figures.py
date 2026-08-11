@@ -1,4 +1,4 @@
-"""README figures, generated from recorded results - never typed in.
+"""Figures, generated from recorded results - never typed in.
 
     python -m mironba.report.figures
 
@@ -143,16 +143,22 @@ def metric_rows() -> list[dict]:
              f"+{pooled['precision'] - null_pct:.2f} pts - p<0.0001",
         source="bench-pooled-10season.json + snapshots via pooled_backtest"))
 
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    # The recorded table moved to docs/results.md when the README was cut to
+    # a front page. The anchor follows it; the numbers are untouched, which
+    # is what _require's own message demands - fix the anchor, never the
+    # data. Reading the file the table lives in is the point of anchoring
+    # at all: a figure generated from a number typed into this file would
+    # prove nothing.
+    results = (ROOT / "docs" / "results.md").read_text(encoding="utf-8")
     m = _require(r"counterparty matches \| (\d+) of (\d+) \| \*\*([\d.]+) "
                  r"expected\*\* \| P\(null ≥ observed\) = \*\*([\d.]+)\*\*",
-                 readme, "README counterparty row")
+                 results, "docs/results.md counterparty row")
     hit, n, exp, p = int(m[1]), int(m[2]), float(m[3]), float(m[4])
     rows.append(dict(label=f"counterparty matches, n={n} trades",
                      observed=100 * hit / n, null=100 * exp / n,
                      beats=False,  # recorded: p=0.426
                      note=f"{hit}/{n} vs {exp} expected - p={p}",
-                     source="README recorded table (entry 26)"))
+                     source="docs/results.md recorded table (entry 26)"))
 
     measurements = (ROOT / "docs" / "measurements.md").read_text(
         encoding="utf-8")
